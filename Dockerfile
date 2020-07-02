@@ -17,7 +17,6 @@ RUN apt-get -y --no-install-recommends install \
 COPY ./src /src
 RUN Rscript /src/install_packages.R
 
-COPY ./Separate_Projects.R /Separate_Projects.R
 COPY ./MTS_Data_Processing.R /MTS_Data_Processing.R
 
-ENTRYPOINT ["Rscript", "Separate_Projects.R"]
+ENTRYPOINT ["Rscript", "MTS_Data_Processing.R"]

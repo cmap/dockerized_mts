@@ -132,11 +132,11 @@ master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_poscon.es")] <-
 master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_cpd")] <-
   "trt_cp"
 
-
 # filter to just project and controls
 project_data <- key_table %>%
   dplyr::filter(project_id == project_name) %>%
   dplyr::distinct(pert_name)
+
 master_logMFI %<>%
   dplyr::filter(pert_name %in% project_data$pert_name |
                   pert_type %in% c("ctl_vehicle", "trt_poscon"))
@@ -146,6 +146,7 @@ varied_compounds <- master_logMFI %>%
   dplyr::group_by(pert_name) %>%
   dplyr::summarize(n = n()) %>%
   dplyr::filter(n > 1)
+
 master_logMFI %<>%
   dplyr::mutate(pert_mfc_id = as.character(pert_mfc_id),
                 pert_name = as.character(pert_name)) %>%
@@ -162,6 +163,8 @@ master_logMFI %<>%
                                         pert_mfc_id),
                    pert_name = paste(unique(pert_name), collapse = "_"))
 plates <- unique(master_logMFI$prism_replicate)
+
+print("got master_logMFI")
 
 base_day <- 1
 
@@ -194,12 +197,19 @@ PR500_base <- PR500 %>%
 PR500 %<>%
   dplyr::filter(!str_detect(prism_replicate, "BASE"))
 
+print("split")
+
 #---- Normalize ----
 
 # compute control barcode median of medians for normalization
 PR300_control_medians <- control_medians(PR300)
+
+print("control medians ok")
+
 # fit curve to controls and predict test conditions
 PR300_normalized <- normalize(PR300_control_medians, PR300_barcodes)
+
+print("normalize ok")
 
 # if there is an early measurement
 if(nrow(PR300_base) > 0) {
@@ -219,6 +229,8 @@ if(nrow(PR300_base) > 0) {
                                                     "/external_day0.csv")) %>%
     dplyr::filter(culture == "PR300")
 }
+
+print("normalize base ok")
 
 # join with other info (LMFI is normalized, logMFI is not)
 PR300_normalized %<>%
@@ -249,6 +261,8 @@ if(nrow(PR500_base) > 0) {
 PR500_normalized %<>%
   dplyr::left_join(PR500) %>%
   dplyr::select(-logMFI)
+
+print("normalized")
 
 #---- Calculate QC metrics ----
 
