@@ -1,7 +1,6 @@
 # Helper functions for the initial processing step of the MTS pipeline
 
 #---- Load Packages ----
-library(plyr)
 library(tidyverse)
 library(magrittr)
 library(data.table)
