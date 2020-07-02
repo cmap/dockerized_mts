@@ -4,60 +4,178 @@
 # import necessary libraries and functions using MTS_functions.R
 suppressMessages(source("./src/MTS_functions.R"))
 
-#---- Load Data ----
+#---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
 if (length(script_args) != 3) {
   stop("Please supply path to data, controls, and QC table", call. = FALSE)
 }
 
-data_path <- script_args[1]
-control_path <- script_args[2]
-qc_path <- script_args[3]
+base_dir <- script_args[1]
+out_dir <- script_args[2]
+project_name <- script_args[3]
 
-base_day <- 1
+safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
+project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
+if (!dir.exists(project_dir)) {dir.create(project_dir, recursive = T)}
 
-unprocessed <- data.table::fread(data_path)
-varied_compounds <- unprocessed %>%
+# paths to data (make sure directory of data has these files)
+path_key <- paste0(base_dir, "/project_key.csv")
+path_500 <- paste0(base_dir, "/PR500_MFI.gctx")
+path_300 <- paste0(base_dir, "/PR300_MFI.gctx")
+path_platemap <- paste0(base_dir, "/platemap.csv")  # PRISM platemap
+path_cell_info_500 <- paste0(base_dir, "/PR500_cell_info.csv")
+path_cell_info_300 <- paste0(base_dir, "/PR300_cell_info.csv")
+path_inst_info_500 <- paste0(base_dir, "/PR500_inst_info.txt")  # CMap platemap
+path_inst_info_300 <- paste0(base_dir, "/PR300_inst_info.txt")  # CMap platemap
+
+#---- Load the data ----
+
+# data table linking drugs to projects (collaborators)
+key_table <- data.table::fread(path_key)
+
+# read in logMFI data
+PR500 <- read_hdf5(path_500)
+PR300 <- read_hdf5(path_300)
+rownames(PR500) = paste0(rownames(PR500), "_", "PR500")
+rownames(PR300) = paste0(rownames(PR300), "_", "PR300")
+
+# read in cell line info
+cell_info_500 <- data.table::fread(path_cell_info_500) %>%
+  dplyr::distinct(rid, ccle_name, pool_id) %>%
+  dplyr::mutate(culture = "PR500") %>%
+  dplyr::mutate(rid = paste0("c-", rid, "_", culture)) %>%
+  dplyr::mutate(pool_id = ifelse(pool_id == "" | pool_id == -666,
+                                 "CTLBC", pool_id))
+
+cell_info_300 <- data.table::fread(path_cell_info_300) %>%
+  dplyr::distinct(rid, ccle_name, pool_id) %>%
+  dplyr::mutate(culture = "PR300") %>%
+  dplyr::mutate(rid = paste0("c-", rid, "_", culture)) %>%
+  dplyr::mutate(pool_id = ifelse(pool_id == "" | pool_id == -666,
+                                 "CTLBC", pool_id))
+
+# read in PRISM assay info
+platemap <- data.table::fread(path_platemap)
+
+# combine with CMap assay info
+inst_info_500 <- data.table::fread(path_inst_info_500) %>%
+  dplyr::filter(!is_well_failure) %>%
+  dplyr::distinct(profile_id, x_mapping, pert_plate, prism_replicate, pert_well, is_well_failure) %>%
+  dplyr::rename(cmap_plate = pert_plate) %>%
+  dplyr::inner_join(platemap) %>%
+  dplyr::mutate(prism_replicate = paste(cmap_plate,
+                                        word(prism_replicate, -2, -1, sep = "_"),
+                                        paste0(lysis_day * 24, "H"),
+                                        sep = "_"))
+base_day500 <- data.table::fread(path_inst_info_500) %>%
+  dplyr::filter(!is_well_failure, str_detect(prism_replicate, "BASE")) %>%
+  dplyr::select(profile_id, pert_dose, pert_idose, pert_iname, pert_mfc_id,
+                pert_type, pert_plate, pert_well, x_mapping, is_well_failure,
+                prism_replicate, pert_dose_unit, pert_time) %>%
+  dplyr::rename(cmap_plate = pert_plate) %>%
+  dplyr::mutate(prism_replicate = paste(cmap_plate,
+                                        word(prism_replicate, -2, -1, sep = "_"),
+                                        pert_time,
+                                        sep = "_")) %>%
+  dplyr::select(-pert_time)
+inst_info_500 %<>% dplyr::bind_rows(base_day500)
+
+# combine with CMap assay info
+inst_info_300 <- data.table::fread(path_inst_info_300) %>%
+  dplyr::filter(!is_well_failure) %>%
+  dplyr::distinct(profile_id, x_mapping, pert_plate, prism_replicate, pert_well, is_well_failure) %>%
+  dplyr::rename(cmap_plate = pert_plate) %>%
+  dplyr::inner_join(platemap) %>%
+  dplyr::mutate(prism_replicate = paste(cmap_plate,
+                                        word(prism_replicate, -2, -1, sep = "_"),
+                                        paste0(lysis_day * 24, "H"),
+                                        sep = "_"))
+base_day300 <- data.table::fread(path_inst_info_300) %>%
+  dplyr::filter(!is_well_failure, str_detect(prism_replicate, "BASE")) %>%
+  dplyr::select(profile_id, pert_dose, pert_idose, pert_iname, pert_mfc_id,
+                pert_type, pert_plate, pert_well, x_mapping, is_well_failure,
+                prism_replicate, pert_dose_unit, pert_time) %>%
+  dplyr::rename(cmap_plate = pert_plate) %>%
+  dplyr::mutate(prism_replicate = paste(cmap_plate,
+                                        word(prism_replicate, -2, -1, sep = "_"),
+                                        pert_time,
+                                        sep = "_")) %>%
+  dplyr::select(-pert_time)
+inst_info_300 %<>% dplyr::bind_rows(base_day300)
+
+# ensure unique profile IDs (this may cause problems for combo-perturbations)
+PR500 <- PR500[, inst_info_500$profile_id %>% unique()]
+PR300 <- PR300[, inst_info_300$profile_id %>% unique()]
+
+# melt matrices into data tables and join with inst and cell info
+PR500_molten <- log2(PR500) %>%
+  reshape2::melt(varnames = c("rid", "profile_id"), value.name = "logMFI") %>%
+  dplyr::inner_join(cell_info_500) %>%
+  dplyr::inner_join(inst_info_500)
+
+PR300_molten <- log2(PR300) %>%
+  reshape2::melt(varnames = c("rid", "profile_id"), value.name = "logMFI") %>%
+  dplyr::inner_join(cell_info_300) %>%
+  dplyr::inner_join(inst_info_300)
+
+# bind tables together (reorder columns)
+master_logMFI <- PR500_molten %>%
+  dplyr::bind_rows(PR300_molten) %>%
+  dplyr::mutate(pert_name = pert_iname) %>%
+  dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
+                pert_type, pert_dose, pert_idose, pert_mfc_id, pert_name, pert_well,
+                logMFI)
+
+# change validation (.es) to treatment for processing
+master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_poscon.es")] <-
+  "trt_cp"
+master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_cpd")] <-
+  "trt_cp"
+
+
+# filter to just project and controls
+project_data <- key_table %>%
+  dplyr::filter(project_id == project_name) %>%
+  dplyr::distinct(pert_name)
+master_logMFI %<>%
+  dplyr::filter(pert_name %in% project_data$pert_name |
+                  pert_type %in% c("ctl_vehicle", "trt_poscon"))
+
+varied_compounds <- master_logMFI %>%
   dplyr::distinct(pert_name, pert_idose) %>%
   dplyr::group_by(pert_name) %>%
   dplyr::summarize(n = n()) %>%
   dplyr::filter(n > 1)
-unprocessed %<>%
+master_logMFI %<>%
   dplyr::mutate(pert_mfc_id = as.character(pert_mfc_id),
                 pert_name = as.character(pert_name)) %>%
   dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
                   pert_type, pert_well, logMFI) %>%
   dplyr::summarize(pert_dose = ifelse(any(pert_name %in% varied_compounds$pert_name),
-                                          pert_dose[pert_name %in% varied_compounds$pert_name],
-                                          pert_dose),
+                                      pert_dose[pert_name %in% varied_compounds$pert_name],
+                                      pert_dose),
                    pert_idose = ifelse(any(pert_name %in% varied_compounds$pert_name),
-                                           pert_idose[pert_name %in% varied_compounds$pert_name],
-                                           pert_idose),
+                                       pert_idose[pert_name %in% varied_compounds$pert_name],
+                                       pert_idose),
                    pert_mfc_id = ifelse(any(pert_name %in% varied_compounds$pert_name),
-                                            pert_mfc_id[pert_name %in% varied_compounds$pert_name],
-                                            pert_mfc_id),
+                                        pert_mfc_id[pert_name %in% varied_compounds$pert_name],
+                                        pert_mfc_id),
                    pert_name = paste(unique(pert_name), collapse = "_"))
-plates <- unique(unprocessed$prism_replicate)
+plates <- unique(master_logMFI$prism_replicate)
+
+base_day <- 1
 
 if (length(plates) == 2 & str_detect(plates[1], "029")) {
   assay_length <- 4
 } else {
   assay_length <- 5
-  unprocessed %<>% dplyr::filter(!str_detect(prism_replicate, "029"))
+  master_logMFI %<>% dplyr::filter(!str_detect(prism_replicate, "029"))
 }
 
-unprocessed %<>%
-  dplyr::bind_rows(data.table::fread(control_path) %>%
-                     dplyr::filter(prism_replicate %in% plates |
-                                     str_detect(prism_replicate, "BASE")))
-SSMD_TABLE <- data.table::fread(qc_path)
-
-print("Loaded the data")
-
 # split into 300 and 500
-PR300 <- unprocessed %>%
+PR300 <- master_logMFI %>%
   dplyr::filter(culture == "PR300")
-PR500 <- unprocessed %>%
+PR500 <- master_logMFI %>%
   dplyr::filter(culture == "PR500")
 
 # create barcode tables
@@ -77,6 +195,7 @@ PR500 %<>%
   dplyr::filter(!str_detect(prism_replicate, "BASE"))
 
 #---- Normalize ----
+
 # compute control barcode median of medians for normalization
 PR300_control_medians <- control_medians(PR300)
 # fit curve to controls and predict test conditions
@@ -91,7 +210,7 @@ if(nrow(PR300_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-
+  
   PR300_base_normalized <- PR300_base %>%
     dplyr::left_join(PR300_profile) %>%
     normalize(., PR300_barcodes)
@@ -117,7 +236,7 @@ if(nrow(PR500_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-
+  
   PR500_base_normalized <- PR500_base %>%
     dplyr::left_join(PR500_profile) %>%
     normalize(., PR500_barcodes)
@@ -131,7 +250,53 @@ PR500_normalized %<>%
   dplyr::left_join(PR500) %>%
   dplyr::select(-logMFI)
 
+#---- Calculate QC metrics ----
+
+# calculate SSMD and NNMD
+SSMD_table_300 <- calc_ssmd(PR300_normalized %>%
+                              dplyr::filter(pool_id != "CTLBC"))
+# calculate error rate of normalized table (based on threshold classifier)
+PR300_error <- PR300_normalized %>%
+  dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
+                is.finite(LMFI), pool_id != "CTLBC") %>%
+  dplyr::group_by(rid, ccle_name, prism_replicate) %>%
+  dplyr::summarize(error_rate =
+                     min(PRROC::roc.curve(scores.class0 = LMFI,
+                                          weights.class0 = pert_type == "ctl_vehicle",
+                                          curve = TRUE)$curve[,1] + 1 -
+                           PRROC::roc.curve(scores.class0 = LMFI,
+                                            weights.class0 = pert_type == "ctl_vehicle",
+                                            curve = TRUE )$curve[,2])/2)
+# join with SSMD table
+SSMD_table_300 <- SSMD_table_300 %>%
+  dplyr::left_join(PR300_error)
+# REPEAT with 500
+SSMD_table_500 <- calc_ssmd(PR500_normalized %>% dplyr::filter(pool_id != "CTLBC"))
+PR500_error <- PR500_normalized %>%
+  dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
+                is.finite(LMFI), pool_id != "CTLBC") %>%
+  dplyr::group_by(rid, ccle_name, prism_replicate) %>%
+  dplyr::summarize(error_rate =
+                     min(PRROC::roc.curve(scores.class0 = LMFI,
+                                          weights.class0 = pert_type == "ctl_vehicle",
+                                          curve = TRUE)$curve[,1] + 1 -
+                           PRROC::roc.curve(scores.class0 = LMFI,
+                                            weights.class0 = pert_type == "ctl_vehicle",
+                                            curve = TRUE )$curve[,2])/2)
+SSMD_table_500 <- SSMD_table_500 %>%
+  dplyr::left_join(PR500_error)
+
+# combine 300 and 500 tables
+SSMD_TABLE <- dplyr::bind_rows(SSMD_table_500, SSMD_table_300) %>%
+  # if error rate <= .05 then pass
+  dplyr::mutate(pass = error_rate <= 0.05,
+                compound_plate =  stringr::word(prism_replicate, 1,
+                                                sep = stringr::fixed("_"))) %>%
+  dplyr::filter(pool_id != "CTLBC") %>%
+  dplyr::ungroup()
+
 #---- Compute log-fold changes ----
+
 LFC_TABLE <- PR300_normalized %>%
   # combine tables
   dplyr::bind_rows(PR500_normalized) %>%
@@ -148,6 +313,7 @@ LFC_TABLE <- PR300_normalized %>%
   dplyr::ungroup()
 
 #---- Correct for pool effects ----
+
 LFC_TABLE %<>%
   dplyr::filter(pert_type == "trt_cp") %>%
   dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
@@ -159,6 +325,7 @@ LFC_TABLE %<>%
   dplyr::select(-condition)
 
 #---- Compute growth rates ----
+
 # control (base) and DMSO
 CONTROL_GR_300 <- tryCatch(expr = {PR300_base_normalized %>%
     dplyr::group_by(ccle_name, rid, pool_id, culture) %>%  # no compound to group by
@@ -243,6 +410,7 @@ GR_TABLE <- tryCatch(expr = {dplyr::bind_rows(GR_300, GR_500) %>%
 })
 
 #---- Compute dose-response parameters ----
+
 # table with each compound cell line combo and number of doses
 DRC_TABLE_cb <- LFC_TABLE %>%
   dplyr::filter(pert_type == "trt_cp") %>%
@@ -258,7 +426,7 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
   d = DRC_TABLE_cb %>%
     dplyr::filter(ix == jx) %>%
     dplyr::left_join(LFC_TABLE)
-
+  
   # fit curve
   a = tryCatch(dr4pl(dose = d$pert_dose,
                      response = 2^d$LFC.cb,
@@ -272,10 +440,10 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
       dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
     d %<>%
       dplyr::mutate(e = (2^LFC.cb - pred)^2)  # prediction residuals
-
+    
     mse <- mean(d$e)
     R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$LFC.cb)))
-
+    
     x <- tibble(ix = jx,
                 min_dose = min(d$pert_dose),
                 max_dose = max(d$pert_dose),
@@ -314,14 +482,14 @@ if(nrow(GR_TABLE) > 0) {
     dplyr::count(ccle_name, culture, pert_mfc_id, pert_name) %>%
     dplyr::filter(n > 4) %>%
     dplyr::mutate(ix = 1:n())
-
+  
   DRC_gr <- tibble()
-
+  
   for(jx in 1:nrow(DRC_TABLE_growth)) {
     d = DRC_TABLE_growth %>%
       dplyr::filter(ix == jx) %>%
       dplyr::left_join(GR_TABLE)
-
+    
     a = tryCatch(dr4pl(dose = d$pert_dose,
                        response = d$GR,
                        method.init = "logistic",
@@ -333,10 +501,10 @@ if(nrow(GR_TABLE) > 0) {
         dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
       d %<>%
         dplyr::mutate(e = (GR - pred)^2)  # prediction residuals
-
+      
       mse <- mean(d$e)
       R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$GR)))
-
+      
       x <- tibble(ix = jx,
                   min_dose = min(d$pert_dose),
                   max_dose = max(d$pert_dose),
@@ -362,7 +530,7 @@ if(nrow(GR_TABLE) > 0) {
       DRC_gr %<>% dplyr::bind_rows(x)
     }
   }
-
+  
   DRC_TABLE_growth <- DRC_gr %>%
     dplyr::filter(convergence) %>%
     dplyr::left_join(DRC_TABLE_growth) %>%
@@ -370,6 +538,7 @@ if(nrow(GR_TABLE) > 0) {
 }
 
 #---- Make collapsed LFC table ----
+
 LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
   dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
                                                sep = stringr::fixed("_"))) %>%
@@ -381,12 +550,16 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
 
 
 #---- Write to .csv ----
-# normalized controls
+# raw logMFI
+readr::write_csv(master_logMFI, paste0(project_dir, "/logMFI.csv"))
+
+# normalized logMFI
 logMFI_normalized <- dplyr::bind_rows(PR500_normalized, PR300_normalized) %>%
   dplyr::select(-rLMFI)
+readr::write_csv(logMFI_normalized, paste0(project_dir, "/logMFI_NORMALIZED.csv"))
 
-readr::write_csv(logMFI_normalized,
-                 paste0(dirname(data_path), "/logMFI_NORMALIZED.csv"))
+# QC table
+readr::write_csv(SSMD_TABLE, paste0(project_dir, "/SSMD_TABLE.csv"))
 
 # compound data (DRC, LFC)
 compounds <- dplyr::distinct(LFC_TABLE, pert_name, pert_mfc_id)
@@ -394,21 +567,21 @@ for(i in 1:nrow(compounds)) {
   id <- compounds[[i, "pert_mfc_id"]]  # Broad ID (unique)
   name <- compounds[[i, "pert_name"]]  # name (human readable)
   write_name <- stringr::str_replace_all(name, "[[:punct:]\\s]+", "-")
-
+  
   # output directory
-  path <- paste0(dirname(data_path), "/", write_name)
+  path <- paste0(project_dir, "/", write_name)
   if(!dir.exists(path)) {
     dir.create(path)
   }
-
+  
   lfc <- dplyr::filter(LFC_TABLE, pert_name == name)
   drc <- dplyr::filter(DRC_TABLE_cb, pert_name == name)
   lfc_coll <- dplyr::filter(LFC_COLLAPSED_TABLE, pert_name == name)
-
+  
   readr::write_csv(lfc, paste0(path, "/LFC_TABLE.csv"))
   readr::write_csv(lfc_coll, paste0(path, "/LFC_COLLAPSED_TABLE.csv"))
   readr::write_csv(drc, paste0(path, "/DRC_TABLE.csv"))
-
+  
   # GR data if it exists
   if(nrow(GR_TABLE) > 0) {
     gr <- dplyr::filter(GR_TABLE, pert_mfc_id == id)
@@ -424,20 +597,20 @@ for(i in 1:nrow(compounds)) {
   id <- compounds[[i, "pert_mfc_id"]]
   name <- compounds[[i, "pert_name"]]
   write_name <- stringr::str_replace_all(name, "[[:punct:]\\s]+", "-")
-
+  
   # filter to just see that compound
   compound_DRC <- DRC_TABLE_cb %>%
     dplyr::filter(pert_name == name) %>%
     dplyr::arrange(auc)
-
+  
   # tracks LFC info
   compound_LFC <- LFC_TABLE %>%
     dplyr::filter(pert_name == name)
-
+  
   # create .pdf
-  pdf(paste0(dirname(data_path), "/", write_name, "/",
+  pdf(paste0(project_dir, "/", write_name, "/",
              toupper(write_name), "_DRCfigures.pdf"))
-
+  
   # loop through each cell line treated by compound and plot DRC
   cell_lines <- compound_DRC$ccle_name %>% unique()
   for(cell_line in cell_lines) {

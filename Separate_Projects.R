@@ -158,7 +158,7 @@ master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_cpd")] <-
 master_logMFI %>%
   dplyr::filter(str_detect(prism_replicate, "BASE")) %>%
   {if(nrow(.) > 0) readr::write_csv(., paste0(base_dir, "/",
-                                              basename(base_dir), "_Day0.csv"))}
+                                              basename(base_dir), "_BASE.csv"))}
 
 # separate out controls (included in all projects)
 controls <- master_logMFI %>%
