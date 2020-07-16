@@ -19,14 +19,13 @@ project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
 if (!dir.exists(project_dir)) {dir.create(project_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
-path_key <- paste0(base_dir, "/project_key.csv")
-path_500 <- paste0(base_dir, "/PR500_MFI.gctx")
-path_300 <- paste0(base_dir, "/PR300_MFI.gctx")
-path_platemap <- paste0(base_dir, "/platemap.csv")  # PRISM platemap
-path_cell_info_500 <- paste0(base_dir, "/PR500_cell_info.csv")
-path_cell_info_300 <- paste0(base_dir, "/PR300_cell_info.csv")
-path_inst_info_500 <- paste0(base_dir, "/PR500_inst_info.txt")  # CMap platemap
-path_inst_info_300 <- paste0(base_dir, "/PR300_inst_info.txt")  # CMap platemap
+path_key <- list.files(base_dir, pattern = "*project_key.csv", full.names = T)
+path_500 <- list.files(base_dir, pattern = "*PR500_LEVEL2*", full.names = T)
+path_300 <- list.files(base_dir, pattern = "*PR300_LEVEL2*", full.names = T)
+path_cell_info_500 <- list.files(base_dir, pattern = "*PR500_cell_info*", full.names = T)
+path_cell_info_300 <- list.files(base_dir, pattern = "*PR300_cell_info*", full.names = T)
+path_inst_info_500 <- list.files(base_dir, pattern = "*PR500_inst_info*", full.names = T)
+path_inst_info_300 <- list.files(base_dir, pattern = "*PR300_inst_info*", full.names = T)
 
 #---- Load the data ----
 
@@ -43,64 +42,35 @@ rownames(PR300) = paste0(rownames(PR300), "_", "PR300")
 cell_info_500 <- data.table::fread(path_cell_info_500) %>%
   dplyr::distinct(rid, ccle_name, pool_id) %>%
   dplyr::mutate(culture = "PR500") %>%
-  dplyr::mutate(rid = paste0("c-", rid, "_", culture)) %>%
+  dplyr::mutate(rid = paste0(rid, "_", culture)) %>%
   dplyr::mutate(pool_id = ifelse(pool_id == "" | pool_id == -666,
                                  "CTLBC", pool_id))
 
 cell_info_300 <- data.table::fread(path_cell_info_300) %>%
   dplyr::distinct(rid, ccle_name, pool_id) %>%
   dplyr::mutate(culture = "PR300") %>%
-  dplyr::mutate(rid = paste0("c-", rid, "_", culture)) %>%
+  dplyr::mutate(rid = paste0(rid, "_", culture)) %>%
   dplyr::mutate(pool_id = ifelse(pool_id == "" | pool_id == -666,
                                  "CTLBC", pool_id))
 
-# read in PRISM assay info
-platemap <- data.table::fread(path_platemap)
-
 # combine with CMap assay info
 inst_info_500 <- data.table::fread(path_inst_info_500) %>%
-  dplyr::filter(!is_well_failure) %>%
-  dplyr::distinct(profile_id, x_mapping, pert_plate, prism_replicate, pert_well, is_well_failure) %>%
-  dplyr::rename(cmap_plate = pert_plate) %>%
-  dplyr::inner_join(platemap) %>%
-  dplyr::mutate(prism_replicate = paste(cmap_plate,
-                                        word(prism_replicate, -2, -1, sep = "_"),
-                                        paste0(lysis_day * 24, "H"),
-                                        sep = "_"))
+  dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
+  make_long_map(.)
 base_day500 <- data.table::fread(path_inst_info_500) %>%
-  dplyr::filter(!is_well_failure, str_detect(prism_replicate, "BASE")) %>%
-  dplyr::select(profile_id, pert_dose, pert_idose, pert_iname, pert_mfc_id,
-                pert_type, pert_plate, pert_well, x_mapping, is_well_failure,
-                prism_replicate, pert_dose_unit, pert_time) %>%
-  dplyr::rename(cmap_plate = pert_plate) %>%
-  dplyr::mutate(prism_replicate = paste(cmap_plate,
-                                        word(prism_replicate, -2, -1, sep = "_"),
-                                        pert_time,
-                                        sep = "_")) %>%
-  dplyr::select(-pert_time)
+  dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure) %>%
+  dplyr::rename(pert_name = pert_iname)  %>%
+  dplyr::select(colnames(inst_info_500))
 inst_info_500 %<>% dplyr::bind_rows(base_day500)
 
 # combine with CMap assay info
 inst_info_300 <- data.table::fread(path_inst_info_300) %>%
-  dplyr::filter(!is_well_failure) %>%
-  dplyr::distinct(profile_id, x_mapping, pert_plate, prism_replicate, pert_well, is_well_failure) %>%
-  dplyr::rename(cmap_plate = pert_plate) %>%
-  dplyr::inner_join(platemap) %>%
-  dplyr::mutate(prism_replicate = paste(cmap_plate,
-                                        word(prism_replicate, -2, -1, sep = "_"),
-                                        paste0(lysis_day * 24, "H"),
-                                        sep = "_"))
+  dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
+  make_long_map(.)
 base_day300 <- data.table::fread(path_inst_info_300) %>%
-  dplyr::filter(!is_well_failure, str_detect(prism_replicate, "BASE")) %>%
-  dplyr::select(profile_id, pert_dose, pert_idose, pert_iname, pert_mfc_id,
-                pert_type, pert_plate, pert_well, x_mapping, is_well_failure,
-                prism_replicate, pert_dose_unit, pert_time) %>%
-  dplyr::rename(cmap_plate = pert_plate) %>%
-  dplyr::mutate(prism_replicate = paste(cmap_plate,
-                                        word(prism_replicate, -2, -1, sep = "_"),
-                                        pert_time,
-                                        sep = "_")) %>%
-  dplyr::select(-pert_time)
+  dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure) %>%
+  dplyr::rename(pert_name = pert_iname)  %>%
+  dplyr::select(colnames(inst_info_300))
 inst_info_300 %<>% dplyr::bind_rows(base_day300)
 
 # ensure unique profile IDs (this may cause problems for combo-perturbations)
@@ -121,7 +91,6 @@ PR300_molten <- log2(PR300) %>%
 # bind tables together (reorder columns)
 master_logMFI <- PR500_molten %>%
   dplyr::bind_rows(PR300_molten) %>%
-  dplyr::mutate(pert_name = pert_iname) %>%
   dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
                 pert_type, pert_dose, pert_idose, pert_mfc_id, pert_name, pert_well,
                 logMFI)
@@ -141,7 +110,9 @@ compounds_logMFI <- master_logMFI %>%
   dplyr::filter(pert_name %in% project_data$pert_name)
 
 controls_logMFI <- master_logMFI %>%
-  dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"))
+  dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
+                prism_replicate %in% unique(compounds_logMFI$prism_replicate) |
+                  str_detect(prism_replicate, "BASE"))
 
 varied_compounds <- compounds_logMFI %>%
   dplyr::distinct(pert_name, pert_idose) %>%
@@ -167,16 +138,8 @@ compounds_logMFI %<>%
 
 master_logMFI <- dplyr::bind_rows(compounds_logMFI, controls_logMFI)
 
-plates <- unique(master_logMFI$prism_replicate)
-
-base_day <- 1
-
-if (length(plates) == 2 & str_detect(plates[1], "029")) {
-  assay_length <- 4
-} else {
-  assay_length <- 5
-  master_logMFI %<>% dplyr::filter(!str_detect(prism_replicate, "029"))
-}
+base_day <- as.numeric(str_sub(word(unique(base_day500$prism_replicate),
+                         3, sep = fixed("_")), 1, -2))/24
 
 # split into 300 and 500
 PR300 <- master_logMFI %>%
@@ -340,10 +303,13 @@ CONTROL_GR_300 <- tryCatch(expr = {PR300_base_normalized %>%
                      n.c = n(),
                      var.c = (mad(LMFI)^2/n.c) * pi/2) %>%  # n = replicates (~300)
     dplyr::select(-n.c) %>%
+    dplyr::ungroup() %>%
     # join with DMSO
     dplyr::inner_join(PR300_normalized %>%
                         dplyr::filter(pert_type == "ctl_vehicle") %>%
-                        dplyr::group_by(ccle_name, rid, pool_id, culture) %>%
+                        dplyr::mutate(pert_itime = word(prism_replicate, -1, sep = fixed("_")),
+                                      assay_length = as.numeric(str_sub(pert_itime, 1, -2))/24) %>%
+                        dplyr::group_by(ccle_name, rid, pool_id, culture, pert_itime, assay_length) %>%
                         dplyr::summarize(mLMFI.d = median(LMFI),
                                          n.d = n(),
                                          var.d = (mad(LMFI)^2/n.d) * pi/2) %>%
@@ -358,9 +324,12 @@ CONTROL_GR_500 <- tryCatch(expr = {PR500_base_normalized %>%
                      n.c = n(),
                      var.c = (mad(LMFI)^2/n.c) * pi/2) %>%
     dplyr::select(-n.c) %>%
+    dplyr::ungroup() %>%
     dplyr::inner_join(PR500_normalized %>%
                         dplyr::filter(pert_type == "ctl_vehicle") %>%
-                        dplyr::group_by(ccle_name, rid, pool_id, culture) %>%
+                        dplyr::mutate(pert_itime = word(prism_replicate, -1, sep = fixed("_")),
+                                      assay_length = as.numeric(str_sub(pert_itime, 1, -2))/24) %>%
+                        dplyr::group_by(ccle_name, rid, pool_id, culture, pert_itime, assay_length) %>%
                         dplyr::summarize(mLMFI.d = median(LMFI),
                                          n.d = n(),
                                          var.d = (mad(LMFI)^2/n.d) * pi/2) %>%
@@ -370,10 +339,11 @@ CONTROL_GR_500 <- tryCatch(expr = {PR500_base_normalized %>%
 })
 # treatment
 GR_300 <- tryCatch(expr = {PR300_normalized %>%
-    dplyr::filter(pool_id != "CTLBC") %>% # no control barcodes
+    dplyr::mutate(pert_itime = word(prism_replicate, -1, sep = fixed("_")),
+                  assay_length = as.numeric(str_sub(pert_itime, 1, -2))/24) %>%
     # now group by compound
     dplyr::group_by(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
-                    ccle_name, rid, pool_id, culture) %>%
+                    ccle_name, rid, pool_id, culture, pert_itime, assay_length) %>%
     dplyr::summarize(mLMFI.t = median(LMFI),
                      n.t = n(),
                      var.t = (mad(LMFI)^2/n.t) * pi/2) %>%  # n.t = 3 (replicates)
@@ -384,13 +354,13 @@ GR_300 <- tryCatch(expr = {PR300_normalized %>%
   return(tibble())
 })
 GR_500 <- tryCatch(expr = {PR500_normalized %>%
-    dplyr::filter(pool_id != "CTLBC") %>%
+    dplyr::mutate(pert_itime = word(prism_replicate, -1, sep = fixed("_")),
+                  assay_length = as.numeric(str_sub(pert_itime, 1, -2))/24) %>%
     dplyr::group_by(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
-                    ccle_name, rid, pool_id, culture) %>%
+                    ccle_name, rid, pool_id, culture, pert_itime, assay_length) %>%
     dplyr::summarize(mLMFI.t = median(LMFI),
                      n.t = n(),
-                     var.t = (mad(LMFI)^2/n.t) * pi/2) %>%
-    dplyr::select(-n.t) %>%
+                     var.t = (mad(LMFI)^2/n.t) * pi/2) %>%  # n.t = 3 (replicates)
     dplyr::inner_join(CONTROL_GR_500) %>%
     dplyr::ungroup()
 }, error = function(e) {
@@ -409,9 +379,8 @@ GR_TABLE <- tryCatch(expr = {dplyr::bind_rows(GR_300, GR_500) %>%
                     (var.c*(1/(assay_length-base_day) - 1/assay_length)^2),
                   var.control = (var.c + var.d)/(assay_length - base_day)^2,
                   GR = (2^Z) - 1) %>%
-    dplyr::distinct(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose, ccle_name, culture, pool_id,
-                    control_lfc, treatment_lfc, Z, var.treatment, var.control, GR) %>%
-    dplyr::filter(control_lfc > 0)
+    dplyr::distinct(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose, rid, ccle_name, culture, pool_id,
+                    pert_itime, assay_length, control_lfc, treatment_lfc, Z, var.treatment, var.control, GR)
 }, error = function(e) {
   return(tibble())
 })
