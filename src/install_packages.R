@@ -1,3 +1,5 @@
+options(repos=structure(c(CRAN="http://cran.r-project.org")))
+
 install.packages("tidyverse")
 install.packages("hdf5r")
 install.packages("reshape2")
