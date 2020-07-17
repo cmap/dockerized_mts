@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# read in flagged arguments
 while getopts ":i:o:p:" arg; do
   case $arg in
     i) # specify input folder

@@ -7,9 +7,9 @@ To get the associated docker image run:
 docker pull aboghoss/clue-mts
 ```
 
-Example command to run the container (see `run_dockerized.sh`):
+Example command to run the container (see `docker_wrapper.sh`):
 ```{bash}
-docker run -it -v ~/Desktop/data:/data -v ~/Desktop/results:/results aboghoss/clue-mts data results "<project_name>"
+bash docker_wrapper.sh -i <INPUT_DIR> -o <OUTPUT_DIR> -p <PROJECT_NAME>
 ```
 
 Requires the following files in the input data folder:
