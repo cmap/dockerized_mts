@@ -376,8 +376,9 @@ GR_TABLE <- tryCatch(expr = {dplyr::bind_rows(GR_300, GR_500) %>%
                     (var.c*(1/(assay_length-base_day) - 1/assay_length)^2),
                   var.control = (var.c + var.d)/(assay_length - base_day)^2,
                   GR = (2^Z) - 1) %>%
-    dplyr::distinct(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose, rid, ccle_name, culture, pool_id,
-                    pert_time, assay_length, control_lfc, treatment_lfc, Z, var.treatment, var.control, GR)
+    dplyr::distinct(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
+                    rid, ccle_name, culture, pool_id, pert_time, assay_length,
+                    control_lfc, treatment_lfc, Z, var.treatment, var.control, GR)
 }, error = function(e) {
   return(tibble())
 })
