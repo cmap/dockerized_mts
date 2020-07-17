@@ -91,7 +91,7 @@ PR300_molten <- log2(PR300) %>%
 # bind tables together (reorder columns)
 master_logMFI <- PR500_molten %>%
   dplyr::bind_rows(PR300_molten) %>%
-  dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
+  dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate, pert_time, 
                 pert_type, pert_dose, pert_idose, pert_mfc_id, pert_name, pert_well,
                 logMFI)
 
@@ -123,7 +123,7 @@ varied_compounds <- compounds_logMFI %>%
 
 compounds_logMFI %<>%
   dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
-                  pert_type, pert_well, logMFI) %>%
+                  pert_type, pert_well, pert_time, logMFI) %>%
   dplyr::summarize(pert_dose = ifelse(any(pert_name %in% varied_compounds$pert_name),
                                       pert_dose[pert_name %in% varied_compounds$pert_name],
                                       pert_dose),
@@ -138,8 +138,7 @@ compounds_logMFI %<>%
 
 master_logMFI <- dplyr::bind_rows(compounds_logMFI, controls_logMFI)
 
-base_day <- as.numeric(str_sub(word(unique(base_day500$prism_replicate),
-                         3, sep = fixed("_")), 1, -2))/24
+base_day <- as.numeric(str_sub(unique(base_day500$pert_time), 1, -2))/24
 
 # split into 300 and 500
 PR300 <- master_logMFI %>%
@@ -180,7 +179,7 @@ if(nrow(PR300_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-
+  
   PR300_base_normalized <- PR300_base %>%
     dplyr::left_join(PR300_profile) %>%
     normalize(., PR300_barcodes)
@@ -206,7 +205,7 @@ if(nrow(PR500_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-
+  
   PR500_base_normalized <- PR500_base %>%
     dplyr::left_join(PR500_profile) %>%
     normalize(., PR500_barcodes)
@@ -278,7 +277,7 @@ LFC_TABLE <- PR300_normalized %>%
   # calculate LFC (LMFI - median(LMFIcontrol))
   dplyr::mutate(LFC = LMFI - median(LMFI[pert_type == "ctl_vehicle"])) %>%
   dplyr::distinct(pert_mfc_id, pert_name, prism_replicate, culture, rid, LFC,
-                  pert_type, ccle_name, pert_dose, pert_well, pool_id,
+                  pert_type, ccle_name, pert_dose, pert_well, pool_id, pert_time, 
                   profile_id, pert_idose) %>%
   dplyr::ungroup()
 
@@ -288,7 +287,7 @@ LFC_TABLE %<>%
   dplyr::filter(pert_type == "trt_cp") %>%
   dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
                                                sep = stringr::fixed("_"))) %>%
-  tidyr::unite(col = "condition", pert_name, pert_dose, compound_plate,
+  tidyr::unite(col = "condition", pert_name, pert_dose, compound_plate, pert_time,
                sep = "::", remove = FALSE) %>%
   split(.$condition) %>%
   purrr::map_dfr(~dplyr::mutate(.x, LFC.cb = apply_combat(.))) %>%
@@ -298,18 +297,18 @@ LFC_TABLE %<>%
 
 # control (base) and DMSO
 CONTROL_GR_300 <- tryCatch(expr = {PR300_base_normalized %>%
-    dplyr::group_by(ccle_name, rid, pool_id, culture) %>%  # no compound to group by
+    dplyr::group_by(pert_time, ccle_name, rid, pool_id, culture) %>%  # no compound to group by
     dplyr::summarize(mLMFI.c = median(LMFI),
                      n.c = n(),
                      var.c = (mad(LMFI)^2/n.c) * pi/2) %>%  # n = replicates (~300)
     dplyr::select(-n.c) %>%
     dplyr::ungroup() %>%
+    dplyr::rename(pert_base_time = pert_time) %>%
     # join with DMSO
     dplyr::inner_join(PR300_normalized %>%
                         dplyr::filter(pert_type == "ctl_vehicle") %>%
-                        dplyr::mutate(pert_itime = word(prism_replicate, -1, sep = fixed("_")),
-                                      assay_length = as.numeric(str_sub(pert_itime, 1, -2))/24) %>%
-                        dplyr::group_by(ccle_name, rid, pool_id, culture, pert_itime, assay_length) %>%
+                        dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
+                        dplyr::group_by(ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
                         dplyr::summarize(mLMFI.d = median(LMFI),
                                          n.d = n(),
                                          var.d = (mad(LMFI)^2/n.d) * pi/2) %>%
@@ -319,17 +318,17 @@ CONTROL_GR_300 <- tryCatch(expr = {PR300_base_normalized %>%
 })
 # repeat with PR500
 CONTROL_GR_500 <- tryCatch(expr = {PR500_base_normalized %>%
-    dplyr::group_by(ccle_name, rid, pool_id, culture) %>%
+    dplyr::group_by(pert_time, ccle_name, rid, pool_id, culture) %>%
     dplyr::summarize(mLMFI.c = median(LMFI),
                      n.c = n(),
                      var.c = (mad(LMFI)^2/n.c) * pi/2) %>%
     dplyr::select(-n.c) %>%
     dplyr::ungroup() %>%
+    dplyr::rename(pert_base_time = pert_time) %>%
     dplyr::inner_join(PR500_normalized %>%
                         dplyr::filter(pert_type == "ctl_vehicle") %>%
-                        dplyr::mutate(pert_itime = word(prism_replicate, -1, sep = fixed("_")),
-                                      assay_length = as.numeric(str_sub(pert_itime, 1, -2))/24) %>%
-                        dplyr::group_by(ccle_name, rid, pool_id, culture, pert_itime, assay_length) %>%
+                        dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
+                        dplyr::group_by(ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
                         dplyr::summarize(mLMFI.d = median(LMFI),
                                          n.d = n(),
                                          var.d = (mad(LMFI)^2/n.d) * pi/2) %>%
@@ -339,11 +338,10 @@ CONTROL_GR_500 <- tryCatch(expr = {PR500_base_normalized %>%
 })
 # treatment
 GR_300 <- tryCatch(expr = {PR300_normalized %>%
-    dplyr::mutate(pert_itime = word(prism_replicate, -1, sep = fixed("_")),
-                  assay_length = as.numeric(str_sub(pert_itime, 1, -2))/24) %>%
+    dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
     # now group by compound
     dplyr::group_by(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
-                    ccle_name, rid, pool_id, culture, pert_itime, assay_length) %>%
+                    ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
     dplyr::summarize(mLMFI.t = median(LMFI),
                      n.t = n(),
                      var.t = (mad(LMFI)^2/n.t) * pi/2) %>%  # n.t = 3 (replicates)
@@ -354,10 +352,9 @@ GR_300 <- tryCatch(expr = {PR300_normalized %>%
   return(tibble())
 })
 GR_500 <- tryCatch(expr = {PR500_normalized %>%
-    dplyr::mutate(pert_itime = word(prism_replicate, -1, sep = fixed("_")),
-                  assay_length = as.numeric(str_sub(pert_itime, 1, -2))/24) %>%
+    dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
     dplyr::group_by(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
-                    ccle_name, rid, pool_id, culture, pert_itime, assay_length) %>%
+                    ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
     dplyr::summarize(mLMFI.t = median(LMFI),
                      n.t = n(),
                      var.t = (mad(LMFI)^2/n.t) * pi/2) %>%  # n.t = 3 (replicates)
@@ -380,7 +377,7 @@ GR_TABLE <- tryCatch(expr = {dplyr::bind_rows(GR_300, GR_500) %>%
                   var.control = (var.c + var.d)/(assay_length - base_day)^2,
                   GR = (2^Z) - 1) %>%
     dplyr::distinct(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose, rid, ccle_name, culture, pool_id,
-                    pert_itime, assay_length, control_lfc, treatment_lfc, Z, var.treatment, var.control, GR)
+                    pert_time, assay_length, control_lfc, treatment_lfc, Z, var.treatment, var.control, GR)
 }, error = function(e) {
   return(tibble())
 })
@@ -390,8 +387,8 @@ GR_TABLE <- tryCatch(expr = {dplyr::bind_rows(GR_300, GR_500) %>%
 # table with each compound cell line combo and number of doses
 DRC_TABLE_cb <- LFC_TABLE %>%
   dplyr::filter(pert_type == "trt_cp") %>%
-  dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose) %>%
-  dplyr::count(ccle_name, culture, pert_mfc_id, pert_name) %>%
+  dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time) %>%
+  dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
   dplyr::filter(n > 4) %>%  # only fit curves with 4+ doses
   dplyr::mutate(ix = 1:n())
 
@@ -402,7 +399,7 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
   d = DRC_TABLE_cb %>%
     dplyr::filter(ix == jx) %>%
     dplyr::left_join(LFC_TABLE)
-
+  
   # fit curve
   a = tryCatch(dr4pl(dose = d$pert_dose,
                      response = 2^d$LFC.cb,
@@ -416,10 +413,10 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
       dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
     d %<>%
       dplyr::mutate(e = (2^LFC.cb - pred)^2)  # prediction residuals
-
+    
     mse <- mean(d$e)
     R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$LFC.cb)))
-
+    
     x <- tibble(ix = jx,
                 min_dose = min(d$pert_dose),
                 max_dose = max(d$pert_dose),
@@ -446,26 +443,31 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
   }
 }
 
-DRC_TABLE_cb <- DRC_cb %>%
-  dplyr::filter(convergence) %>%
-  dplyr::left_join(DRC_TABLE_cb) %>%
-  dplyr::select(-ix, -convergence, -n)
+if(nrow(DRC_cb) > 0) {
+  DRC_TABLE_cb <- DRC_cb %>%
+    dplyr::filter(convergence) %>%
+    dplyr::left_join(DRC_TABLE_cb) %>%
+    dplyr::select(-ix, -convergence, -n)
+} else {
+  print("Unable to fit any dose-response curves in LFC space")
+  DRC_TABLE_cb <- NA
+}
 
 # GROWTH RATE DOSE-RESPONSE
 if(nrow(GR_TABLE) > 0) {
   DRC_TABLE_growth <- GR_TABLE %>%
-    dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose) %>%
-    dplyr::count(ccle_name, culture, pert_mfc_id, pert_name) %>%
+    dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time) %>%
+    dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
     dplyr::filter(n > 4) %>%
     dplyr::mutate(ix = 1:n())
-
+  
   DRC_gr <- tibble()
-
+  
   for(jx in 1:nrow(DRC_TABLE_growth)) {
     d = DRC_TABLE_growth %>%
       dplyr::filter(ix == jx) %>%
       dplyr::left_join(GR_TABLE)
-
+    
     a = tryCatch(dr4pl(dose = d$pert_dose,
                        response = d$GR,
                        method.init = "logistic",
@@ -477,10 +479,10 @@ if(nrow(GR_TABLE) > 0) {
         dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
       d %<>%
         dplyr::mutate(e = (GR - pred)^2)  # prediction residuals
-
+      
       mse <- mean(d$e)
       R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$GR)))
-
+      
       x <- tibble(ix = jx,
                   min_dose = min(d$pert_dose),
                   max_dose = max(d$pert_dose),
@@ -506,11 +508,16 @@ if(nrow(GR_TABLE) > 0) {
       DRC_gr %<>% dplyr::bind_rows(x)
     }
   }
-
-  DRC_TABLE_growth <- DRC_gr %>%
-    dplyr::filter(convergence) %>%
-    dplyr::left_join(DRC_TABLE_growth) %>%
-    dplyr::select(-ix, -convergence, -n)
+  
+  if(nrow(DRC_gr) > 0) {
+    DRC_TABLE_growth <- DRC_gr %>%
+      dplyr::filter(convergence) %>%
+      dplyr::left_join(DRC_TABLE_growth) %>%
+      dplyr::select(-ix, -convergence, -n)
+  } else {
+    print("unable to fit any dose-response curves in GR space")
+    DRC_TABLE_growth <- NA
+  }
 }
 
 #---- Make collapsed LFC table ----
@@ -543,27 +550,31 @@ for(i in 1:nrow(compounds)) {
   id <- compounds[[i, "pert_mfc_id"]]  # Broad ID (unique)
   name <- compounds[[i, "pert_name"]]  # name (human readable)
   write_name <- stringr::str_replace_all(name, "[[:punct:]\\s]+", "-")
-
+  
   # output directory
   path <- paste0(project_dir, "/", write_name)
   if(!dir.exists(path)) {
     dir.create(path)
   }
-
+  
   lfc <- dplyr::filter(LFC_TABLE, pert_name == name)
   drc <- dplyr::filter(DRC_TABLE_cb, pert_name == name)
   lfc_coll <- dplyr::filter(LFC_COLLAPSED_TABLE, pert_name == name)
-
+  
   readr::write_csv(lfc, paste0(path, "/LFC_TABLE.csv"))
   readr::write_csv(lfc_coll, paste0(path, "/LFC_COLLAPSED_TABLE.csv"))
-  readr::write_csv(drc, paste0(path, "/DRC_TABLE.csv"))
-
+  if(nrow(drc) > 0)  {
+    readr::write_csv(drc, paste0(path, "/DRC_TABLE.csv"))
+  }
+  
   # GR data if it exists
   if(nrow(GR_TABLE) > 0) {
     gr <- dplyr::filter(GR_TABLE, pert_mfc_id == id)
-    drc_gr <- dplyr::filter(DRC_TABLE_growth, pert_mfc_id == id)
     readr::write_csv(gr, paste0(path, "/GR_TABLE.csv"))
-    readr::write_csv(drc_gr, paste0(path, "/DRC_TABLE_GR.csv"))
+    if(!is.na(DRC_TABLE_growth)) {
+      drc_gr <- dplyr::filter(DRC_TABLE_growth, pert_mfc_id == id)
+      readr::write_csv(drc_gr, paste0(path, "/DRC_TABLE_GR.csv")) 
+    }
   }
 }
 
@@ -573,56 +584,62 @@ for(i in 1:nrow(compounds)) {
   id <- compounds[[i, "pert_mfc_id"]]
   name <- compounds[[i, "pert_name"]]
   write_name <- stringr::str_replace_all(name, "[[:punct:]\\s]+", "-")
-
+  
   # filter to just see that compound
   compound_DRC <- DRC_TABLE_cb %>%
-    dplyr::filter(pert_name == name) %>%
+    dplyr::filter(pert_name == name)
+  
+  if(nrow(compound_DRC) < 1) {
+    next
+  }
+  
+  compound_DRC %<>%
     dplyr::arrange(auc)
-
+  
   # tracks LFC info
   compound_LFC <- LFC_TABLE %>%
     dplyr::filter(pert_name == name)
-
+  
   # create .pdf
   pdf(paste0(project_dir, "/", write_name, "/",
              toupper(write_name), "_DRCfigures.pdf"))
-
+  
   # loop through each cell line treated by compound and plot DRC
-  cell_lines <- compound_DRC$ccle_name %>% unique()
-  for(cell_line in cell_lines) {
+  conditions <- compound_DRC %>% dplyr::distinct(ccle_name, culture, pert_time)
+  for(j in 1:nrow(conditions)) {
+    condition <- conditions[i,]
+    assay_time <- condition$pert_time
+    cell_line <- condition$ccle_name
+    culture <- condition$culture
+    
     d <- compound_DRC %>%
-      dplyr::filter(ccle_name == cell_line)
-    cultures <- d$culture %>% unique()
-    # for each culture generate a graph
-    for(cult in cultures){
-      d_cult <- dplyr::filter(d, culture == cult)
-      d_cult_line <- dplyr::filter(compound_LFC, culture == cult,
-                                   ccle_name == cell_line)
-      # DRC curve function
-      f1 = function(x) {
-        d_cult$lower_limit + (d_cult$upper_limit - d_cult$lower_limit)/
-          (1 + (2^x/d_cult$ec50)^d_cult$slope)
-      }
-      # sequence for plotting curve
-      xx = seq(min(log2(d_cult_line$pert_dose)),
-               max(log2(d_cult_line$pert_dose)),
-               length.out = 1000)
-      # plot individual data points and DRC fit line
-      p = d_cult_line %>%
-        ggplot() +
-        geom_point(aes(x = log2(pert_dose),
-                       color = prism_replicate, y = 2^LFC.cb)) +
-        geom_line(data = tibble(x = xx, y = f1(xx)),
-                  aes(x = x, y = y, group = 1),  lwd =1 ) +
-        ylim(0,2) + theme_bw() +
-        labs(x = 'log2(Dose) (uM)', y = 'Viability', color = "",
-             title = paste0(toupper(id), " - ",
-                            d_cult$pert_name, "\n", cell_line,' - ', cult,
-                            "\nAUC:", round(d_cult$auc,2),
-                            " - IC50:", round(2^d_cult$log2.ic50,2)))
-      # outputs to .pdf
-      print(p)
+      dplyr::inner_join(condition)
+    d_cult_line <- compound_LFC %>%
+      dplyr::inner_join(condition)
+    
+    # DRC curve function
+    f1 = function(x) {
+      d$lower_limit + (d$upper_limit - d$lower_limit)/
+        (1 + (2^x/d$ec50)^d$slope)
     }
+    # sequence for plotting curve
+    xx = seq(min(log2(d_cult_line$pert_dose)),
+             max(log2(d_cult_line$pert_dose)),
+             length.out = 1000)
+    # plot individual data points and DRC fit line
+    p = d_cult_line %>%
+      ggplot() +
+      geom_point(aes(x = log2(pert_dose),
+                     color = prism_replicate, y = 2^LFC.cb)) +
+      geom_line(data = tibble(x = xx, y = f1(xx)),
+                aes(x = x, y = y, group = 1),  lwd =1 ) +
+      ylim(0,2) + theme_bw() +
+      labs(x = 'log2(Dose) (uM)', y = 'Viability', color = "",
+           title = paste0(name, "-", assay_time, "\n", cell_line,' - ', culture,
+                          "\nAUC:", round(d$auc, 2),
+                          " - IC50:", round(2^d$log2.ic50, 2)))
+    # outputs to .pdf
+    print(p)
   }
   # closes .pdf
   dev.off()

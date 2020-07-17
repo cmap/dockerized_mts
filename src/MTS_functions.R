@@ -100,7 +100,7 @@ control_medians <- function(X) {
 normalize <- function(X, barcodes) {
   normalized <- X %>%
     dplyr::group_by(prism_replicate, pert_well) %>%
-    dplyr::mutate(LMFI = scam(y ~ s(x, bs = "micv"),
+    dplyr::mutate(LMFI = scam(y ~ s(x, bs = "micv", k = 5),
                               data = tibble(
                                 y = rLMFI[rid %in% barcodes$rid],
                                 x = logMFI[rid %in% barcodes$rid])) %>%
@@ -118,9 +118,10 @@ calc_ssmd <- function(X) {
     # look at controls
     dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon")) %>%
     dplyr::distinct(ccle_name, rid, pert_type, prism_replicate, LMFI, profile_id,
-                    pool_id, culture) %>%
+                    pert_time, pool_id, culture) %>%
     # group common controls
-    dplyr::group_by(pert_type, prism_replicate, ccle_name, rid, pool_id, culture) %>%
+    dplyr::group_by(pert_type, prism_replicate, pert_time, ccle_name, rid,
+                    pool_id, culture) %>%
     # take median and mad of results
     dplyr::summarize(med = median(LMFI, na.rm = TRUE),
                      mad = mad(LMFI, na.rm = TRUE)) %>%
@@ -133,7 +134,7 @@ calc_ssmd <- function(X) {
     dplyr::ungroup() %>%
     dplyr::select(-pert_type) %>%
     # give each control all values (median and mad for vehicle and poscon)
-    dplyr::group_by(prism_replicate, ccle_name, rid, pool_id, culture) %>%
+    dplyr::group_by(prism_replicate, ccle_name, pert_time, rid, pool_id, culture) %>%
     dplyr::summarize_all(sum) %>%
     # calculate SSMD and NNMD
     dplyr::mutate(ssmd = (ctl_vehicle_md - trt_poscon_md) /
