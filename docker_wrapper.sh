@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # read in flagged arguments
-while getopts ":i:o:p:" arg; do
+while getopts ":i:o:p:a:" arg; do
   case $arg in
     i) # specify input folder
       data_dir=${OPTARG}
@@ -12,6 +12,8 @@ while getopts ":i:o:p:" arg; do
     p) # specify project name
       project=${OPTARG}
       ;;
+    a) # specify assay/build (PR300 or PR500)
+      assay=${OPTARG}
   esac
 done
 
@@ -19,4 +21,4 @@ done
 docker run -it \
   -v $data_dir:/data \
   -v $output_dir:/results \
-  aboghoss/clue-mts "data" "results" "$project"
+  aboghoss/clue-mts "data" "results" "$project" "$assay"
