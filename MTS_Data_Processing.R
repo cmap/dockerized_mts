@@ -7,7 +7,8 @@ suppressMessages(source("./src/MTS_functions.R"))
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
 if (length(script_args) != 4) {
-  stop("Please supply path to data, controls, and QC table", call. = FALSE)
+  stop("Please supply path to data, output directory, project name, and assay",
+       call. = FALSE)
 }
 
 base_dir <- script_args[1]
