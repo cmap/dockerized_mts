@@ -6,13 +6,14 @@ suppressMessages(source("./src/MTS_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 3) {
+if (length(script_args) != 4) {
   stop("Please supply path to data, controls, and QC table", call. = FALSE)
 }
 
 base_dir <- script_args[1]
 out_dir <- script_args[2]
 project_name <- script_args[3]
+assay <- script_args[4]
 
 safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
 project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
@@ -20,12 +21,15 @@ if (!dir.exists(project_dir)) {dir.create(project_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
 path_key <- list.files(base_dir, pattern = "*project_key.csv", full.names = T)
-path_500 <- list.files(base_dir, pattern = "*PR500_LEVEL2*", full.names = T)
-path_300 <- list.files(base_dir, pattern = "*PR300_LEVEL2*", full.names = T)
-path_cell_info_500 <- list.files(base_dir, pattern = "*PR500_cell_info*", full.names = T)
-path_cell_info_300 <- list.files(base_dir, pattern = "*PR300_cell_info*", full.names = T)
-path_inst_info_500 <- list.files(base_dir, pattern = "*PR500_inst_info*", full.names = T)
-path_inst_info_300 <- list.files(base_dir, pattern = "*PR300_inst_info*", full.names = T)
+path_data <- list.files(base_dir,
+                        pattern = paste0("*", assay, "_LEVEL2_MFI*"),
+                        full.names = T)
+path_cell_info <- list.files(base_dir,
+                             pattern = paste0("*", assay, "_cell_info*"),
+                             full.names = T)
+path_inst_info <- list.files(base_dir,
+                             pattern = paste0("*", assay, "_inst_info"),
+                             full.names = T)
 
 #---- Load the data ----
 
@@ -33,64 +37,35 @@ path_inst_info_300 <- list.files(base_dir, pattern = "*PR300_inst_info*", full.n
 key_table <- data.table::fread(path_key)
 
 # read in logMFI data
-PR500 <- read_hdf5(path_500)
-PR300 <- read_hdf5(path_300)
-rownames(PR500) = paste0(rownames(PR500), "_", "PR500")
-rownames(PR300) = paste0(rownames(PR300), "_", "PR300")
+raw_matrix <- read_hdf5(path_data)
+rownames(raw_matrix) <- paste0(rownames(raw_matrix), "_", assay)
 
 # read in cell line info
-cell_info_500 <- data.table::fread(path_cell_info_500) %>%
+cell_info <- data.table::fread(path_cell_info) %>%
   dplyr::distinct(rid, ccle_name, pool_id) %>%
-  dplyr::mutate(culture = "PR500") %>%
-  dplyr::mutate(rid = paste0(rid, "_", culture)) %>%
-  dplyr::mutate(pool_id = ifelse(pool_id == "" | pool_id == -666,
-                                 "CTLBC", pool_id))
-
-cell_info_300 <- data.table::fread(path_cell_info_300) %>%
-  dplyr::distinct(rid, ccle_name, pool_id) %>%
-  dplyr::mutate(culture = "PR300") %>%
-  dplyr::mutate(rid = paste0(rid, "_", culture)) %>%
+  dplyr::mutate(culture = assay) %>%
+  dplyr::mutate(rid = paste0(rid, "_", assay)) %>%
   dplyr::mutate(pool_id = ifelse(pool_id == "" | pool_id == -666,
                                  "CTLBC", pool_id))
 
 # combine with CMap assay info
-inst_info_500 <- data.table::fread(path_inst_info_500) %>%
+inst_info <- data.table::fread(path_inst_info) %>%
   dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
   make_long_map(.)
-base_day500 <- data.table::fread(path_inst_info_500) %>%
+base_day <- data.table::fread(path_inst_info) %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure) %>%
   dplyr::rename(pert_name = pert_iname)  %>%
-  dplyr::select(colnames(inst_info_500))
-inst_info_500 %<>% dplyr::bind_rows(base_day500)
-
-# combine with CMap assay info
-inst_info_300 <- data.table::fread(path_inst_info_300) %>%
-  dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
-  make_long_map(.)
-base_day300 <- data.table::fread(path_inst_info_300) %>%
-  dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure) %>%
-  dplyr::rename(pert_name = pert_iname)  %>%
-  dplyr::select(colnames(inst_info_300))
-inst_info_300 %<>% dplyr::bind_rows(base_day300)
+  dplyr::select(colnames(inst_info))
+inst_info %<>% dplyr::bind_rows(base_day)
 
 # ensure unique profile IDs (this may cause problems for combo-perturbations)
-PR500 <- PR500[, inst_info_500$profile_id %>% unique()]
-PR300 <- PR300[, inst_info_300$profile_id %>% unique()]
+raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 
-# melt matrices into data tables and join with inst and cell info
-PR500_molten <- log2(PR500) %>%
+# melt matrix into data tables and join with inst and cell info
+master_logMFI <- log2(raw_matrix) %>%
   reshape2::melt(varnames = c("rid", "profile_id"), value.name = "logMFI") %>%
-  dplyr::inner_join(cell_info_500) %>%
-  dplyr::inner_join(inst_info_500)
-
-PR300_molten <- log2(PR300) %>%
-  reshape2::melt(varnames = c("rid", "profile_id"), value.name = "logMFI") %>%
-  dplyr::inner_join(cell_info_300) %>%
-  dplyr::inner_join(inst_info_300)
-
-# bind tables together (reorder columns)
-master_logMFI <- PR500_molten %>%
-  dplyr::bind_rows(PR300_molten) %>%
+  dplyr::inner_join(cell_info) %>%
+  dplyr::inner_join(inst_info) %>%
   dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate, pert_time, 
                 pert_type, pert_dose, pert_idose, pert_mfc_id, pert_name, pert_well,
                 logMFI)
@@ -138,94 +113,59 @@ compounds_logMFI %<>%
 
 master_logMFI <- dplyr::bind_rows(compounds_logMFI, controls_logMFI)
 
-base_day <- as.numeric(str_sub(unique(base_day500$pert_time), 1, -2))/24
-
-# split into 300 and 500
-PR300 <- master_logMFI %>%
-  dplyr::filter(culture == "PR300")
-PR500 <- master_logMFI %>%
-  dplyr::filter(culture == "PR500")
+base_day_num <- as.numeric(str_sub(unique(base_day$pert_time), 1, -2))/24
 
 # create barcode tables
-PR300_barcodes <- PR300 %>%
-  dplyr::filter(pool_id == "CTLBC")
-PR500_barcodes <- PR500 %>%
+barcodes <- master_logMFI %>%
   dplyr::filter(pool_id == "CTLBC")
 
 # filter base plates
-PR300_base <- PR300 %>%
+logMFI_base <- master_logMFI %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"))
-PR300 %<>%
-  dplyr::filter(!str_detect(prism_replicate, "BASE"))
-PR500_base <- PR500 %>%
-  dplyr::filter(str_detect(prism_replicate, "BASE"))
-PR500 %<>%
+master_logMFI %<>%
   dplyr::filter(!str_detect(prism_replicate, "BASE"))
 
 #---- Normalize ----
 
 # compute control barcode median of medians for normalization
-PR300_control_medians <- control_medians(PR300)
+logMFI_control_medians <- control_medians(master_logMFI)
 
 # fit curve to controls and predict test conditions
-PR300_normalized <- normalize(PR300_control_medians, PR300_barcodes)
+logMFI_normalized <- normalize(logMFI_control_medians, barcodes)
 
 # if there is an early measurement
-if(nrow(PR300_base) > 0) {
+if(nrow(logMFI_base) > 0) {
   # generate reference profile to normalize base data
-  PR300_profile <- PR300_normalized %>%
-    dplyr::filter(rid %in% PR300_barcodes$rid) %>%
+  logMFI_profile <- logMFI_normalized %>%
+    dplyr::filter(rid %in% barcodes$rid) %>%
     dplyr::group_by(rid) %>%
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
   
-  PR300_base_normalized <- PR300_base %>%
-    dplyr::left_join(PR300_profile) %>%
-    normalize(., PR300_barcodes)
+  base_normalized <- logMFI_base %>%
+    dplyr::left_join(logMFI_profile) %>%
+    normalize(., barcodes)
 } else if(file.exists(paste0(dirname(data_path), "/external_day0.csv"))) {
-  PR300_base_normalized <- data.table::fread(paste0(dirname(data_path),
-                                                    "/external_day0.csv")) %>%
+  base_normalized <- data.table::fread(paste0(dirname(data_path),
+                                              "/external_day0.csv")) %>%
     dplyr::filter(culture == "PR300")
+} else {
+  base_normalized <- tibble()
 }
 
 # join with other info (LMFI is normalized, logMFI is not)
-PR300_normalized %<>%
-  dplyr::left_join(PR300) %>%
-  dplyr::select(-logMFI)
-
-# repeat with PR500
-PR500_control_medians <- control_medians(PR500)
-PR500_normalized <- normalize(PR500_control_medians, PR500_barcodes)
-
-if(nrow(PR500_base) > 0) {
-  PR500_profile <- PR500_normalized %>%
-    dplyr::filter(rid %in% PR500_barcodes$rid) %>%
-    dplyr::group_by(rid) %>%
-    dplyr::mutate(rLMFI = mean(rLMFI)) %>%
-    dplyr::ungroup() %>%
-    dplyr::distinct(rid, rLMFI)
-  
-  PR500_base_normalized <- PR500_base %>%
-    dplyr::left_join(PR500_profile) %>%
-    normalize(., PR500_barcodes)
-} else if(file.exists(paste0(dirname(data_path), "/external_day0.csv"))) {
-  PR500_base_normalized <- data.table::fread(paste0(dirname(data_path),
-                                                    "/external_day0.csv")) %>%
-    dplyr::filter(culture == "PR500")
-}
-
-PR500_normalized %<>%
-  dplyr::left_join(PR500) %>%
+logMFI_normalized %<>%
+  dplyr::left_join(master_logMFI) %>%
   dplyr::select(-logMFI)
 
 #---- Calculate QC metrics ----
 
 # calculate SSMD and NNMD
-SSMD_table_300 <- calc_ssmd(PR300_normalized %>%
-                              dplyr::filter(pool_id != "CTLBC"))
+SSMD_TABLE <- calc_ssmd(logMFI_normalized %>%
+                          dplyr::filter(pool_id != "CTLBC"))
 # calculate error rate of normalized table (based on threshold classifier)
-PR300_error <- PR300_normalized %>%
+error_table <- logMFI_normalized %>%
   dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
                 is.finite(LMFI), pool_id != "CTLBC") %>%
   dplyr::group_by(rid, ccle_name, prism_replicate) %>%
@@ -237,38 +177,15 @@ PR300_error <- PR300_normalized %>%
                                             weights.class0 = pert_type == "ctl_vehicle",
                                             curve = TRUE )$curve[,2])/2)
 # join with SSMD table
-SSMD_table_300 <- SSMD_table_300 %>%
-  dplyr::left_join(PR300_error)
-# REPEAT with 500
-SSMD_table_500 <- calc_ssmd(PR500_normalized %>% dplyr::filter(pool_id != "CTLBC"))
-PR500_error <- PR500_normalized %>%
-  dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
-                is.finite(LMFI), pool_id != "CTLBC") %>%
-  dplyr::group_by(rid, ccle_name, prism_replicate) %>%
-  dplyr::summarize(error_rate =
-                     min(PRROC::roc.curve(scores.class0 = LMFI,
-                                          weights.class0 = pert_type == "ctl_vehicle",
-                                          curve = TRUE)$curve[,1] + 1 -
-                           PRROC::roc.curve(scores.class0 = LMFI,
-                                            weights.class0 = pert_type == "ctl_vehicle",
-                                            curve = TRUE )$curve[,2])/2)
-SSMD_table_500 <- SSMD_table_500 %>%
-  dplyr::left_join(PR500_error)
-
-# combine 300 and 500 tables
-SSMD_TABLE <- dplyr::bind_rows(SSMD_table_500, SSMD_table_300) %>%
-  # if error rate <= .05 then pass
+SSMD_TABLE %<>% 
+  dplyr::left_join(error_table) %>%
   dplyr::mutate(pass = error_rate <= 0.05,
-                compound_plate =  stringr::word(prism_replicate, 1,
-                                                sep = stringr::fixed("_"))) %>%
-  dplyr::filter(pool_id != "CTLBC") %>%
-  dplyr::ungroup()
+                compound_plate = stringr::word(prism_replicate, 1,
+                                                sep = stringr::fixed("_")))
 
 #---- Compute log-fold changes ----
 
-LFC_TABLE <- PR300_normalized %>%
-  # combine tables
-  dplyr::bind_rows(PR500_normalized) %>%
+LFC_TABLE <- logMFI_normalized %>%
   # join with SSMD (to filter bad lines)
   dplyr::inner_join(SSMD_TABLE %>%
                       dplyr::distinct(ccle_name, prism_replicate, culture, pass)) %>%
@@ -296,7 +213,7 @@ LFC_TABLE %<>%
 #---- Compute growth rates ----
 
 # control (base) and DMSO
-CONTROL_GR_300 <- tryCatch(expr = {PR300_base_normalized %>%
+CONTROL_GR <- tryCatch(expr = {base_normalized %>%
     dplyr::group_by(pert_time, ccle_name, rid, pool_id, culture) %>%  # no compound to group by
     dplyr::summarize(mLMFI.c = median(LMFI),
                      n.c = n(),
@@ -305,27 +222,7 @@ CONTROL_GR_300 <- tryCatch(expr = {PR300_base_normalized %>%
     dplyr::ungroup() %>%
     dplyr::rename(pert_base_time = pert_time) %>%
     # join with DMSO
-    dplyr::inner_join(PR300_normalized %>%
-                        dplyr::filter(pert_type == "ctl_vehicle") %>%
-                        dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
-                        dplyr::group_by(ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
-                        dplyr::summarize(mLMFI.d = median(LMFI),
-                                         n.d = n(),
-                                         var.d = (mad(LMFI)^2/n.d) * pi/2) %>%
-                        dplyr::select(-n.d))
-}, error = function(e) {
-  return(NA)
-})
-# repeat with PR500
-CONTROL_GR_500 <- tryCatch(expr = {PR500_base_normalized %>%
-    dplyr::group_by(pert_time, ccle_name, rid, pool_id, culture) %>%
-    dplyr::summarize(mLMFI.c = median(LMFI),
-                     n.c = n(),
-                     var.c = (mad(LMFI)^2/n.c) * pi/2) %>%
-    dplyr::select(-n.c) %>%
-    dplyr::ungroup() %>%
-    dplyr::rename(pert_base_time = pert_time) %>%
-    dplyr::inner_join(PR500_normalized %>%
+    dplyr::inner_join(logMFI_normalized %>%
                         dplyr::filter(pert_type == "ctl_vehicle") %>%
                         dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
                         dplyr::group_by(ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
@@ -337,7 +234,7 @@ CONTROL_GR_500 <- tryCatch(expr = {PR500_base_normalized %>%
   return(NA)
 })
 # treatment
-GR_300 <- tryCatch(expr = {PR300_normalized %>%
+GR_TABLE <- tryCatch(expr = {logMFI_normalized %>%
     dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
     # now group by compound
     dplyr::group_by(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
@@ -346,39 +243,29 @@ GR_300 <- tryCatch(expr = {PR300_normalized %>%
                      n.t = n(),
                      var.t = (mad(LMFI)^2/n.t) * pi/2) %>%  # n.t = 3 (replicates)
     dplyr::select(-n.t) %>%
-    dplyr::inner_join(CONTROL_GR_300) %>%
+    dplyr::inner_join(CONTROL_GR) %>%
     dplyr::ungroup()
 }, error = function(e) {
   return(tibble())
 })
-GR_500 <- tryCatch(expr = {PR500_normalized %>%
-    dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
-    dplyr::group_by(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
-                    ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
-    dplyr::summarize(mLMFI.t = median(LMFI),
-                     n.t = n(),
-                     var.t = (mad(LMFI)^2/n.t) * pi/2) %>%  # n.t = 3 (replicates)
-    dplyr::inner_join(CONTROL_GR_500) %>%
-    dplyr::ungroup()
-}, error = function(e) {
-  return(tibble())
-})
+
 # combined
-GR_TABLE <- tryCatch(expr = {dplyr::bind_rows(GR_300, GR_500) %>%
+GR_TABLE <- tryCatch(expr = {GR_TABLE %>%
     # calc control change (DMSO - base)/(t - base day),
     # treatment change (treatment - DMSO)/t - control,
     # use to calc Z (treatment/control) and GR (2^Z - 1)
-    dplyr::mutate(control_lfc = (mLMFI.d - mLMFI.c)/(assay_length - base_day),
+    dplyr::mutate(control_lfc = (mLMFI.d - mLMFI.c)/(assay_length - base_day_num),
                   treatment_control_lfc = (mLMFI.t - mLMFI.d)/(assay_length),
                   treatment_lfc = treatment_control_lfc + control_lfc,
                   Z = treatment_lfc/control_lfc,
-                  var.treatment = (var.t/assay_length^2) + (var.d/(assay_length - base_day)^2) +
-                    (var.c*(1/(assay_length-base_day) - 1/assay_length)^2),
-                  var.control = (var.c + var.d)/(assay_length - base_day)^2,
+                  var.treatment = (var.t/assay_length^2) + (var.d/(assay_length - base_day_num)^2) +
+                    (var.c*(1/(assay_length-base_day_num) - 1/assay_length)^2),
+                  var.control = (var.c + var.d)/(assay_length - base_day_num)^2,
                   GR = (2^Z) - 1) %>%
     dplyr::distinct(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
                     rid, ccle_name, culture, pool_id, pert_time, assay_length,
-                    control_lfc, treatment_lfc, Z, var.treatment, var.control, GR)
+                    control_lfc, treatment_lfc, Z, var.treatment, var.control, GR) %>%
+    dplyr::mutate(base_day = base_day_num)
 }, error = function(e) {
   return(tibble())
 })
@@ -393,7 +280,7 @@ DRC_TABLE_cb <- LFC_TABLE %>%
   dplyr::filter(n > 4) %>%  # only fit curves with 4+ doses
   dplyr::mutate(ix = 1:n())
 
-DRC_cb <- tibble()  # empty tibble to track results
+DRC_cb <- list()  # empty tibble to track results
 
 # loop through compound cell line combos fitting curves
 for(jx in 1:nrow(DRC_TABLE_cb)) {
@@ -440,12 +327,13 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
                                                  max(d$pert_dose)),
                     mse = mse,
                     R2 = R2)
-    DRC_cb %<>% dplyr::bind_rows(x)
+    DRC_cb[[jx]] <- x
   }
 }
 
-if(nrow(DRC_cb) > 0) {
+if(length(DRC_cb) > 0) {
   DRC_TABLE_cb <- DRC_cb %>%
+    dplyr::bind_rows() %>%
     dplyr::filter(convergence) %>%
     dplyr::left_join(DRC_TABLE_cb) %>%
     dplyr::select(-ix, -convergence, -n)
@@ -462,7 +350,7 @@ if(nrow(GR_TABLE) > 0) {
     dplyr::filter(n > 4) %>%
     dplyr::mutate(ix = 1:n())
   
-  DRC_gr <- tibble()
+  DRC_gr <- list()
   
   for(jx in 1:nrow(DRC_TABLE_growth)) {
     d = DRC_TABLE_growth %>%
@@ -506,12 +394,13 @@ if(nrow(GR_TABLE) > 0) {
                                                    max(d$pert_dose)),
                       mse = mse,
                       R2 = R2)
-      DRC_gr %<>% dplyr::bind_rows(x)
+      DRC_gr[[jx]] <- x
     }
   }
   
-  if(nrow(DRC_gr) > 0) {
+  if(length(DRC_gr) > 0) {
     DRC_TABLE_growth <- DRC_gr %>%
+      dplyr::bind_rows() %>%
       dplyr::filter(convergence) %>%
       dplyr::left_join(DRC_TABLE_growth) %>%
       dplyr::select(-ix, -convergence, -n)
@@ -527,7 +416,7 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
   dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
                                                sep = stringr::fixed("_"))) %>%
   dplyr::group_by(ccle_name, culture, pool_id, pert_name, pert_mfc_id,
-                  pert_dose, pert_idose, compound_plate) %>%
+                  pert_dose, pert_idose, compound_plate, pert_time) %>%
   # LFC and LFC.cb values will be medains across replicates
   dplyr::summarize(LFC = median(LFC, na.rm = TRUE),
                    LFC.cb = median(LFC.cb, na.rm = TRUE))
@@ -538,9 +427,9 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
 readr::write_csv(master_logMFI, paste0(project_dir, "/logMFI.csv"))
 
 # normalized logMFI
-logMFI_normalized <- dplyr::bind_rows(PR500_normalized, PR300_normalized) %>%
-  dplyr::select(-rLMFI)
-readr::write_csv(logMFI_normalized, paste0(project_dir, "/logMFI_NORMALIZED.csv"))
+logMFI_normalized %>%
+  dplyr::select(-rLMFI) %>%
+  readr::write_csv(., paste0(project_dir, "/logMFI_NORMALIZED.csv"))
 
 # QC table
 readr::write_csv(SSMD_TABLE, paste0(project_dir, "/SSMD_TABLE.csv"))
