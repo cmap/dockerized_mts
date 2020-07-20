@@ -19,3 +19,5 @@ Requires the following files in the input data folder:
 - project_key (long table mapping compounds to projects)
 
 All files other than the Level 2 data can be in any format readable by `data.table::fread`
+
+Testing SCM in jenkins
