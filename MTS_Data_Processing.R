@@ -33,10 +33,10 @@ path_inst_info <- list.files(base_dir,
                              pattern = paste0("*", assay, "_inst_info"),
                              full.names = T)
 
-sprintf("path_key: %s",path_key)
-sprintf("path_data: %s",path_data)
-sprintf("path_cell_info: %s",path_cell_info)
-sprintf("path_inst_info: %s",path_inst_info)
+print(path_key)
+print(path_data)
+print(path_cell_info)
+print(path_inst_info)
 #---- Load the data ----
 
 # data table linking drugs to projects (collaborators)
