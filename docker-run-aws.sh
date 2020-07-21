@@ -10,6 +10,7 @@ docker run \
 -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
 -it cmap/clue-mts \
 -i /data/data \
--o /results/ressults \
+-p /data/data \
+-o /results/results \
 -a "PR500"
 

@@ -6,8 +6,8 @@ suppressMessages(source("./src/MTS_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 4) {
-  stop("Please supply path to data, output directory, project name, and assay",
+if (length(script_args) != 5) {
+  stop("Please supply path to data, output directory, project name, assay and project key directory (where project_key.csv is located)",
        call. = FALSE)
 }
 
@@ -15,13 +15,14 @@ base_dir <- script_args[1]
 out_dir <- script_args[2]
 project_name <- script_args[3]
 assay <- script_args[4]
+project_key_dir <- script_args[5]
 
 safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
 project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
 if (!dir.exists(project_dir)) {dir.create(project_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
-path_key <- list.files(base_dir, pattern = "*project_key.csv", full.names = T)
+path_key <- list.files(project_key_dir, pattern = "*project_key.csv", full.names = T)
 path_data <- list.files(base_dir,
                         pattern = paste0("*", assay, "_LEVEL2_MFI*"),
                         full.names = T)
