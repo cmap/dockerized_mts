@@ -10,12 +10,19 @@ if (length(script_args) != 5) {
   stop("Please supply path to data, output directory, project name, assay and project key directory (where project_key.csv is located)",
        call. = FALSE)
 }
-
+print(script_args)
 base_dir <- script_args[1]
 out_dir <- script_args[2]
 project_name <- script_args[3]
 assay <- script_args[4]
 project_key_dir <- script_args[5]
+
+
+print(base_dir)
+print(out_dir)
+print(project_name)
+print(assay)
+print(project_key_dir)
 
 safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
 project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
