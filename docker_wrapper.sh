@@ -21,4 +21,4 @@ done
 docker run -it \
   -v $data_dir:/data \
   -v $output_dir:/results \
-  aboghoss/clue-mts-int "data" "results" "$project" "$assay"
+  cmap/clue-mts-int:latest "data" "results" "$project" "$assay"

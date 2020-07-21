@@ -2,15 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4b6d487a-e36a-4c42-a4d9-1567878a74be" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/Dockerfile_aws" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/aws_batch.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docker_base/.dockerignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docker_base/Dockerfile" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docker_base/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docker_base/build_docker.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docker_base/docker_push_tags.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker_wrapper.sh" beforeDir="false" afterPath="$PROJECT_DIR$/docker_wrapper.sh" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -66,7 +60,7 @@
       <updated>1595001988189</updated>
       <workItem from="1595001989671" duration="103000" />
       <workItem from="1595002113276" duration="5720000" />
-      <workItem from="1595267751744" duration="16836000" />
+      <workItem from="1595267751744" duration="17278000" />
     </task>
     <servers />
   </component>

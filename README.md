@@ -9,7 +9,7 @@ docker pull cmap/clue-mts
 
 Example command to run the container (see `docker_wrapper.sh`):
 ```{bash}
-bash docker_wrapper.sh -i <INPUT_DIR> -o <OUTPUT_DIR> -p <PROJECT_NAME>
+bash docker_wrapper.sh -i <INPUT_DIR> -o <OUTPUT_DIR> -p <PROJECT_NAME> -a <ASSAY>
 ```
 
 
