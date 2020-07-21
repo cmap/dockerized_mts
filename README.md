@@ -4,12 +4,18 @@ Dockerized version of the PRISM MTS pipeline. For use with Merino pipeline outpu
 
 To get the associated docker image run:
 ```{bash}
-docker pull aboghoss/clue-mts
+docker pull cmap/clue-mts
 ```
 
 Example command to run the container (see `docker_wrapper.sh`):
 ```{bash}
 bash docker_wrapper.sh -i <INPUT_DIR> -o <OUTPUT_DIR> -p <PROJECT_NAME>
+```
+
+
+Example command to run the container  in AWS  (see `docker_run.sh`):
+```{bash}
+Modiify the inputs in the file
 ```
 
 Requires the following files in the input data folder:
@@ -20,4 +26,3 @@ Requires the following files in the input data folder:
 
 All files other than the Level 2 data can be in any format readable by `data.table::fread`
 
-Testing SCM in jenkins
