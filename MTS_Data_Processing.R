@@ -22,13 +22,10 @@ if (!dir.exists(project_dir)) {dir.create(project_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
 path_key <- list.files(project_key_dir, pattern = "*project_key.csv", full.names = T)
-print(path_key)
 path_data <- list.files(base_dir, pattern =  "*_LEVEL2_MFI*", full.names = T)
-print(path_data)
 path_cell_info <- list.files(base_dir, pattern = "*_cell_info*", full.names = T)
-print(path_cell_info)
 path_inst_info <- list.files(base_dir, pattern = "*_inst_info*", full.names = T)
-print(path_inst_info)
+
 #---- Load the data ----
 
 # data table linking drugs to projects (collaborators)
