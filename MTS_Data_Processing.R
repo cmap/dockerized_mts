@@ -10,7 +10,6 @@ if (length(script_args) != 5) {
   stop("Please supply path to data, output directory, project name, assay and project key directory (where project_key.csv is located)",
        call. = FALSE)
 }
-print(script_args)
 base_dir <- script_args[1]
 out_dir <- script_args[2]
 project_name <- script_args[3]
@@ -31,13 +30,13 @@ if (!dir.exists(project_dir)) {dir.create(project_dir, recursive = T)}
 # paths to data (make sure directory of data has these files)
 path_key <- list.files(project_key_dir, pattern = "*project_key.csv", full.names = T)
 path_data <- list.files(base_dir,
-                        pattern = paste0("*", assay, "_LEVEL2_MFI*"),
+                        pattern = paste0("*", assay, "*_LEVEL2_MFI*"),
                         full.names = T)
 path_cell_info <- list.files(base_dir,
-                             pattern = paste0("*", assay, "_cell_info*"),
+                             pattern = paste0("*", assay, "*_cell_info*"),
                              full.names = T)
 path_inst_info <- list.files(base_dir,
-                             pattern = paste0("*", assay, "_inst_info"),
+                             pattern = paste0("*", assay, "*_inst_info"),
                              full.names = T)
 
 print(path_key)
