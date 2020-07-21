@@ -16,28 +16,15 @@ project_name <- script_args[3]
 assay <- script_args[4]
 project_key_dir <- script_args[5]
 
-
-print(base_dir)
-print(out_dir)
-print(project_name)
-print(assay)
-print(project_key_dir)
-
 safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
 project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
 if (!dir.exists(project_dir)) {dir.create(project_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
 path_key <- list.files(project_key_dir, pattern = "*project_key.csv", full.names = T)
-path_data <- list.files(base_dir,
-                        pattern = paste0("*", assay, "*_LEVEL2_MFI*"),
-                        full.names = T)
-path_cell_info <- list.files(base_dir,
-                             pattern = paste0("*", assay, "*_cell_info*"),
-                             full.names = T)
-path_inst_info <- list.files(base_dir,
-                             pattern = paste0("*", assay, "*_inst_info"),
-                             full.names = T)
+path_data <- list.files(base_dir, pattern = paste0("*", assay, "*", "_LEVEL2_MFI*"), full.names = T)
+path_cell_info <- list.files(base_dir, pattern = paste0("*", assay, "*","*_cell_info*"), full.names = T)
+path_inst_info <- list.files(base_dir, pattern = paste0("*", assay,"*", "*_inst_info"), full.names = T)
 
 print(path_key)
 print(path_data)
