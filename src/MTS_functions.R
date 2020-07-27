@@ -53,11 +53,18 @@ make_long_map <- function(df) {
     dplyr::select(!contains("2"))
   pert2 <- df %>%
     dplyr::select(contains("2"), pert_plate, pert_well, pert_time,
-                  prism_replicate, x_mapping, x_group_by, is_well_failure, profile_id)
+                  prism_replicate, is_well_failure, profile_id)
 
   colnames(pert2) <- sapply(colnames(pert2), FUN = function(x) rename_col(x))
-
-  new_map <- dplyr::bind_rows(pert1, pert2) %>%
+  
+  if (ncol(pert2) > 6) {
+    new_map <- dplyr::bind_rows(pert1, pert2) 
+  } else {
+    new_map <- pert1
+    pert2 <- pert1
+  }
+  
+  new_map %<>%
     dplyr::filter(pert_iname != "Untrt") %>%
     dplyr::select(intersect(colnames(.), colnames(pert2))) %>%
     dplyr::mutate(pert_type = ifelse(pert_iname %in% c("PBS", "DMSO"), "ctl_vehicle", pert_type))
