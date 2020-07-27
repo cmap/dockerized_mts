@@ -48,10 +48,16 @@ inst_info <- data.table::fread(path_inst_info) %>%
   dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
   make_long_map(.)
 base_day <- data.table::fread(path_inst_info) %>%
-  dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure) %>%
-  dplyr::rename(pert_name = pert_iname)  %>%
-  dplyr::select(colnames(inst_info))
-inst_info %<>% dplyr::bind_rows(base_day)
+  dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure)
+
+if (nrow(base_day) > 0) {
+  dplyr::rename(pert_name = pert_iname)
+  if (!("pert_mfc_id") %in% colnames(base_day)){
+    base_day %<>% dplyr::mutate(pert_mfc_id = pert_id)
+  }
+  base_day %<>% dplyr::select(colnames(inst_info))
+  inst_info %<>% dplyr::bind_rows(base_day)
+}
 
 # ensure unique profile IDs (this may cause problems for combo-perturbations)
 raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
