@@ -60,8 +60,16 @@ make_long_map <- function(df) {
   if (ncol(pert2) > 6) {
     new_map <- dplyr::bind_rows(pert1, pert2) 
   } else {
-    new_map <- pert1
-    pert2 <- pert1
+    pert1  %<>%
+      dplyr::filter(pert_iname != "Untrt") %>%
+      dplyr::mutate(pert_type = ifelse(pert_iname %in% c("PBS", "DMSO"), "ctl_vehicle", pert_type)) %>%
+      dplyr::rename(pert_name = pert_iname)
+    
+    if (!("pert_mfc_id") %in% colnames(pert1)){
+      pert1 %<>% dplyr::mutate(pert_mfc_id = pert_id)
+    }
+    
+    return(pert1)
   }
   
   new_map %<>%
