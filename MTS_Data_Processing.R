@@ -494,7 +494,7 @@ for(i in 1:nrow(compounds)) {
   # loop through each cell line treated by compound and plot DRC
   conditions <- compound_DRC %>% dplyr::distinct(ccle_name, culture, pert_time)
   for(j in 1:nrow(conditions)) {
-    condition <- conditions[i,]
+    condition <- conditions[j,]
     assay_time <- condition$pert_time
     cell_line <- condition$ccle_name
     culture <- condition$culture
