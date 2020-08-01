@@ -48,10 +48,16 @@ inst_info <- data.table::fread(path_inst_info) %>%
   dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
   make_long_map(.)
 base_day <- data.table::fread(path_inst_info) %>%
-  dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure) %>%
-  dplyr::rename(pert_name = pert_iname)  %>%
-  dplyr::select(colnames(inst_info))
-inst_info %<>% dplyr::bind_rows(base_day)
+  dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure)
+
+if (nrow(base_day) > 0) {
+  dplyr::rename(pert_name = pert_iname)
+  if (!("pert_mfc_id") %in% colnames(base_day)){
+    base_day %<>% dplyr::mutate(pert_mfc_id = pert_id)
+  }
+  base_day %<>% dplyr::select(colnames(inst_info))
+  inst_info %<>% dplyr::bind_rows(base_day)
+}
 
 # ensure unique profile IDs (this may cause problems for combo-perturbations)
 raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
@@ -61,7 +67,7 @@ master_logMFI <- log2(raw_matrix) %>%
   reshape2::melt(varnames = c("rid", "profile_id"), value.name = "logMFI") %>%
   dplyr::inner_join(cell_info) %>%
   dplyr::inner_join(inst_info) %>%
-  dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate, pert_time, 
+  dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate, pert_time,
                 pert_type, pert_dose, pert_idose, pert_mfc_id, pert_name, pert_well,
                 logMFI)
 
@@ -137,14 +143,10 @@ if(nrow(logMFI_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-  
+
   base_normalized <- logMFI_base %>%
     dplyr::left_join(logMFI_profile) %>%
     normalize(., barcodes)
-} else if(file.exists(paste0(dirname(data_path), "/external_day0.csv"))) {
-  base_normalized <- data.table::fread(paste0(dirname(data_path),
-                                              "/external_day0.csv")) %>%
-    dplyr::filter(culture == "PR300")
 } else {
   base_normalized <- tibble()
 }
@@ -172,7 +174,7 @@ error_table <- logMFI_normalized %>%
                                             weights.class0 = pert_type == "ctl_vehicle",
                                             curve = TRUE )$curve[,2])/2)
 # join with SSMD table
-SSMD_TABLE %<>% 
+SSMD_TABLE %<>%
   dplyr::left_join(error_table) %>%
   dplyr::mutate(pass = error_rate <= 0.05,
                 compound_plate = stringr::word(prism_replicate, 1,
@@ -189,7 +191,7 @@ LFC_TABLE <- logMFI_normalized %>%
   # calculate LFC (LMFI - median(LMFIcontrol))
   dplyr::mutate(LFC = LMFI - median(LMFI[pert_type == "ctl_vehicle"])) %>%
   dplyr::distinct(pert_mfc_id, pert_name, prism_replicate, culture, rid, LFC,
-                  pert_type, ccle_name, pert_dose, pert_well, pool_id, pert_time, 
+                  pert_type, ccle_name, pert_dose, pert_well, pool_id, pert_time,
                   profile_id, pert_idose) %>%
   dplyr::ungroup()
 
@@ -282,7 +284,7 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
   d = DRC_TABLE_cb %>%
     dplyr::filter(ix == jx) %>%
     dplyr::left_join(LFC_TABLE)
-  
+
   # fit curve
   a = tryCatch(dr4pl(dose = d$pert_dose,
                      response = 2^d$LFC.cb,
@@ -296,10 +298,10 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
       dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
     d %<>%
       dplyr::mutate(e = (2^LFC.cb - pred)^2)  # prediction residuals
-    
+
     mse <- mean(d$e)
     R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$LFC.cb)))
-    
+
     x <- tibble(ix = jx,
                 min_dose = min(d$pert_dose),
                 max_dose = max(d$pert_dose),
@@ -344,14 +346,14 @@ if(nrow(GR_TABLE) > 0) {
     dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
     dplyr::filter(n > 4) %>%
     dplyr::mutate(ix = 1:n())
-  
+
   DRC_gr <- list()
-  
+
   for(jx in 1:nrow(DRC_TABLE_growth)) {
     d = DRC_TABLE_growth %>%
       dplyr::filter(ix == jx) %>%
       dplyr::left_join(GR_TABLE)
-    
+
     a = tryCatch(dr4pl(dose = d$pert_dose,
                        response = d$GR,
                        method.init = "logistic",
@@ -363,10 +365,10 @@ if(nrow(GR_TABLE) > 0) {
         dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
       d %<>%
         dplyr::mutate(e = (GR - pred)^2)  # prediction residuals
-      
+
       mse <- mean(d$e)
       R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$GR)))
-      
+
       x <- tibble(ix = jx,
                   min_dose = min(d$pert_dose),
                   max_dose = max(d$pert_dose),
@@ -392,7 +394,7 @@ if(nrow(GR_TABLE) > 0) {
       DRC_gr[[jx]] <- x
     }
   }
-  
+
   if(length(DRC_gr) > 0) {
     DRC_TABLE_growth <- DRC_gr %>%
       dplyr::bind_rows() %>%
@@ -435,30 +437,30 @@ for(i in 1:nrow(compounds)) {
   id <- compounds[[i, "pert_mfc_id"]]  # Broad ID (unique)
   name <- compounds[[i, "pert_name"]]  # name (human readable)
   write_name <- stringr::str_replace_all(name, "[[:punct:]\\s]+", "-")
-  
+
   # output directory
   path <- paste0(project_dir, "/", write_name)
   if(!dir.exists(path)) {
     dir.create(path)
   }
-  
+
   lfc <- dplyr::filter(LFC_TABLE, pert_name == name)
   drc <- dplyr::filter(DRC_TABLE_cb, pert_name == name)
   lfc_coll <- dplyr::filter(LFC_COLLAPSED_TABLE, pert_name == name)
-  
+
   readr::write_csv(lfc, paste0(path, "/LFC_TABLE.csv"))
   readr::write_csv(lfc_coll, paste0(path, "/LFC_COLLAPSED_TABLE.csv"))
   if(nrow(drc) > 0)  {
     readr::write_csv(drc, paste0(path, "/DRC_TABLE.csv"))
   }
-  
+
   # GR data if it exists
   if(nrow(GR_TABLE) > 0) {
     gr <- dplyr::filter(GR_TABLE, pert_mfc_id == id)
     readr::write_csv(gr, paste0(path, "/GR_TABLE.csv"))
     if(!is.na(DRC_TABLE_growth)) {
       drc_gr <- dplyr::filter(DRC_TABLE_growth, pert_mfc_id == id)
-      readr::write_csv(drc_gr, paste0(path, "/DRC_TABLE_GR.csv")) 
+      readr::write_csv(drc_gr, paste0(path, "/DRC_TABLE_GR.csv"))
     }
   }
 }
@@ -469,39 +471,39 @@ for(i in 1:nrow(compounds)) {
   id <- compounds[[i, "pert_mfc_id"]]
   name <- compounds[[i, "pert_name"]]
   write_name <- stringr::str_replace_all(name, "[[:punct:]\\s]+", "-")
-  
+
   # filter to just see that compound
   compound_DRC <- DRC_TABLE_cb %>%
     dplyr::filter(pert_name == name)
-  
+
   if(nrow(compound_DRC) < 1) {
     next
   }
-  
+
   compound_DRC %<>%
     dplyr::arrange(auc)
-  
+
   # tracks LFC info
   compound_LFC <- LFC_TABLE %>%
     dplyr::filter(pert_name == name)
-  
+
   # create .pdf
   pdf(paste0(project_dir, "/", write_name, "/",
              toupper(write_name), "_DRCfigures.pdf"))
-  
+
   # loop through each cell line treated by compound and plot DRC
   conditions <- compound_DRC %>% dplyr::distinct(ccle_name, culture, pert_time)
   for(j in 1:nrow(conditions)) {
-    condition <- conditions[i,]
+    condition <- conditions[j,]
     assay_time <- condition$pert_time
     cell_line <- condition$ccle_name
     culture <- condition$culture
-    
+
     d <- compound_DRC %>%
       dplyr::inner_join(condition)
     d_cult_line <- compound_LFC %>%
       dplyr::inner_join(condition)
-    
+
     # DRC curve function
     f1 = function(x) {
       d$lower_limit + (d$upper_limit - d$lower_limit)/
