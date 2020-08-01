@@ -15,7 +15,8 @@ RUN mkdir -p /src && apt-get -y --no-install-recommends install \
   libpq-dev \
   libssh2-1-dev \
   libhdf5-dev \
-  libcurl4-openssl-dev
+  libcurl4-openssl-dev \
+  jq
 
 COPY ./install_packages.R /src/install_packages.R
 RUN mkdir -p /clue/bin && Rscript /src/install_packages.R

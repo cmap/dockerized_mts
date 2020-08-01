@@ -2,9 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4b6d487a-e36a-4c42-a4d9-1567878a74be" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker_wrapper.sh" beforeDir="false" afterPath="$PROJECT_DIR$/docker_wrapper.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker_base/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/docker_base/Dockerfile" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -61,6 +61,9 @@
       <workItem from="1595001989671" duration="103000" />
       <workItem from="1595002113276" duration="5720000" />
       <workItem from="1595267751744" duration="17278000" />
+      <workItem from="1595385306965" duration="2313000" />
+      <workItem from="1596137169884" duration="2344000" />
+      <workItem from="1596298691306" duration="729000" />
     </task>
     <servers />
   </component>
