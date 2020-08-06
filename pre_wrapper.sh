@@ -1,19 +1,16 @@
 #!/bin/bash
 
 # read in flagged arguments
-while getopts ":i:o:p:a:" arg; do
+while getopts ":i:o:a:p:" arg; do
   case $arg in
     i) # specify input folder
-      data_dir=${OPTARG}
-      ;;
+      data_dir=${OPTARG};;
     o) # specifcy output folder
-      output_dir=${OPTARG}
-      ;;
-    p) # specify project name
-      project=${OPTARG}
-      ;;
+      output_dir=${OPTARG};;
     a) # specify assay/build (PR300 or PR500)
-      assay=${OPTARG}
+      assay=${OPTARG};;
+    p) # specify project key directory
+      project_key_dir=${OPTARG};;
   esac
 done
 
@@ -21,4 +18,4 @@ done
 docker run -it \
   -v $data_dir:/data \
   -v $output_dir:/results \
-  cmap/clue-mts-int:latest "data" "results" "$project" "$assay"
+  cmap/clue-mts-int:latest "data" "results" "$assay" "$project_key_dir"

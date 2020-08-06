@@ -1,4 +1,5 @@
-# Script to run the initial processing step of the MTS pipeline.
+# Script to run the initial processing step of the MTS pipeline
+# creates logMFI, logMFI_NORMALIZED, and SSMD_TABLE
 
 # import necessary libraries and functions using MTS_functions.R
 suppressMessages(source("./src/MTS_functions.R"))
