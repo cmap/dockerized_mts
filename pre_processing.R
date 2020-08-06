@@ -14,9 +14,7 @@ out_dir <- script_args[2]
 assay <- script_args[3]
 project_key_dir <- script_args[4]
 
-safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
-project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
-if (!dir.exists(project_dir)) {dir.create(project_dir, recursive = T)}
+if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
 path_key <- list.files(project_key_dir, pattern = "*project_key.csv", full.names = T)
@@ -136,7 +134,7 @@ if(nrow(logMFI_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-  
+
   base_normalized <- logMFI_base %>%
     dplyr::left_join(logMFI_profile) %>%
     normalize(., barcodes)
@@ -193,4 +191,3 @@ for (project in unique(key_table$project_id)) {
     dplyr::select(-rLMFI, -project_id) %>%
     readr::write_csv(., paste0(project_dir, "/logMFI_NORMALIZED.csv"))
 }
-
