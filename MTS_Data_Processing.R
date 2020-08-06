@@ -115,7 +115,7 @@ DRC_TABLE_cb <- LFC_TABLE %>%
   dplyr::filter(pert_type == "trt_cp") %>%
   dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time) %>%
   dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
-  dplyr::filter(n > 4) %>%  # only fit curves with 4+ doses
+  dplyr::filter(n > 3) %>%  # only fit curves with 4+ doses
   dplyr::mutate(ix = 1:n())
 
 DRC_cb <- list()  # empty tibble to track results
@@ -185,7 +185,7 @@ if(nrow(GR_TABLE) > 0) {
   DRC_TABLE_growth <- GR_TABLE %>%
     dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time) %>%
     dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
-    dplyr::filter(n > 4) %>%
+    dplyr::filter(n > 3) %>%
     dplyr::mutate(ix = 1:n())
 
   DRC_gr <- list()
