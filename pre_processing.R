@@ -103,7 +103,7 @@ compounds_logMFI %<>%
                    pert_mfc_id = ifelse(any(pert_name %in% varied_compounds$pert_name),
                                         pert_mfc_id[pert_name %in% varied_compounds$pert_name],
                                         pert_mfc_id),
-                   pert_name = paste(unique(pert_name), collapse = "_")) %>%
+                   pert_name = paste(sort(unique(pert_name)), collapse = "_")) %>%
   dplyr::ungroup()
 
 master_logMFI <- dplyr::bind_rows(compounds_logMFI, controls_logMFI)
@@ -176,19 +176,11 @@ SSMD_TABLE %<>%
 # QC table
 readr::write_csv(SSMD_TABLE, paste0(out_dir, "/SSMD_TABLE.csv"))
 
-# logMFI files for each project
-for (project in unique(key_table$project_id)) {
-  safe_name <- stringr::str_replace_all(project, "[[:punct:]\\s]+", "_")
-  project_dir <- paste0(out_dir, "/", safe_name)
-  dir.create(project_dir, recursive = T)
-  master_logMFI %>%
-    dplyr::bind_rows(logMFI_base) %>%
-    dplyr::filter(project_id %in% c(project, "controls")) %>%
-    dplyr::select(-project_id) %>%
-    readr::write_csv(., paste0(project_dir, "/logMFI.csv"))
-  logMFI_normalized %>%
-    dplyr::bind_rows(base_normalized) %>%
-    dplyr::filter(project_id %in% c(project, "controls")) %>%
-    dplyr::select(-rLMFI, -project_id) %>%
-    readr::write_csv(., paste0(project_dir, "/logMFI_NORMALIZED.csv"))
-}
+# logMFI tables
+master_logMFI %>%
+  dplyr::bind_rows(logMFI_base) %>%
+  readr::write_csv(., paste0(out_dir, "/logMFI.csv"))
+logMFI_normalized %>%
+  dplyr::bind_rows(base_normalized) %>%
+  dplyr::select(-rLMFI) %>%
+  readr::write_csv(., paste0(out_dir, "/logMFI_NORMALIZED.csv"))

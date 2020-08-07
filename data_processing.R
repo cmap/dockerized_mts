@@ -5,18 +5,27 @@ suppressMessages(source("./src/MTS_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 2) {
-  stop("Please supply necessary arguments (directory and project name)",
+if (length(script_args) != 4) {
+  stop("Please supply necessary arguments",
        call. = FALSE)
 }
 base_dir <- script_args[1]
 project_name <- script_args[2]
+compound <- script_args[3]
+out_dir <- script_args[4]
 
 safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
-project_dir <- paste(base_dir, safe_name, sep = fixed("/"))
+write_name <- stringr::str_replace_all(compound, "[[:punct:]\\s]+", "-")
+
+project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
+comp_dir <- paste(project_dir, write_name, sep = fixed("/"))
+if (!dir.exists(comp_dir)) {dir.create(comp_dir, recursive = T)}
 
 #---- Load the data ----
-logMFI_normalized <- data.table::fread(paste0(project_dir, "/logMFI_NORMALIZED.csv"))
+logMFI_normalized <- data.table::fread(paste0(base_dir, "/logMFI_NORMALIZED.csv"))
+logMFI_normalized %<>% 
+  dplyr::filter(project_id %in% c(project_name, "controls"),
+                pert_name == compound | pert_type != "trt_cp")
 base_normalized <- logMFI_normalized %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"))
 logMFI_normalized %<>%
@@ -121,11 +130,11 @@ DRC_TABLE_cb <- LFC_TABLE %>%
 DRC_cb <- list()  # empty tibble to track results
 
 # loop through compound cell line combos fitting curves
-for(jx in 1:nrow(DRC_TABLE_cb)) {
+for (jx in 1:nrow(DRC_TABLE_cb)) {
   d = DRC_TABLE_cb %>%
     dplyr::filter(ix == jx) %>%
     dplyr::left_join(LFC_TABLE)
-
+  
   # fit curve
   a = tryCatch(dr4pl(dose = d$pert_dose,
                      response = 2^d$LFC.cb,
@@ -134,15 +143,15 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
                error = function(e) NA)
   # get parameters
   param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) NA)
-  if(!is.na(param)) {
+  if (!is.na(param)) {
     d %<>%
       dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
     d %<>%
       dplyr::mutate(e = (2^LFC.cb - pred)^2)  # prediction residuals
-
+    
     mse <- mean(d$e)
     R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$LFC.cb)))
-
+    
     x <- tibble(ix = jx,
                 min_dose = min(d$pert_dose),
                 max_dose = max(d$pert_dose),
@@ -169,7 +178,7 @@ for(jx in 1:nrow(DRC_TABLE_cb)) {
   }
 }
 
-if(length(DRC_cb) > 0) {
+if (length(DRC_cb) > 0) {
   DRC_TABLE_cb <- DRC_cb %>%
     dplyr::bind_rows() %>%
     dplyr::filter(convergence) %>%
@@ -181,35 +190,35 @@ if(length(DRC_cb) > 0) {
 }
 
 # GROWTH RATE DOSE-RESPONSE
-if(nrow(GR_TABLE) > 0) {
+if (nrow(GR_TABLE) > 0) {
   DRC_TABLE_growth <- GR_TABLE %>%
     dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time) %>%
     dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
     dplyr::filter(n > 3) %>%
     dplyr::mutate(ix = 1:n())
-
+  
   DRC_gr <- list()
-
-  for(jx in 1:nrow(DRC_TABLE_growth)) {
+  
+  for (jx in 1:nrow(DRC_TABLE_growth)) {
     d = DRC_TABLE_growth %>%
       dplyr::filter(ix == jx) %>%
       dplyr::left_join(GR_TABLE)
-
+    
     a = tryCatch(dr4pl(dose = d$pert_dose,
                        response = d$GR,
                        method.init = "logistic",
                        trend = "decreasing"),
                  error = function(e) NA)
     param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) NA)
-    if(!is.na(param)) {
+    if (!is.na(param)) {
       d %<>%
         dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
       d %<>%
         dplyr::mutate(e = (GR - pred)^2)  # prediction residuals
-
+      
       mse <- mean(d$e)
       R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$GR)))
-
+      
       x <- tibble(ix = jx,
                   min_dose = min(d$pert_dose),
                   max_dose = max(d$pert_dose),
@@ -235,8 +244,8 @@ if(nrow(GR_TABLE) > 0) {
       DRC_gr[[jx]] <- x
     }
   }
-
-  if(length(DRC_gr) > 0) {
+  
+  if (length(DRC_gr) > 0) {
     DRC_TABLE_growth <- DRC_gr %>%
       dplyr::bind_rows() %>%
       dplyr::filter(convergence) %>%
@@ -257,92 +266,62 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
                   pert_dose, pert_idose, compound_plate, pert_time) %>%
   # LFC and LFC.cb values will be medains across replicates
   dplyr::summarize(LFC = median(LFC, na.rm = TRUE),
-                   LFC.cb = median(LFC.cb, na.rm = TRUE))
+                   LFC.cb = median(LFC.cb, na.rm = TRUE)) %>%
+  dplyr::ungroup()
 
 
 #---- Write to .csv ----
-# compound data (DRC, LFC)
-compounds <- dplyr::distinct(LFC_TABLE, pert_name, pert_mfc_id)
-for(i in 1:nrow(compounds)) {
-  id <- compounds[[i, "pert_mfc_id"]]  # Broad ID (unique)
-  name <- compounds[[i, "pert_name"]]  # name (human readable)
-  write_name <- stringr::str_replace_all(name, "[[:punct:]\\s]+", "-")
+# compound data (logMFI, DRC, LFC)
+logMFI_normalized %>%
+  dplyr::bind_rows(base_normalized) %>%
+  dplyr::select(-project_id) %>%
+  readr::write_csv(., paste0(comp_dir, "/logMFI_normalized.csv"))
+readr::write_csv(LFC_TABLE, paste0(comp_dir, "/LFC_TABLE.csv"))
+readr::write_csv(LFC_COLLAPSED_TABLE, paste0(comp_dir, "/LFC_COLLAPSED_TABLE.csv"))
 
-  # output directory
-  path <- paste0(project_dir, "/", write_name)
-  if(!dir.exists(path)) {
-    dir.create(path)
-  }
+if(nrow(DRC_TABLE_cb) > 0)  {
+  readr::write_csv(DRC_TABLE_cb, paste0(comp_dir, "/DRC_TABLE.csv"))
+}
 
-  lfc <- dplyr::filter(LFC_TABLE, pert_name == name)
-  drc <- dplyr::filter(DRC_TABLE_cb, pert_name == name)
-  lfc_coll <- dplyr::filter(LFC_COLLAPSED_TABLE, pert_name == name)
-
-  readr::write_csv(lfc, paste0(path, "/LFC_TABLE.csv"))
-  readr::write_csv(lfc_coll, paste0(path, "/LFC_COLLAPSED_TABLE.csv"))
-  if(nrow(drc) > 0)  {
-    readr::write_csv(drc, paste0(path, "/DRC_TABLE.csv"))
-  }
-
-  # GR data if it exists
-  if(nrow(GR_TABLE) > 0) {
-    gr <- dplyr::filter(GR_TABLE, pert_mfc_id == id)
-    readr::write_csv(gr, paste0(path, "/GR_TABLE.csv"))
-    if(!is.na(DRC_TABLE_growth)) {
-      drc_gr <- dplyr::filter(DRC_TABLE_growth, pert_mfc_id == id)
-      readr::write_csv(drc_gr, paste0(path, "/DRC_TABLE_GR.csv"))
-    }
+# GR data if it exists
+if(nrow(GR_TABLE) > 0) {
+  readr::write_csv(GR_TABLE, paste0(comp_dir, "/GR_TABLE.csv"))
+  if(!is.na(DRC_TABLE_growth)) {
+    readr::write_csv(DRC_TABLE_growth, paste0(comp_dir, "/DRC_TABLE_GR.csv"))
   }
 }
 
+
 #---- Generate DRC plots ----
-# generate a .pdf of graphs for each compound
-for(i in 1:nrow(compounds)) {
-  id <- compounds[[i, "pert_mfc_id"]]
-  name <- compounds[[i, "pert_name"]]
-  write_name <- stringr::str_replace_all(name, "[[:punct:]\\s]+", "-")
-
-  # filter to just see that compound
-  compound_DRC <- DRC_TABLE_cb %>%
-    dplyr::filter(pert_name == name)
-
-  if(nrow(compound_DRC) < 1) {
-    next
-  }
-
-  compound_DRC %<>%
-    dplyr::arrange(auc)
-
-  # tracks LFC info
-  compound_LFC <- LFC_TABLE %>%
-    dplyr::filter(pert_name == name)
-
+if(nrow(DRC_TABLE_cb) > 0) {
+  # dose response data
+  DRC_TABLE_cb %<>% dplyr::arrange(auc)
+  
   # create .pdf
-  pdf(paste0(project_dir, "/", write_name, "/",
-             toupper(write_name), "_DRCfigures.pdf"))
-
+  pdf(paste0(comp_dir, "/", toupper(write_name), "_DRCfigures.pdf"))
+  
   # loop through each cell line treated by compound and plot DRC
-  conditions <- compound_DRC %>% dplyr::distinct(ccle_name, culture, pert_time)
+  conditions <- DRC_TABLE_cb %>% dplyr::distinct(ccle_name, culture, pert_time)
   for(j in 1:nrow(conditions)) {
     condition <- conditions[j,]
     assay_time <- condition$pert_time
     cell_line <- condition$ccle_name
     culture <- condition$culture
-
-    d <- compound_DRC %>%
-      dplyr::inner_join(condition)
-    d_cult_line <- compound_LFC %>%
-      dplyr::inner_join(condition)
-
+    
+    d <- DRC_TABLE_cb %>% dplyr::inner_join(condition)
+    d_cult_line <- LFC_TABLE %>% dplyr::inner_join(condition)
+    
     # DRC curve function
     f1 = function(x) {
       d$lower_limit + (d$upper_limit - d$lower_limit)/
         (1 + (2^x/d$ec50)^d$slope)
     }
+    
     # sequence for plotting curve
     xx = seq(min(log2(d_cult_line$pert_dose)),
              max(log2(d_cult_line$pert_dose)),
              length.out = 1000)
+    
     # plot individual data points and DRC fit line
     p = d_cult_line %>%
       ggplot() +
@@ -352,7 +331,7 @@ for(i in 1:nrow(compounds)) {
                 aes(x = x, y = y, group = 1),  lwd =1 ) +
       ylim(0,2) + theme_bw() +
       labs(x = 'log2(Dose) (uM)', y = 'Viability', color = "",
-           title = paste0(name, "-", assay_time, "\n", cell_line,' - ', culture,
+           title = paste0(compound, "-", assay_time, "\n", cell_line,' - ', culture,
                           "\nAUC:", round(d$auc, 2),
                           " - IC50:", round(2^d$log2.ic50, 2)))
     # outputs to .pdf
