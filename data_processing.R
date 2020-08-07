@@ -10,9 +10,9 @@ if (length(script_args) != 4) {
        call. = FALSE)
 }
 base_dir <- script_args[1]
-project_name <- script_args[2]
-compound <- script_args[3]
-out_dir <- script_args[4]
+out_dir <- script_args[2]
+project_name <- script_args[3]
+compound <- script_args[4]
 
 safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
 write_name <- stringr::str_replace_all(compound, "[[:punct:]\\s]+", "-")
@@ -23,7 +23,7 @@ if (!dir.exists(comp_dir)) {dir.create(comp_dir, recursive = T)}
 
 #---- Load the data ----
 logMFI_normalized <- data.table::fread(paste0(base_dir, "/logMFI_NORMALIZED.csv"))
-logMFI_normalized %<>% 
+logMFI_normalized %<>%
   dplyr::filter(project_id %in% c(project_name, "controls"),
                 pert_name == compound | pert_type != "trt_cp")
 base_normalized <- logMFI_normalized %>%
@@ -134,7 +134,7 @@ for (jx in 1:nrow(DRC_TABLE_cb)) {
   d = DRC_TABLE_cb %>%
     dplyr::filter(ix == jx) %>%
     dplyr::left_join(LFC_TABLE)
-  
+
   # fit curve
   a = tryCatch(dr4pl(dose = d$pert_dose,
                      response = 2^d$LFC.cb,
@@ -148,10 +148,10 @@ for (jx in 1:nrow(DRC_TABLE_cb)) {
       dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
     d %<>%
       dplyr::mutate(e = (2^LFC.cb - pred)^2)  # prediction residuals
-    
+
     mse <- mean(d$e)
     R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$LFC.cb)))
-    
+
     x <- tibble(ix = jx,
                 min_dose = min(d$pert_dose),
                 max_dose = max(d$pert_dose),
@@ -196,14 +196,14 @@ if (nrow(GR_TABLE) > 0) {
     dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
     dplyr::filter(n > 3) %>%
     dplyr::mutate(ix = 1:n())
-  
+
   DRC_gr <- list()
-  
+
   for (jx in 1:nrow(DRC_TABLE_growth)) {
     d = DRC_TABLE_growth %>%
       dplyr::filter(ix == jx) %>%
       dplyr::left_join(GR_TABLE)
-    
+
     a = tryCatch(dr4pl(dose = d$pert_dose,
                        response = d$GR,
                        method.init = "logistic",
@@ -215,10 +215,10 @@ if (nrow(GR_TABLE) > 0) {
         dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
       d %<>%
         dplyr::mutate(e = (GR - pred)^2)  # prediction residuals
-      
+
       mse <- mean(d$e)
       R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$GR)))
-      
+
       x <- tibble(ix = jx,
                   min_dose = min(d$pert_dose),
                   max_dose = max(d$pert_dose),
@@ -244,7 +244,7 @@ if (nrow(GR_TABLE) > 0) {
       DRC_gr[[jx]] <- x
     }
   }
-  
+
   if (length(DRC_gr) > 0) {
     DRC_TABLE_growth <- DRC_gr %>%
       dplyr::bind_rows() %>%
@@ -296,10 +296,10 @@ if(nrow(GR_TABLE) > 0) {
 if(nrow(DRC_TABLE_cb) > 0) {
   # dose response data
   DRC_TABLE_cb %<>% dplyr::arrange(auc)
-  
+
   # create .pdf
   pdf(paste0(comp_dir, "/", toupper(write_name), "_DRCfigures.pdf"))
-  
+
   # loop through each cell line treated by compound and plot DRC
   conditions <- DRC_TABLE_cb %>% dplyr::distinct(ccle_name, culture, pert_time)
   for(j in 1:nrow(conditions)) {
@@ -307,21 +307,21 @@ if(nrow(DRC_TABLE_cb) > 0) {
     assay_time <- condition$pert_time
     cell_line <- condition$ccle_name
     culture <- condition$culture
-    
+
     d <- DRC_TABLE_cb %>% dplyr::inner_join(condition)
     d_cult_line <- LFC_TABLE %>% dplyr::inner_join(condition)
-    
+
     # DRC curve function
     f1 = function(x) {
       d$lower_limit + (d$upper_limit - d$lower_limit)/
         (1 + (2^x/d$ec50)^d$slope)
     }
-    
+
     # sequence for plotting curve
     xx = seq(min(log2(d_cult_line$pert_dose)),
              max(log2(d_cult_line$pert_dose)),
              length.out = 1000)
-    
+
     # plot individual data points and DRC fit line
     p = d_cult_line %>%
       ggplot() +
