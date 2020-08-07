@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # read in flagged arguments
-while getopts ":d:i:o:p:a:" arg; do
+while getopts ":t:i:o:p:a:" arg; do
   case $arg in
-    d) # is this the data processing step (0 or 1)
+    t) # is this the data processing step (0 or 1)
       type=${OPTARG};;
     i) # specify input folder
       data_dir=${OPTARG};;
