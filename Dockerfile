@@ -9,7 +9,7 @@ COPY ./pre_processing.R /pre_processing.R
 COPY ./aws_batch.sh /clue/bin/aws_batch
 
 WORKDIR /
-env PATH /clue/bin:$PATH
+ENV PATH /clue/bin:$PATH
 RUN ["chmod","-R", "+x", "/clue/bin"]
 ENTRYPOINT ["aws_batch"]
 
