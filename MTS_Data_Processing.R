@@ -51,7 +51,7 @@ base_day <- data.table::fread(path_inst_info) %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure)
 
 if (nrow(base_day) > 0) {
-  dplyr::rename(pert_name = pert_iname)
+  base_day %<>% dplyr::rename(pert_name = pert_iname)
   if (!("pert_mfc_id") %in% colnames(base_day)){
     base_day %<>% dplyr::mutate(pert_mfc_id = pert_id)
   }
