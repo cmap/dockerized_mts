@@ -65,6 +65,7 @@ raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 # melt matrix into data tables and join with inst and cell info
 master_logMFI <- log2(raw_matrix) %>%
   reshape2::melt(varnames = c("rid", "profile_id"), value.name = "logMFI") %>%
+  dplyr::filter(!is.na(logMFI)) %>%
   dplyr::inner_join(cell_info) %>%
   dplyr::inner_join(inst_info) %>%
   dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate, pert_time,
@@ -113,8 +114,6 @@ compounds_logMFI %<>%
   dplyr::ungroup()
 
 master_logMFI <- dplyr::bind_rows(compounds_logMFI, controls_logMFI)
-
-base_day_num <- as.numeric(str_sub(unique(base_day$pert_time), 1, -2))/24
 
 # create barcode tables
 barcodes <- master_logMFI %>%
@@ -226,16 +225,16 @@ CONTROL_GR <- tryCatch(expr = {base_normalized %>%
                         dplyr::summarize(mLMFI.d = median(LMFI),
                                          n.d = n(),
                                          var.d = (mad(LMFI)^2/n.d) * pi/2) %>%
-                        dplyr::select(-n.d))
+                        dplyr::select(-n.d)) %>%
+    dplyr::mutate(base_day_num = as.numeric(str_sub(pert_base_time, 1, -2))/24)
 }, error = function(e) {
   return(NA)
 })
 # treatment
 GR_TABLE <- tryCatch(expr = {logMFI_normalized %>%
-    dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
     # now group by compound
     dplyr::group_by(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
-                    ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
+                    ccle_name, rid, pool_id, culture, pert_time) %>%
     dplyr::summarize(mLMFI.t = median(LMFI),
                      n.t = n(),
                      var.t = (mad(LMFI)^2/n.t) * pi/2) %>%  # n.t = 3 (replicates)
@@ -260,9 +259,9 @@ GR_TABLE <- tryCatch(expr = {GR_TABLE %>%
                   var.control = (var.c + var.d)/(assay_length - base_day_num)^2,
                   GR = (2^Z) - 1) %>%
     dplyr::distinct(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
-                    rid, ccle_name, culture, pool_id, pert_time, assay_length,
+                    rid, ccle_name, culture, pool_id, pert_time, assay_length, base_day_num,
                     control_lfc, treatment_lfc, Z, var.treatment, var.control, GR) %>%
-    dplyr::mutate(base_day = base_day_num)
+    dplyr::rename(base_day = base_day_num)
 }, error = function(e) {
   return(tibble())
 })

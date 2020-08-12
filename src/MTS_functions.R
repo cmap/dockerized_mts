@@ -74,7 +74,7 @@ make_long_map <- function(df) {
   }
 
   new_map %<>%
-    dplyr::filter(pert_iname != "Untrt") %>%
+    dplyr::filter(!(pert_iname %in% c("Untrt", ""))) %>%
     dplyr::select(intersect(colnames(.), colnames(pert2))) %>%
     dplyr::mutate(pert_type = ifelse(pert_iname %in% c("PBS", "DMSO"), "ctl_vehicle", pert_type))
 
