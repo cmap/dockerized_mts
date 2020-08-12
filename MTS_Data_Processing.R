@@ -110,7 +110,7 @@ compounds_logMFI %<>%
                    pert_mfc_id = ifelse(any(pert_name %in% varied_compounds$pert_name),
                                         pert_mfc_id[pert_name %in% varied_compounds$pert_name],
                                         pert_mfc_id),
-                   pert_name = paste(unique(pert_name), collapse = "_")) %>%
+                   pert_name = paste(sort(unique(pert_name)), collapse = "_")) %>%
   dplyr::ungroup()
 
 master_logMFI <- dplyr::bind_rows(compounds_logMFI, controls_logMFI)
