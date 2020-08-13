@@ -421,11 +421,16 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
 #---- Write to .csv ----
 # raw logMFI
 readr::write_csv(master_logMFI, paste0(project_dir, "/logMFI.csv"))
+readr::write_csv(logMFI_base, paste0(project_dir, "/base_logMFI.csv"))
 
 # normalized logMFI
 logMFI_normalized %>%
   dplyr::select(-rLMFI) %>%
   readr::write_csv(., paste0(project_dir, "/logMFI_NORMALIZED.csv"))
+base_normalized %>%
+  dplyr::select(-rLMFI) %>%
+  readr::write_csv(., paste0(project_dir, "/base_NORMALIZED.csv"))
+
 
 # QC table
 readr::write_csv(SSMD_TABLE, paste0(project_dir, "/SSMD_TABLE.csv"))
