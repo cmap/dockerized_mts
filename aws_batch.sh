@@ -19,16 +19,17 @@ done
 if [ "$type" == "1" ] ; then
   IFS=',' read -r -a a_projects <<< "${projects}"
   batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-  project="${a_projects[${batch_index}]}"
   chmod +x /data_processing.R
   chmod +x /src/MTS_functions.R
-  export HDF5_USE_FILE_LOCKING=FALSE
-  Rscript /data_processing.R "${data_dir}" "${output_dir}" "${project}" "${assay}"
+  pert_name=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_name')
+  project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].project_id')
+  echo "${data_dir}" "${output_dir}" "${project}" "${pert_name}"
+  Rscript /data_processing.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}"
 else
-  batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
   chmod +x /pre_processing.R
   chmod +x /src/MTS_functions.R
   export HDF5_USE_FILE_LOCKING=FALSE
+  echo "${data_dir}" "${output_dir}" "${assay}" "${project_key}"
   Rscript /pre_processing.R "${data_dir}" "${output_dir}" "${assay}" "${project_key}"
 fi
 
