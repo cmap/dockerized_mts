@@ -3,7 +3,8 @@
   <component name="ChangeListManager">
     <list default="true" id="4b6d487a-e36a-4c42-a4d9-1567878a74be" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker-run-aws.sh" beforeDir="false" afterPath="$PROJECT_DIR$/docker-run-aws.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/aws_batch.sh" beforeDir="false" afterPath="$PROJECT_DIR$/aws_batch.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-run-aws-2.sh" beforeDir="false" afterPath="$PROJECT_DIR$/docker-run-aws-2.sh" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
