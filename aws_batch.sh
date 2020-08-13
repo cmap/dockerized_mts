@@ -1,29 +1,37 @@
 #!/bin/bash
 
 # read in flagged arguments
-while getopts ":i:o:p:a:" arg; do
+while getopts ":t:i:o:p:a:" arg; do
   case $arg in
+    t) # is this the data processing step (0 or 1)
+      type=${OPTARG};;
     i) # specify input folder
-      data_dir=${OPTARG}
-      ;;
+      data_dir=${OPTARG};;
     o) # specifcy output folder
-      output_dir=${OPTARG}
-      ;;
+      output_dir=${OPTARG};;
     p) # specify the directory holding project_key.csv
-      project_key_dir=${OPTARG}
-      ;;
+      project_key=${OPTARG};;
     a) # specify assay/build (PR300 or PR500)
       assay=${OPTARG}
   esac
 done
 
-IFS=',' read -r -a a_projects <<< "${projects}"
-batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-project="${a_projects[${batch_index}]}"
-chmod +x /MTS_Data_Processing.R
-chmod +x /src/MTS_functions.R
-export HDF5_USE_FILE_LOCKING=FALSE
-Rscript /MTS_Data_Processing.R "${data_dir}" "${output_dir}" "${project}" "${assay}" "${project_key_dir}"
+if [ "$type" == "1" ] ; then
+  IFS=',' read -r -a a_projects <<< "${projects}"
+  batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+  chmod +x /data_processing.R
+  chmod +x /src/MTS_functions.R
+  pert_name=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_name')
+  project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].project_id')
+  echo "${data_dir}" "${output_dir}" "${project}" "${pert_name}"
+  Rscript /data_processing.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}"
+else
+  chmod +x /pre_processing.R
+  chmod +x /src/MTS_functions.R
+  export HDF5_USE_FILE_LOCKING=FALSE
+  echo "${data_dir}" "${output_dir}" "${assay}" "${project_key}"
+  Rscript /pre_processing.R "${data_dir}" "${output_dir}" "${assay}" "${project_key}"
+fi
 
 exit_code=$?
 

@@ -116,7 +116,7 @@ control_medians <- function(X) {
 normalize <- function(X, barcodes) {
   normalized <- X %>%
     dplyr::group_by(prism_replicate, pert_well) %>%
-    # try with k=5 (to avoid hanging), try again with unspecified k
+    # try with k=4 and 5 (to avoid hanging), try again with unspecified k
     dplyr::mutate(LMFI = tryCatch(
       expr = {tryCatch(
         expr = {scam(y ~ s(x, bs = "micv", k = 4),

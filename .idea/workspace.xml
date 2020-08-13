@@ -2,9 +2,17 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4b6d487a-e36a-4c42-a4d9-1567878a74be" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data_wrapper.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docker-run-aws-2.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pre_processing.R" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker_base/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/docker_base/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MTS_Data_Processing.R" beforeDir="false" afterPath="$PROJECT_DIR$/data_processing.R" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/aws_batch.sh" beforeDir="false" afterPath="$PROJECT_DIR$/aws_batch.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-run-aws.sh" beforeDir="false" afterPath="$PROJECT_DIR$/docker-run-aws.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker_wrapper.sh" beforeDir="false" afterPath="$PROJECT_DIR$/pre_wrapper.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/MTS_functions.R" beforeDir="false" afterPath="$PROJECT_DIR$/src/MTS_functions.R" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
