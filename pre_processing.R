@@ -80,9 +80,7 @@ compounds_logMFI <- master_logMFI %>%
   dplyr::left_join(key_table %>% dplyr::select(pert_name, project_id))
 
 controls_logMFI <- master_logMFI %>%
-  dplyr::filter(pert_type != "trt_cp",
-                prism_replicate %in% unique(compounds_logMFI$prism_replicate) |
-                  str_detect(prism_replicate, "BASE")) %>%
+  dplyr::filter(pert_type != "trt_cp") %>%
   dplyr::mutate(project_id = "controls")
 
 varied_compounds <- compounds_logMFI %>%
