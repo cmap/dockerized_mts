@@ -328,8 +328,10 @@ if(nrow(DRC_TABLE_cb) > 0) {
     cell_line <- condition$ccle_name
     culture <- condition$culture
     
-    d <- DRC_TABLE_cb %>% dplyr::inner_join(condition)
-    d_cult_line <- LFC_TABLE %>% dplyr::inner_join(condition)
+    d <- DRC_TABLE_cb %>% dplyr::inner_join(condition,
+                                            by = c("ccle_name", "culture", "pert_time"))
+    d_cult_line <- LFC_TABLE %>% dplyr::inner_join(condition,
+                                                   by = c("ccle_name", "culture", "pert_time"))
     
     # DRC curve function
     f1 = function(x) {
