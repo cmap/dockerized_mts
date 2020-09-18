@@ -358,5 +358,5 @@ if(nrow(DRC_TABLE_cb) > 0) {
     print(p)
   }
   # closes .pdf
-  dev.off()
+  invisible(dev.off())
 }
