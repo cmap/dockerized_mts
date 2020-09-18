@@ -26,6 +26,15 @@ logMFI_normalized <- data.table::fread(paste0(base_dir, "/logMFI_NORMALIZED.csv"
 logMFI_normalized %<>%
   dplyr::filter(project_id %in% c(project_name, "controls"),
                 pert_name == compound | pert_type != "trt_cp")
+mfc_ids <- logMFI_normalized %>%
+  dplyr::filter(pert_name == compound) %>%
+  dplyr::distinct(pert_mfc_id) %>%
+  .$pert_mfc_id
+if (length(mfc_ids) > 1) {
+  mfc_id <- mfc_ids[which.max(nchar(mfc_ids))]
+  logMFI_normalized %<>%
+    dplyr::mutate(pert_mfc_id = ifelse(pert_name == compound, mfc_id, pert_mfc_id))
+}
 base_normalized <- logMFI_normalized %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"))
 logMFI_normalized %<>%

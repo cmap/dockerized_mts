@@ -43,7 +43,10 @@ cell_info <- data.table::fread(path_cell_info) %>%
 # combine with CMap assay info
 inst_info <- data.table::fread(path_inst_info) %>%
   dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
-  make_long_map(.)
+  make_long_map(.) %>%
+  dplyr::mutate(pert_dose = round(pert_dose, 4),
+                pert_idose = paste(pert_dose, word(pert_idose, 2)),
+                pert_idose =ifelse(pert_idose == "NA NA", NA, pert_idose))
 base_day <- data.table::fread(path_inst_info) %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure)
 
@@ -77,7 +80,9 @@ master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_cpd")] <-
 
 compounds_logMFI <- master_logMFI %>%
   dplyr::filter(pert_type == "trt_cp") %>%
-  dplyr::left_join(key_table %>% dplyr::select(pert_name, project_id))
+  dplyr::left_join(key_table %>% dplyr::select(pert_name, project_id)) %>%
+  dplyr::filter(!(str_detect(prism_replicate, "PMTS030") & project_id == "MTS014 Validation Compounds")) %>%
+  dplyr::filter(!(project_id == "MTS014 Validation Compounds Vibliome" & str_detect(prism_replicate, "PMTS030", negate = T)))
 
 controls_logMFI <- master_logMFI %>%
   dplyr::filter(pert_type != "trt_cp") %>%
