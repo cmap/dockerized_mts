@@ -51,7 +51,8 @@ print("Calculating log-fold changes")
 LFC_TABLE <- logMFI_normalized %>%
   # join with SSMD (to filter bad lines)
   dplyr::inner_join(SSMD_TABLE %>%
-                      dplyr::distinct(ccle_name, prism_replicate, culture, pass)) %>%
+                      dplyr::distinct(ccle_name, prism_replicate, culture, pass),
+                    by = c("prism_replicate", "ccle_name", "culture")) %>%
   dplyr::filter(pass) %>%
   dplyr::group_by(prism_replicate, ccle_name, culture) %>%
   # calculate LFC (LMFI - median(LMFIcontrol))
@@ -80,7 +81,8 @@ CONTROL_GR <- tryCatch(expr = {base_normalized %>%
     dplyr::group_by(pert_time, ccle_name, rid, pool_id, culture) %>%  # no compound to group by
     dplyr::summarize(mLMFI.c = median(LMFI),
                      n.c = n(),
-                     var.c = (mad(LMFI)^2/n.c) * pi/2) %>%  # n = replicates (~300)
+                     var.c = (mad(LMFI)^2/n.c) * pi/2,
+                     .groups = "drop") %>%  # n = replicates (~300)
     dplyr::select(-n.c) %>%
     dplyr::ungroup() %>%
     dplyr::rename(pert_base_time = pert_time) %>%
@@ -91,7 +93,8 @@ CONTROL_GR <- tryCatch(expr = {base_normalized %>%
                         dplyr::group_by(ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
                         dplyr::summarize(mLMFI.d = median(LMFI),
                                          n.d = n(),
-                                         var.d = (mad(LMFI)^2/n.d) * pi/2) %>%
+                                         var.d = (mad(LMFI)^2/n.d) * pi/2,
+                                         .groups = "drop") %>%
                         dplyr::select(-n.d)) %>%
     dplyr::mutate(base_day_num = as.numeric(str_sub(pert_base_time, 1, -2))/24)
 }, error = function(e) {
@@ -104,7 +107,8 @@ GR_TABLE <- tryCatch(expr = {logMFI_normalized %>%
                     ccle_name, rid, pool_id, culture, pert_time) %>%
     dplyr::summarize(mLMFI.t = median(LMFI),
                      n.t = n(),
-                     var.t = (mad(LMFI)^2/n.t) * pi/2) %>%  # n.t = 3 (replicates)
+                     var.t = (mad(LMFI)^2/n.t) * pi/2,
+                     .groups = "drop") %>%  # n.t = 3 (replicates)
     dplyr::select(-n.t) %>%
     dplyr::inner_join(CONTROL_GR) %>%
     dplyr::ungroup()
@@ -289,7 +293,8 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
                   pert_dose, pert_idose, compound_plate, pert_time) %>%
   # LFC and LFC.cb values will be medians across replicates
   dplyr::summarize(LFC = median(LFC, na.rm = TRUE),
-                   LFC.cb = median(LFC.cb, na.rm = TRUE)) %>%
+                   LFC.cb = median(LFC.cb, na.rm = TRUE),
+                   .groups = "drop") %>%
   dplyr::ungroup()
 
 
