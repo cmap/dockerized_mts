@@ -160,9 +160,9 @@ if (nrow(DRC_TABLE_cb > 0)) {
     # fit curve
     a = tryCatch(dr4pl(dose = d$pert_dose, response = 2^d$LFC.cb,
                        method.init = "logistic", trend = "decreasing"),
-                 error = function(e) NA)
+                 error = function(e) return(NA))
     # get parameters
-    param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) NA)
+    param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) return(NA))
     if (!is.na(param)) {
       d %<>%
         dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
@@ -232,8 +232,8 @@ if (nrow(GR_TABLE) > 0) {
       
       a = tryCatch(dr4pl(dose = d$pert_dose, response = d$GR,
                          method.init = "logistic", trend = "decreasing"),
-                   error = function(e) NA)
-      param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) NA)
+                   error = function(e) return(NA))
+      param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) return(NA))
       if (!is.na(param)) {
         d %<>%
           dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
