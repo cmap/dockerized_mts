@@ -95,7 +95,8 @@ CONTROL_GR <- tryCatch(expr = {base_normalized %>%
                                          n.d = n(),
                                          var.d = (mad(LMFI)^2/n.d) * pi/2,
                                          .groups = "drop") %>%
-                        dplyr::select(-n.d)) %>%
+                        dplyr::select(-n.d),
+                      by = c("ccle_name", "rid", "pool_id", "culture")) %>%
     dplyr::mutate(base_day_num = as.numeric(str_sub(pert_base_time, 1, -2))/24)
 }, error = function(e) {
   return(NA)
@@ -110,7 +111,8 @@ GR_TABLE <- tryCatch(expr = {logMFI_normalized %>%
                      var.t = (mad(LMFI)^2/n.t) * pi/2,
                      .groups = "drop") %>%  # n.t = 3 (replicates)
     dplyr::select(-n.t) %>%
-    dplyr::inner_join(CONTROL_GR) %>%
+    dplyr::inner_join(CONTROL_GR,
+                      by = c("ccle_name", "rid", "pool_id", "culture", "pert_time")) %>%
     dplyr::ungroup()
 }, error = function(e) {
   return(tibble())
