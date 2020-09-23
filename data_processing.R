@@ -22,6 +22,7 @@ comp_dir <- paste(project_dir, write_name, sep = fixed("/"))
 if (!dir.exists(comp_dir)) {dir.create(comp_dir, recursive = T)}
 
 #---- Load the data ----
+print("Loading data and pre-processing")
 logMFI_normalized <- data.table::fread(paste0(base_dir, "/logMFI_NORMALIZED.csv"))
 logMFI_normalized %<>%
   dplyr::filter(project_id %in% c(project_name, "controls"),
@@ -46,6 +47,7 @@ logMFI_normalized %<>% dplyr::filter(prism_replicate %in% plates$prism_replicate
 SSMD_TABLE <- data.table::fread(paste0(base_dir, "/SSMD_TABLE.csv"))
 
 #---- Compute log-fold changes ----
+print("Calculating log-fold changes")
 LFC_TABLE <- logMFI_normalized %>%
   # join with SSMD (to filter bad lines)
   dplyr::inner_join(SSMD_TABLE %>%
@@ -60,6 +62,7 @@ LFC_TABLE <- logMFI_normalized %>%
   dplyr::ungroup()
 
 #---- Correct for pool effects ----
+print("ComBat correcting")
 LFC_TABLE %<>%
   dplyr::filter(pert_type == "trt_cp") %>%
   dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
@@ -72,6 +75,7 @@ LFC_TABLE %<>%
 
 #---- Compute growth rates ----
 # control (base) and DMSO
+print("Calculating GR metrics")
 CONTROL_GR <- tryCatch(expr = {base_normalized %>%
     dplyr::group_by(pert_time, ccle_name, rid, pool_id, culture) %>%  # no compound to group by
     dplyr::summarize(mLMFI.c = median(LMFI),
@@ -138,6 +142,7 @@ DRC_TABLE_cb <- LFC_TABLE %>%
   dplyr::filter(n > 3)  # only fit curves with 4+ doses
 
 if (nrow(DRC_TABLE_cb > 0)) {
+  print("Fitting dose-response curves")
   DRC_TABLE_cb %<>% dplyr::mutate(ix = 1:n())
   DRC_cb <- list()  # empty tibble to track results
   
@@ -145,13 +150,12 @@ if (nrow(DRC_TABLE_cb > 0)) {
   for (jx in 1:nrow(DRC_TABLE_cb)) {
     d = DRC_TABLE_cb %>%
       dplyr::filter(ix == jx) %>%
-      dplyr::left_join(LFC_TABLE)
+      dplyr::left_join(LFC_TABLE, by = c("ccle_name", "culture", "pert_mfc_id",
+                                         "pert_name", "pert_time"))
     
     # fit curve
-    a = tryCatch(dr4pl(dose = d$pert_dose,
-                       response = 2^d$LFC.cb,
-                       method.init = "logistic",
-                       trend = "decreasing"),
+    a = tryCatch(dr4pl(dose = d$pert_dose, response = 2^d$LFC.cb,
+                       method.init = "logistic", trend = "decreasing"),
                  error = function(e) NA)
     # get parameters
     param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) NA)
@@ -194,7 +198,7 @@ if (nrow(DRC_TABLE_cb > 0)) {
     DRC_TABLE_cb <- DRC_cb %>%
       dplyr::bind_rows() %>%
       dplyr::filter(convergence) %>%
-      dplyr::left_join(DRC_TABLE_cb) %>%
+      dplyr::left_join(DRC_TABLE_cb, by = c("ix")) %>%
       dplyr::select(-ix, -convergence, -n)
   } else {
     print("Unable to fit any dose-response curves in LFC space")
@@ -206,6 +210,7 @@ if (nrow(DRC_TABLE_cb > 0)) {
 
 # GROWTH RATE DOSE-RESPONSE
 if (nrow(GR_TABLE) > 0) {
+  print("Fitting growth dose-response curves")
   DRC_TABLE_growth <- GR_TABLE %>%
     dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time) %>%
     dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
@@ -213,18 +218,16 @@ if (nrow(GR_TABLE) > 0) {
   
   if (nrow(DRC_TABLE_growth > 0)) {
     DRC_TABLE_growth %<>% dplyr::mutate(ix = 1:n())
-    
     DRC_gr <- list()
     
     for (jx in 1:nrow(DRC_TABLE_growth)) {
       d = DRC_TABLE_growth %>%
         dplyr::filter(ix == jx) %>%
-        dplyr::left_join(GR_TABLE)
+        dplyr::left_join(GR_TABLE, by = c("ccle_name", "culture", "pert_mfc_id",
+                                          "pert_name", "pert_time"))
       
-      a = tryCatch(dr4pl(dose = d$pert_dose,
-                         response = d$GR,
-                         method.init = "logistic",
-                         trend = "decreasing"),
+      a = tryCatch(dr4pl(dose = d$pert_dose, response = d$GR,
+                         method.init = "logistic", trend = "decreasing"),
                    error = function(e) NA)
       param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) NA)
       if (!is.na(param)) {
@@ -266,10 +269,10 @@ if (nrow(GR_TABLE) > 0) {
       DRC_TABLE_growth <- DRC_gr %>%
         dplyr::bind_rows() %>%
         dplyr::filter(convergence) %>%
-        dplyr::left_join(DRC_TABLE_growth) %>%
+        dplyr::left_join(DRC_TABLE_growth, by = c("ix")) %>%
         dplyr::select(-ix, -convergence, -n)
     } else {
-      print("unable to fit any dose-response curves in GR space")
+      print("Unable to fit any dose-response curves in GR space")
       DRC_TABLE_growth <- tibble()
     }
   } else {
@@ -284,7 +287,7 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
                                                sep = stringr::fixed("_"))) %>%
   dplyr::group_by(ccle_name, culture, pool_id, pert_name, pert_mfc_id,
                   pert_dose, pert_idose, compound_plate, pert_time) %>%
-  # LFC and LFC.cb values will be medains across replicates
+  # LFC and LFC.cb values will be medians across replicates
   dplyr::summarize(LFC = median(LFC, na.rm = TRUE),
                    LFC.cb = median(LFC.cb, na.rm = TRUE)) %>%
   dplyr::ungroup()
@@ -314,6 +317,7 @@ if(nrow(GR_TABLE) > 0) {
 
 #---- Generate DRC plots ----
 if(nrow(DRC_TABLE_cb) > 0) {
+  print("Generating plot PDFs")
   # dose response data
   DRC_TABLE_cb %<>% dplyr::arrange(auc)
   
