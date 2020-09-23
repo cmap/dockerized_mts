@@ -5,5 +5,6 @@ open_shell_in_container.sh
 dockerized_mts.Rproj
 README.md
 .gitignore
+docker-run-aws-aboghoss.sh
+docker-run-pre-aboghoss.sh
 docker_base/*
-
