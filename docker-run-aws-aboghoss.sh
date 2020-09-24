@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 docker run \
---name az-test \
+--name az-test-2 \
 -v /Users/aboghoss/Downloads/MTS014_PR300_RERUN:/data \
--e projects='[ { "project_id": "MTS014 DMC AbbVie", "pert_name": "AbbVie-B12" } ]' \
+-e projects='[ { "project_id": "MTS014 Validation Compounds", "pert_name": "AZ-628" } ]' \
 -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
 -it cmap/clue-mts \
 -i /data \
