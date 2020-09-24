@@ -44,9 +44,9 @@ cell_info <- data.table::fread(path_cell_info) %>%
 inst_info <- data.table::fread(path_inst_info) %>%
   dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
   make_long_map(.) %>%
-  dplyr::mutate(pert_dose = round(pert_dose, 4),
+  dplyr::mutate(pert_dose = ifelse(pert_dose >= 0.001, round(pert_dose, 4), pert_dose),
                 pert_idose = paste(pert_dose, word(pert_idose, 2)),
-                pert_idose =ifelse(pert_idose == "NA NA", NA, pert_idose))
+                pert_idose = ifelse(pert_idose == "NA NA", NA, pert_idose))
 base_day <- data.table::fread(path_inst_info) %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure)
 
