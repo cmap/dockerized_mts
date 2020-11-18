@@ -125,7 +125,8 @@ master_logMFI %<>%
 #---- Normalize ----
 
 # compute control barcode median of medians for normalization
-logMFI_control_medians <- control_medians(master_logMFI)
+logMFI_control_medians <- control_medians(master_logMFI %>%
+                                            dplyr::filter(is.finite(logMFI)))
 
 # fit curve to controls and predict test conditions
 logMFI_normalized <- normalize(logMFI_control_medians, barcodes)
@@ -139,7 +140,7 @@ if(nrow(logMFI_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-
+  
   base_normalized <- logMFI_base %>%
     dplyr::left_join(logMFI_profile) %>%
     normalize(., barcodes)
