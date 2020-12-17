@@ -39,7 +39,7 @@ if (length(mfc_ids) > 1) {
 base_normalized <- logMFI_normalized %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"))
 logMFI_normalized %<>%
-  dplyr::filter(!str_detect(prism_replicate, "BASE"))
+  dplyr::filter(str_detect(prism_replicate, "BASE", negate = T))
 plates <- logMFI_normalized %>% 
   dplyr::filter(pert_type == "trt_cp") %>%
   dplyr::distinct(prism_replicate)

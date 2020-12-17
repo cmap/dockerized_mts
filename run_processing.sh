@@ -6,7 +6,7 @@ while IFS=, read -r name project; do
      continue
   fi
   docker run \
-  -v /Users/aboghoss/Downloads/DEEP_pruned:/data \
+  -v /Users/aboghoss/Downloads/MTS015_PR500:/data \
   -e projects="[ { 'project_id': $project, 'pert_name': $name } ]" \
   -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
   cmap/clue-mts \
@@ -14,4 +14,4 @@ while IFS=, read -r name project; do
   -o /data \
   -t "1"
 
-done < ~/Downloads/DEEP_pruned/project_key.csv
+done < ~/Downloads/MTS015_PR500/project_key.csv

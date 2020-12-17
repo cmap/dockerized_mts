@@ -2,11 +2,11 @@
 
 docker run \
 --name pre-test \
--v /Users/aboghoss/Downloads/MTS014_PR300_RERUN:/data \
+-v /Users/aboghoss/Downloads/MTS015_PR500:/data \
 -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
 -it cmap/clue-mts \
 -i /data \
 -o /data \
 -t "0" \
 -p /data \
--a "PR300"
+-a "PR500"
