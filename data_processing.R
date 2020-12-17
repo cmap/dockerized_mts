@@ -44,16 +44,24 @@ plates <- logMFI_normalized %>%
   dplyr::filter(pert_type == "trt_cp") %>%
   dplyr::distinct(prism_replicate)
 logMFI_normalized %<>% dplyr::filter(prism_replicate %in% plates$prism_replicate)
-SSMD_TABLE <- data.table::fread(paste0(base_dir, "/SSMD_TABLE.csv"))
+SSMD_TABLE <- data.table::fread(paste0(base_dir, "/SSMD_TABLE.csv")) %>%
+  dplyr::filter(prism_replicate %in% plates$prism_replicate)
 
 #---- Compute log-fold changes ----
 print("Calculating log-fold changes")
-LFC_TABLE <- logMFI_normalized %>%
-  # join with SSMD (to filter bad lines)
-  dplyr::inner_join(SSMD_TABLE %>%
-                      dplyr::distinct(ccle_name, prism_replicate, culture, pass),
-                    by = c("prism_replicate", "ccle_name", "culture")) %>%
-  dplyr::filter(pass) %>%
+LFC_TABLE <- logMFI_normalized
+# if QC able to be applied
+if (!all(is.na(SSMD_TABLE$pass))) {
+  LFC_TABLE %<>% 
+    # join with SSMD (to filter bad lines)
+    dplyr::inner_join(SSMD_TABLE %>%
+                        dplyr::distinct(ccle_name, prism_replicate, culture, pass),
+                      by = c("prism_replicate", "ccle_name", "culture")) %>%
+    dplyr::filter(pass)
+} else {
+  print("Problem with QC metrics: including all lines")
+}
+LFC_TABLE %<>%
   dplyr::group_by(prism_replicate, ccle_name, culture) %>%
   # calculate LFC (LMFI - median(LMFIcontrol))
   dplyr::mutate(LFC = LMFI - median(LMFI[pert_type == "ctl_vehicle"])) %>%
