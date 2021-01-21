@@ -8,3 +8,5 @@ README.md
 docker-run-aws-aboghoss.sh
 docker-run-pre-aboghoss.sh
 docker_base/*
+.git
+.Rproj.user
