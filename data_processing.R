@@ -359,8 +359,7 @@ if(nrow(DRC_TABLE_cb) > 0) {
     }
     
     # sequence for plotting curve
-    xx = seq(min(log2(d_cult_line$pert_dose)),
-             max(log2(d_cult_line$pert_dose)),
+    xx = seq(log2(d$min_dose), log2(d$max_dose),
              length.out = 1000)
     
     # plot individual data points and DRC fit line
@@ -369,7 +368,7 @@ if(nrow(DRC_TABLE_cb) > 0) {
       geom_point(aes(x = log2(pert_dose),
                      color = prism_replicate, y = 2^LFC.cb)) +
       geom_line(data = tibble(x = xx, y = f1(xx)),
-                aes(x = x, y = y, group = 1),  lwd =1 ) +
+                aes(x = x, y = y, group = 1),  lwd =1) +
       ylim(0,2) + theme_bw() +
       labs(x = 'log2(Dose) (uM)', y = 'Viability', color = "",
            title = paste0(compound, "-", assay_time, "\n", cell_line,' - ', culture,
