@@ -92,19 +92,34 @@ varied_compounds <- compounds_logMFI %>%
   dplyr::distinct(pert_name, pert_idose) %>%
   dplyr::group_by(pert_name) %>%
   dplyr::summarise(n = n(), .groups = "drop") %>%
-  dplyr::filter(n > 1)
+  dplyr::filter(n > 1) %>%
+  dplyr::mutate(full_curve = ifelse(n < 7, F, T))
+
+curve_comps <- varied_compounds %>%
+  dplyr::filter(full_curve)
+non_curve_comps <- varied_compounds %>%
+  dplyr::filter(!full_curve, n > 1)
+compounds_logMFI %<>%
+  dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
+                  pert_type, pert_well, pert_time, logMFI, project_id) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(pert_name = ifelse(pert_name %in% non_curve_comps$pert_name & n > 1,
+                                   paste(pert_name, pert_idose, sep = "_"),
+                                   pert_name))
 
 compounds_logMFI %<>%
   dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
                   pert_type, pert_well, pert_time, logMFI, project_id) %>%
-  dplyr::summarise(pert_dose = ifelse(any(pert_name %in% varied_compounds$pert_name),
-                                      pert_dose[pert_name %in% varied_compounds$pert_name],
+  dplyr::mutate(n = n()) %>%
+  dplyr::summarise(pert_dose = ifelse(any(pert_name %in% curve_comps$pert_name),
+                                      pert_dose[pert_name %in% curve_comps$pert_name],
                                       pert_dose),
-                   pert_idose = ifelse(any(pert_name %in% varied_compounds$pert_name),
-                                       pert_idose[pert_name %in% varied_compounds$pert_name],
+                   pert_idose = ifelse(any(pert_name %in% curve_comps$pert_name),
+                                       pert_idose[pert_name %in% curve_comps$pert_name],
                                        pert_idose),
-                   pert_mfc_id = ifelse(any(pert_name %in% varied_compounds$pert_name),
-                                        pert_mfc_id[pert_name %in% varied_compounds$pert_name],
+                   pert_mfc_id = ifelse(any(pert_name %in% curve_comps$pert_name),
+                                        pert_mfc_id[pert_name %in% curve_comps$pert_name],
                                         pert_mfc_id),
                    pert_name = paste(sort(unique(pert_name)), collapse = "_"),
                    .groups = "drop")
