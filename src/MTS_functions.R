@@ -110,7 +110,7 @@ control_medians <- function(X) {
     dplyr::mutate(mLMFI = median(logMFI)) %>%  # median for rep
     dplyr::group_by(prism_replicate, rid) %>%
     dplyr::mutate(mmLMFI = logMFI - mLMFI + median(mLMFI)) %>%  # normalized value for rep
-    dplyr::summarize(rLMFI = median(mmLMFI)) %>%  # median normalized value across reps
+    dplyr::summarise(rLMFI = median(mmLMFI), .groups = "drop") %>%  # median normalized value across reps
     dplyr::left_join(X)
 
   return(ref)

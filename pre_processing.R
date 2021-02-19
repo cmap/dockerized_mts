@@ -91,14 +91,13 @@ controls_logMFI <- master_logMFI %>%
 varied_compounds <- compounds_logMFI %>%
   dplyr::distinct(pert_name, pert_idose) %>%
   dplyr::group_by(pert_name) %>%
-  dplyr::summarize(n = n()) %>%
-  dplyr::filter(n > 1) %>%
-  dplyr::ungroup()
+  dplyr::summarise(n = n(), .groups = "drop") %>%
+  dplyr::filter(n > 1)
 
 compounds_logMFI %<>%
   dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
                   pert_type, pert_well, pert_time, logMFI, project_id) %>%
-  dplyr::summarize(pert_dose = ifelse(any(pert_name %in% varied_compounds$pert_name),
+  dplyr::summarise(pert_dose = ifelse(any(pert_name %in% varied_compounds$pert_name),
                                       pert_dose[pert_name %in% varied_compounds$pert_name],
                                       pert_dose),
                    pert_idose = ifelse(any(pert_name %in% varied_compounds$pert_name),
@@ -107,8 +106,8 @@ compounds_logMFI %<>%
                    pert_mfc_id = ifelse(any(pert_name %in% varied_compounds$pert_name),
                                         pert_mfc_id[pert_name %in% varied_compounds$pert_name],
                                         pert_mfc_id),
-                   pert_name = paste(sort(unique(pert_name)), collapse = "_")) %>%
-  dplyr::ungroup()
+                   pert_name = paste(sort(unique(pert_name)), collapse = "_"),
+                   .groups = "drop")
 
 master_logMFI <- dplyr::bind_rows(compounds_logMFI, controls_logMFI)
 
@@ -163,13 +162,14 @@ error_table <- logMFI_normalized %>%
   dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
                 is.finite(LMFI), pool_id != "CTLBC") %>%
   dplyr::group_by(rid, ccle_name, prism_replicate) %>%
-  dplyr::summarize(error_rate =
+  dplyr::summarise(error_rate =
                      min(PRROC::roc.curve(scores.class0 = LMFI,
                                           weights.class0 = pert_type == "ctl_vehicle",
                                           curve = TRUE)$curve[,1] + 1 -
                            PRROC::roc.curve(scores.class0 = LMFI,
                                             weights.class0 = pert_type == "ctl_vehicle",
-                                            curve = TRUE )$curve[,2])/2)
+                                            curve = TRUE )$curve[,2])/2,
+                   .groups = "drop")
 # join with SSMD table
 SSMD_TABLE %<>%
   dplyr::left_join(error_table) %>%
