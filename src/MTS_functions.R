@@ -77,14 +77,18 @@ make_long_map <- function(df) {
     dplyr::filter(!(pert_iname %in% c("Untrt", ""))) %>%
     dplyr::select(intersect(colnames(.), colnames(pert2))) %>%
     dplyr::mutate(pert_type = ifelse(pert_iname %in% c("PBS", "DMSO"), "ctl_vehicle", pert_type))
+  
+  if (!("pert_mfc_id") %in% colnames(new_map)){
+    new_map %<>% dplyr::mutate(pert_mfc_id = pert_id)
+  }
 
   overview <- new_map %>%
     dplyr::group_by(pert_well, pert_plate, prism_replicate, profile_id) %>%
-    dplyr::summarize(pert_types = paste(unique(pert_type), collapse = fixed("+")),
+    dplyr::summarise(pert_types = paste(unique(pert_type), collapse = fixed("+")),
                      pert_names = paste(unique(pert_iname), collapse = fixed("+")),
-                     n = n()) %>%
+                     n = n(), .groups = "drop") %>%
     dplyr::ungroup() %>%
-    dplyr::right_join(new_map) %>%
+    dplyr::right_join(new_map, by = c("pert_well", "pert_plate", "prism_replicate", "profile_id")) %>%
     dplyr::filter(!(pert_type == "ctl_vehicle" & str_detect(pert_types, "trt")))  %>%
     dplyr::mutate(pert_iname = ifelse(pert_types == "ctl_vehicle", pert_names, pert_iname),
                   pert_vehicle = ifelse(pert_types == "ctl_vehicle", pert_names, pert_vehicle),
@@ -156,8 +160,8 @@ calc_ssmd <- function(X) {
     dplyr::group_by(pert_type, prism_replicate, pert_time, ccle_name, rid,
                     pool_id, culture) %>%
     # take median and mad of results
-    dplyr::summarize(med = median(LMFI, na.rm = TRUE),
-                     mad = mad(LMFI, na.rm = TRUE)) %>%
+    dplyr::summarise(med = median(LMFI, na.rm = TRUE),
+                     mad = mad(LMFI, na.rm = TRUE), .groups = "drop") %>%
     # add to table
     dplyr::mutate(pert_type_md = paste0(pert_type, '_md'),
                   pert_type_mad = paste0(pert_type, '_mad')) %>%
@@ -168,7 +172,7 @@ calc_ssmd <- function(X) {
     dplyr::select(-pert_type) %>%
     # give each control all values (median and mad for vehicle and poscon)
     dplyr::group_by(prism_replicate, ccle_name, pert_time, rid, pool_id, culture) %>%
-    dplyr::summarize_all(sum) %>%
+    dplyr::summarise_all(sum) %>%
     # calculate SSMD and NNMD
     dplyr::mutate(ssmd = (ctl_vehicle_md - trt_poscon_md) /
                     sqrt(ctl_vehicle_mad^2 +trt_poscon_mad^2),
