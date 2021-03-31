@@ -24,5 +24,5 @@ while IFS=, read -r project id name; do
   # keep number of jobs under number of processors
   [ $( jobs | wc -l ) -ge 4 ] && wait
 
-done < /Users/aboghoss/Downloads/PREP_300/project_key.csv
+done < /Users/aboghoss/Downloads/PREP_300_reprocess/project_key.csv
 wait

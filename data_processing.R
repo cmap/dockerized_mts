@@ -45,7 +45,8 @@ plates <- logMFI_normalized %>%
   dplyr::distinct(prism_replicate)
 logMFI_normalized %<>% dplyr::filter(prism_replicate %in% plates$prism_replicate)
 SSMD_TABLE <- data.table::fread(paste0(base_dir, "/SSMD_TABLE.csv")) %>%
-  dplyr::filter(prism_replicate %in% plates$prism_replicate)
+  dplyr::filter(prism_replicate %in% plates$prism_replicate) %>%
+  dplyr::mutate(pass = pass & ctl_vehicle_md - trt_poscon_md > 1)
 
 #---- Compute log-fold changes ----
 print("Calculating log-fold changes")
