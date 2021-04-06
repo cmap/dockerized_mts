@@ -37,7 +37,7 @@ cell_info <- data.table::fread(path_cell_info) %>%
 
 # combine with CMap assay info
 inst_info <- data.table::fread(path_inst_info) %>%
-  dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure)
+  dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
   make_long_map(.) %>%
   dplyr::mutate(pert_dose = ifelse(pert_dose >= 0.001, round(pert_dose, 4), pert_dose),
                 pert_idose = paste(pert_dose, word(pert_idose, 2)),
@@ -50,7 +50,7 @@ if (nrow(base_day) > 0) {
   if (!("pert_mfc_id") %in% colnames(base_day)){
     base_day %<>% dplyr::mutate(pert_mfc_id = pert_id)
   }
-  base_day %<>% dplyr::select(colnames(inst_info))
+  base_day %<>% dplyr::select(intersect(colnames(.), colnames(inst_info)))
   inst_info %<>% dplyr::bind_rows(base_day)
 }
 
@@ -65,7 +65,7 @@ master_logMFI <- log2(raw_matrix) %>%
   dplyr::inner_join(inst_info) %>%
   dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate, pert_time,
                 pert_type, pert_dose, pert_idose, pert_mfc_id, pert_name, pert_well,
-                logMFI)
+                logMFI, project_id)
 
 # change validation (.es) to treatment for processing
 master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_poscon.es")] <-
@@ -87,7 +87,7 @@ varied_compounds <- compounds_logMFI %>%
   dplyr::group_by(pert_name) %>%
   dplyr::summarise(n = n(), .groups = "drop") %>%
   dplyr::filter(n > 1) %>%
-  dplyr::mutate(full_curve = ifelse(n < 7, F, T))
+  dplyr::mutate(full_curve = ifelse(n < 4, F, T))
 
 curve_comps <- varied_compounds %>%
   dplyr::filter(full_curve)
