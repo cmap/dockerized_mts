@@ -54,7 +54,7 @@ make_long_map <- function(df) {
     dplyr::select(!contains("2"))
   pert2 <- df %>%
     dplyr::select(contains("2"), pert_plate, pert_well, pert_time,
-                  prism_replicate, is_well_failure, profile_id)
+                  prism_replicate, is_well_failure, profile_id, x_project_id)
 
   colnames(pert2) <- sapply(colnames(pert2), FUN = function(x) rename_col(x))
 
@@ -83,12 +83,12 @@ make_long_map <- function(df) {
   }
 
   overview <- new_map %>%
-    dplyr::group_by(pert_well, pert_plate, prism_replicate, profile_id) %>%
+    dplyr::group_by(pert_well, pert_plate, prism_replicate, profile_id, x_project_id) %>%
     dplyr::summarise(pert_types = paste(unique(pert_type), collapse = fixed("+")),
                      pert_names = paste(unique(pert_iname), collapse = fixed("+")),
                      n = n(), .groups = "drop") %>%
     dplyr::ungroup() %>%
-    dplyr::right_join(new_map, by = c("pert_well", "pert_plate", "prism_replicate", "profile_id")) %>%
+    dplyr::right_join(new_map, by = c("pert_well", "pert_plate", "prism_replicate", "profile_id", "x_project_id")) %>%
     dplyr::filter(!(pert_type == "ctl_vehicle" & str_detect(pert_types, "trt")))  %>%
     dplyr::mutate(pert_iname = ifelse(pert_types == "ctl_vehicle", pert_names, pert_iname),
                   pert_vehicle = ifelse(pert_types == "ctl_vehicle", pert_names, pert_vehicle),
@@ -96,7 +96,7 @@ make_long_map <- function(df) {
                   pert_mfc_id = ifelse(pert_types == "ctl_vehicle", pert_names, pert_mfc_id)) %>%
     dplyr::select(-pert_types, -pert_names, -n) %>%
     dplyr::distinct() %>%
-    dplyr::rename(pert_name = pert_iname)
+    dplyr::rename(pert_name = pert_iname, project_id = x_project_id)
 
   return(overview)
 }
