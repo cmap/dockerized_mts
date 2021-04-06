@@ -5,7 +5,7 @@ suppressMessages(source("./src/MTS_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 4) {
+if (length(script_args) != 5) {
   stop("Please supply necessary arguments",
        call. = FALSE)
 }
@@ -13,6 +13,7 @@ base_dir <- script_args[1]
 out_dir <- script_args[2]
 project_name <- script_args[3]
 compound <- script_args[4]
+calc_gr <- as.numeric(script_args[5])
 
 safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
 write_name <- stringr::str_replace_all(compound, "[[:punct:]\\s]+", "-")
@@ -85,68 +86,74 @@ LFC_TABLE %<>%
 
 #---- Compute growth rates ----
 # control (base) and DMSO
-print("Calculating GR metrics")
-CONTROL_GR <- tryCatch(expr = {base_normalized %>%
-    dplyr::group_by(pert_time, ccle_name, rid, pool_id, culture) %>%  # no compound to group by
-    dplyr::summarize(mLMFI.c = median(LMFI),
-                     n.c = n(),
-                     var.c = (mad(LMFI)^2/n.c) * pi/2,
-                     .groups = "drop") %>%  # n = replicates (~300)
-    dplyr::select(-n.c) %>%
-    dplyr::ungroup() %>%
-    dplyr::rename(pert_base_time = pert_time) %>%
-    # join with DMSO
-    dplyr::inner_join(logMFI_normalized %>%
-                        dplyr::filter(pert_type == "ctl_vehicle") %>%
-                        dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
-                        dplyr::group_by(ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
-                        dplyr::summarize(mLMFI.d = median(LMFI),
-                                         n.d = n(),
-                                         var.d = (mad(LMFI)^2/n.d) * pi/2,
-                                         .groups = "drop") %>%
-                        dplyr::select(-n.d),
-                      by = c("ccle_name", "rid", "pool_id", "culture")) %>%
-    dplyr::mutate(base_day_num = as.numeric(str_sub(pert_base_time, 1, -2))/24)
-}, error = function(e) {
-  return(NA)
-})
-# treatment
-GR_TABLE <- tryCatch(expr = {logMFI_normalized %>%
-    # now group by compound
-    dplyr::group_by(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
-                    ccle_name, rid, pool_id, culture, pert_time) %>%
-    dplyr::summarize(mLMFI.t = median(LMFI),
-                     n.t = n(),
-                     var.t = (mad(LMFI)^2/n.t) * pi/2,
-                     .groups = "drop") %>%  # n.t = 3 (replicates)
-    dplyr::select(-n.t) %>%
-    dplyr::inner_join(CONTROL_GR,
-                      by = c("ccle_name", "rid", "pool_id", "culture", "pert_time")) %>%
-    dplyr::ungroup()
-}, error = function(e) {
-  return(tibble())
-})
+if (calc_gr) {
+  print("Calculating GR metrics")
+  CONTROL_GR <- tryCatch(expr = {base_normalized %>%
+      dplyr::group_by(pert_time, ccle_name, rid, pool_id, culture) %>%  # no compound to group by
+      dplyr::summarize(mLMFI.c = median(LMFI),
+                       n.c = n(),
+                       var.c = (mad(LMFI)^2/n.c) * pi/2,
+                       .groups = "drop") %>%  # n = replicates (~300)
+      dplyr::select(-n.c) %>%
+      dplyr::ungroup() %>%
+      dplyr::rename(pert_base_time = pert_time) %>%
+      # join with DMSO
+      dplyr::inner_join(logMFI_normalized %>%
+                          dplyr::filter(pert_type == "ctl_vehicle") %>%
+                          dplyr::mutate(assay_length = as.numeric(str_sub(pert_time, 1, -2))/24) %>%
+                          dplyr::group_by(ccle_name, rid, pool_id, culture, pert_time, assay_length) %>%
+                          dplyr::summarize(mLMFI.d = median(LMFI),
+                                           n.d = n(),
+                                           var.d = (mad(LMFI)^2/n.d) * pi/2,
+                                           .groups = "drop") %>%
+                          dplyr::select(-n.d),
+                        by = c("ccle_name", "rid", "pool_id", "culture")) %>%
+      dplyr::mutate(base_day_num = as.numeric(str_sub(pert_base_time, 1, -2))/24)
+  }, error = function(e) {
+    return(NA)
+  })
+  
+  # treatment
+  GR_TABLE <- tryCatch(expr = {logMFI_normalized %>%
+      # now group by compound
+      dplyr::group_by(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
+                      ccle_name, rid, pool_id, culture, pert_time) %>%
+      dplyr::summarize(mLMFI.t = median(LMFI),
+                       n.t = n(),
+                       var.t = (mad(LMFI)^2/n.t) * pi/2,
+                       .groups = "drop") %>%  # n.t = 3 (replicates)
+      dplyr::select(-n.t) %>%
+      dplyr::inner_join(CONTROL_GR,
+                        by = c("ccle_name", "rid", "pool_id", "culture", "pert_time")) %>%
+      dplyr::ungroup()
+  }, error = function(e) {
+    return(tibble())
+  })
+  
+  # combined
+  GR_TABLE <- tryCatch(expr = {GR_TABLE %>%
+      # calc control change (DMSO - base)/(t - base day),
+      # treatment change (treatment - DMSO)/t - control,
+      # use to calc Z (treatment/control) and GR (2^Z - 1)
+      dplyr::mutate(control_lfc = (mLMFI.d - mLMFI.c)/(assay_length - base_day_num),
+                    treatment_control_lfc = (mLMFI.t - mLMFI.d)/(assay_length),
+                    treatment_lfc = treatment_control_lfc + control_lfc,
+                    Z = treatment_lfc/control_lfc,
+                    var.treatment = (var.t/assay_length^2) + (var.d/(assay_length - base_day_num)^2) +
+                      (var.c*(1/(assay_length-base_day_num) - 1/assay_length)^2),
+                    var.control = (var.c + var.d)/(assay_length - base_day_num)^2,
+                    GR = (2^Z) - 1) %>%
+      dplyr::distinct(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
+                      rid, ccle_name, culture, pool_id, pert_time, assay_length, base_day_num,
+                      control_lfc, treatment_lfc, Z, var.treatment, var.control, GR) %>%
+      dplyr::rename(base_day = base_day_num)
+  }, error = function(e) {
+    return(tibble())
+  })
+} else {
+  GR_TABLE <- tibble()
+}
 
-# combined
-GR_TABLE <- tryCatch(expr = {GR_TABLE %>%
-    # calc control change (DMSO - base)/(t - base day),
-    # treatment change (treatment - DMSO)/t - control,
-    # use to calc Z (treatment/control) and GR (2^Z - 1)
-    dplyr::mutate(control_lfc = (mLMFI.d - mLMFI.c)/(assay_length - base_day_num),
-                  treatment_control_lfc = (mLMFI.t - mLMFI.d)/(assay_length),
-                  treatment_lfc = treatment_control_lfc + control_lfc,
-                  Z = treatment_lfc/control_lfc,
-                  var.treatment = (var.t/assay_length^2) + (var.d/(assay_length - base_day_num)^2) +
-                    (var.c*(1/(assay_length-base_day_num) - 1/assay_length)^2),
-                  var.control = (var.c + var.d)/(assay_length - base_day_num)^2,
-                  GR = (2^Z) - 1) %>%
-    dplyr::distinct(pert_mfc_id, pert_type, pert_name, pert_dose, pert_idose,
-                    rid, ccle_name, culture, pool_id, pert_time, assay_length, base_day_num,
-                    control_lfc, treatment_lfc, Z, var.treatment, var.control, GR) %>%
-    dplyr::rename(base_day = base_day_num)
-}, error = function(e) {
-  return(tibble())
-})
 
 #---- Compute dose-response parameters ----
 # table with each compound cell line combo and number of doses

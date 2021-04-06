@@ -1,6 +1,6 @@
 #!/bin/bash
 
-while IFS=, read -r project id name; do
+while IFS=, read -r project name id; do
   echo "$name $project"
 
   # skip header
@@ -12,10 +12,10 @@ while IFS=, read -r project id name; do
 
   # submit to docker
   docker run --rm \
-  -v /Users/aboghoss/Downloads/PREP_300:/data \
+  -v /Users/aboghoss/Downloads/MTS016_PR500:/data \
   -e projects="$arg_string" \
   -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
-  cmap/clue-mts \
+  aboghoss/clue-mts:dev \
   -i /data \
   -o /data \
   -t "1" \
@@ -24,5 +24,5 @@ while IFS=, read -r project id name; do
   # keep number of jobs under number of processors
   [ $( jobs | wc -l ) -ge 4 ] && wait
 
-done < /Users/aboghoss/Downloads/PREP_300_reprocess/project_key.csv
+done < /Users/aboghoss/Downloads/MTS016_PR500/project_key.csv
 wait

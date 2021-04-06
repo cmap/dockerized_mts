@@ -24,7 +24,7 @@ if [ "$type" == "1" ] ; then
   pert_name=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_name')
   project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].project_id')
   echo "${data_dir}" "${output_dir}" "${project}" "${pert_name}"
-  Rscript /data_processing.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}"
+  Rscript /data_processing.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "0"
 else
   chmod +x /pre_processing.R
   chmod +x /src/MTS_functions.R
