@@ -107,9 +107,9 @@ control_medians <- function(X) {
   ref <- X %>%
     dplyr::filter(pert_type == "ctl_vehicle") %>%  # look at controls
     dplyr::group_by(prism_replicate, pert_well) %>%
-    dplyr::mutate(mLMFI = median(logMFI)) %>%  # median for rep
-    dplyr::group_by(prism_replicate, rid) %>%
-    dplyr::mutate(mmLMFI = logMFI - mLMFI + median(mLMFI)) %>%  # normalized value for rep
+    dplyr::mutate(mLMFI = median(logMFI)) %>%  # median of each well on replicate
+    dplyr::group_by(prism_replicate, rid) %>%  # median well on each replicate
+    dplyr::mutate(mmLMFI = logMFI - mLMFI + median(mLMFI)) %>%  # normalized value for rep (to median well)
     dplyr::summarise(rLMFI = median(mmLMFI), .groups = "drop") %>%  # median normalized value across reps
     dplyr::left_join(X)
 
