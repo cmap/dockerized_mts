@@ -6,27 +6,22 @@ suppressMessages(source("./src/MTS_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 4) {
-  stop("Please supply path to data, output directory, project name, assay and project key directory (where project_key.csv is located)",
+if (length(script_args) != 3) {
+  stop("Please supply path to data, output directory, project name, and assay",
        call. = FALSE)
 }
 base_dir <- script_args[1]
 out_dir <- script_args[2]
 assay <- script_args[3]
-project_key_dir <- script_args[4]
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
-path_key <- list.files(project_key_dir, pattern = "*project_key.csv", full.names = T)
 path_data <- list.files(base_dir, pattern =  "*_LEVEL2_MFI*", full.names = T)
 path_cell_info <- list.files(base_dir, pattern = "*_cell_info*", full.names = T)
 path_inst_info <- list.files(base_dir, pattern = "*_inst_info*", full.names = T)
 
 #---- Load the data ----
-
-# data table linking drugs to projects (collaborators)
-key_table <- data.table::fread(path_key)
 
 # read in logMFI data
 raw_matrix <- read_hdf5(path_data)
@@ -42,7 +37,7 @@ cell_info <- data.table::fread(path_cell_info) %>%
 
 # combine with CMap assay info
 inst_info <- data.table::fread(path_inst_info) %>%
-  dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
+  dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure)
   make_long_map(.) %>%
   dplyr::mutate(pert_dose = ifelse(pert_dose >= 0.001, round(pert_dose, 4), pert_dose),
                 pert_idose = paste(pert_dose, word(pert_idose, 2)),
@@ -80,7 +75,6 @@ master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_cpd")] <-
 
 compounds_logMFI <- master_logMFI %>%
   dplyr::filter(pert_type == "trt_cp") %>%
-  dplyr::left_join(key_table %>% dplyr::select(pert_name, project_id)) %>%
   dplyr::filter(!(str_detect(prism_replicate, "PMTS030") & project_id == "MTS014 Validation Compounds")) %>%
   dplyr::filter(!(project_id == "MTS014 Validation Compounds Vibliome" & str_detect(prism_replicate, "PMTS030", negate = T)))
 
