@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # read in flagged arguments
-while getopts ":t:i:o:p:a:" arg; do
+while getopts ":t:i:o:a:" arg; do
   case $arg in
     t) # is this the data processing step (0 or 1)
       type=${OPTARG};;
@@ -9,8 +9,6 @@ while getopts ":t:i:o:p:a:" arg; do
       data_dir=${OPTARG};;
     o) # specifcy output folder
       output_dir=${OPTARG};;
-    p) # specify the directory holding project_key.csv
-      project_key=${OPTARG};;
     a) # specify assay/build (PR300 or PR500)
       assay=${OPTARG}
   esac
@@ -30,7 +28,7 @@ else
   chmod +x /src/MTS_functions.R
   export HDF5_USE_FILE_LOCKING=FALSE
   echo "${data_dir}" "${output_dir}" "${assay}" "${project_key}"
-  Rscript /pre_processing.R "${data_dir}" "${output_dir}" "${assay}" "${project_key}"
+  Rscript /pre_processing.R "${data_dir}" "${output_dir}" "${assay}"
 fi
 
 exit_code=$?
