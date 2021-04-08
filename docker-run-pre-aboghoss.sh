@@ -2,11 +2,10 @@
 
 docker run \
 --name pre-processing \
--v /Users/aboghoss/Downloads/PREP_300_reprocess:/data \
+-v /Users/aboghoss/Downloads/MTS016_PR300:/data \
 -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
--it cmap/clue-mts \
+-it aboghoss/clue-mts:dev \
 -i /data \
 -o /data \
 -t "0" \
--p /data \
--a "PR300"
+-a "PR300P"
