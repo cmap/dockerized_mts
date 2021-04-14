@@ -5,19 +5,21 @@ suppressMessages(source("./src/MTS_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 3) {
+if (length(script_args) != 4) {
   stop("Please supply necessary arguments",
        call. = FALSE)
 }
-base_dir <- script_args[1]
-out_dir <- script_args[2]
-calc_gr <- as.numeric(script_args[3])
+base_dir_1 <- script_args[1]
+base_dir_2 <- script_args[2]
+out_dir <- script_args[3]
+calc_gr <- as.numeric(script_args[4])
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
 #---- Load the data ----
 print("Loading data and pre-processing")
-logMFI_normalized <- data.table::fread(paste0(base_dir, "/logMFI_NORMALIZED.csv"))
+logMFI_normalized <- data.table::fread(paste0(base_dir_1, "/logMFI_NORMALIZED.csv")) %>%
+  dplyr::bind_rows(data.table::fread(paste0(base_dir_2, "/logMFI_NORMALIZED.csv")))
 
 # split into base and final reading
 base_normalized <- logMFI_normalized %>%
@@ -36,7 +38,7 @@ print("Calculating log-fold changes")
 LFC_TABLE <- logMFI_normalized
 # if QC able to be applied
 if (!all(is.na(SSMD_TABLE$pass))) {
-  LFC_TABLE %<>% 
+  LFC_TABLE %<>%
     # join with SSMD (to filter bad lines)
     dplyr::inner_join(SSMD_TABLE %>%
                         dplyr::distinct(ccle_name, prism_replicate, culture, pass),
@@ -102,7 +104,7 @@ if (calc_gr) {
   }, error = function(e) {
     return(NA)
   })
-  
+
   # treatment
   GR_TABLE <- tryCatch(expr = {logMFI_normalized %>%
       # now group by compound
@@ -119,7 +121,7 @@ if (calc_gr) {
   }, error = function(e) {
     return(tibble())
   })
-  
+
   # combined
   GR_TABLE <- tryCatch(expr = {GR_TABLE %>%
       # calculate control change (DMSO - base)/(t - base day),
