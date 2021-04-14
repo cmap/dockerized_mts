@@ -46,7 +46,7 @@ if (!all(is.na(SSMD_TABLE$pass))) {
   print("Problem with QC metrics: including all lines")
 }
 LFC_TABLE %<>%
-  dplyr::group_by(prism_replicate, ccle_name, culture) %>%
+  dplyr::group_by(prism_replicate, ccle_name, culture, pert_time) %>%
   dplyr::mutate(LFC = LMFI - median(LMFI[pert_type == "ctl_vehicle"])) %>%
   dplyr::distinct(pert_mfc_id, pert_name, prism_replicate, culture, rid, LFC,
                   pert_type, ccle_name, pert_dose, pert_well, pool_id, pert_time,
