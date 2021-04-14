@@ -26,7 +26,8 @@ base_normalized <- logMFI_normalized %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"))
 logMFI_normalized %<>%
   dplyr::filter(str_detect(prism_replicate, "BASE", negate = T))
-SSMD_TABLE <- data.table::fread(paste0(base_dir, "/SSMD_TABLE.csv")) %>%
+SSMD_TABLE <- data.table::fread(paste0(base_dir_1, "/SSMD_TABLE.csv")) %>%
+  dplyr::bind_rows(data.table::fread(paste0(base_dir_2, "/SSMD_TABLE.csv"))) %>%
   dplyr::filter(prism_replicate %in% plates$prism_replicate)
 
 plates <- distinct(logMFI_normalized, prism_replicate) %>%
