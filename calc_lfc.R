@@ -9,25 +9,22 @@ if (length(script_args) != 4) {
   stop("Please supply necessary arguments",
        call. = FALSE)
 }
-base_dir_1 <- script_args[1]
-base_dir_2 <- script_args[2]
-out_dir <- script_args[3]
-calc_gr <- as.numeric(script_args[4])
+base_dir <- script_args[1]
+out_dir <- script_args[2]
+calc_gr <- as.numeric(script_args[3])
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
 #---- Load the data ----
 print("Loading data and pre-processing")
-logMFI_normalized <- data.table::fread(paste0(base_dir_1, "/logMFI_NORMALIZED.csv")) %>%
-  dplyr::bind_rows(data.table::fread(paste0(base_dir_2, "/logMFI_NORMALIZED.csv")))
+logMFI_normalized <- data.table::fread(paste0(base_dir, "/logMFI_NORMALIZED.csv"))
 
 # split into base and final reading
 base_normalized <- logMFI_normalized %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"))
 logMFI_normalized %<>%
   dplyr::filter(str_detect(prism_replicate, "BASE", negate = T))
-SSMD_TABLE <- data.table::fread(paste0(base_dir_1, "/SSMD_TABLE.csv")) %>%
-  dplyr::bind_rows(data.table::fread(paste0(base_dir_2, "/SSMD_TABLE.csv"))) %>%
+SSMD_TABLE <- data.table::fread(paste0(base_dir, "/SSMD_TABLE.csv")) %>%
   dplyr::filter(prism_replicate %in% plates$prism_replicate)
 
 plates <- distinct(logMFI_normalized, prism_replicate) %>%

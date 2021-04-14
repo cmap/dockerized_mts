@@ -22,7 +22,13 @@ if [ "$type" == "1" ] ; then
   pert_name=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_name')
   project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].project_id')
   echo "${data_dir}" "${output_dir}" "${project}" "${pert_name}"
-  Rscript /data_processing.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "0"
+  Rscript /drc_compound.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "0"
+elif [ "$type" == "2" ] ; then
+  chmod +x /calc_lfc.R
+  chmod +x /src/MTS_functions.R
+  export HDF5_USE_FILE_LOCKING=FALSE
+  echo "${data_dir}" "${assay}" "${output_dir}" "${project_key}"
+  Rscript /pre_processing.R "${data_dir}" "${output_dir}" "0"
 else
   chmod +x /pre_processing.R
   chmod +x /src/MTS_functions.R
