@@ -148,7 +148,7 @@ if(nrow(logMFI_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-  
+
   base_normalized <- logMFI_base %>%
     dplyr::left_join(logMFI_profile) %>%
     normalize(., barcodes)
@@ -198,3 +198,8 @@ logMFI_normalized %>%
   dplyr::bind_rows(base_normalized) %>%
   dplyr::select(-rLMFI) %>%
   readr::write_csv(., paste0(out_dir, "/logMFI_NORMALIZED.csv"))
+
+# project key
+inst_info %>%
+  dplyr::distinct(pert_name, pert_mfc_id, project_id) %>%
+  readr::write_csv(., paste0(out_dir, "/project_key.csv"))
