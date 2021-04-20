@@ -182,9 +182,13 @@ error_table <- logMFI_normalized %>%
 # join with SSMD table
 SSMD_TABLE %<>%
   dplyr::left_join(error_table) %>%
-  dplyr::mutate(pass = error_rate <= 0.05,
-                compound_plate = stringr::word(prism_replicate, 1,
-                                               sep = stringr::fixed("_")))
+  dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
+                                               sep = stringr::fixed("_")),
+                dr = ctl_vehicle_md - trt_poscon_md,
+                pass = error_rate <= 0.05 & dr > 1) %>%
+  dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
+  dplyr::mutate(pass = sum(pass) >=2) %>%
+  dplyr::ungroup()
 
 #---- Write output ----
 # QC table
