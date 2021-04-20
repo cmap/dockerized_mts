@@ -187,7 +187,7 @@ SSMD_TABLE %<>%
                 dr = ctl_vehicle_md - trt_poscon_md,
                 pass = error_rate <= 0.05 & dr > 1) %>%
   dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
-  dplyr::mutate(pass = pass & sum(pass) >=2) %>%
+  dplyr::mutate(pass = pass & sum(pass) / n_distinct(prism_replicate) > 0.5) %>%
   dplyr::ungroup()
 
 #---- Write output ----
