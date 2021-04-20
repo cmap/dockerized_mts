@@ -5,7 +5,7 @@ suppressMessages(source("./src/MTS_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 4) {
+if (length(script_args) != 3) {
   stop("Please supply necessary arguments",
        call. = FALSE)
 }
