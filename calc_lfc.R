@@ -24,12 +24,11 @@ base_normalized <- logMFI_normalized %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"))
 logMFI_normalized %<>%
   dplyr::filter(str_detect(prism_replicate, "BASE", negate = T))
-SSMD_TABLE <- data.table::fread(paste0(base_dir, "/SSMD_TABLE.csv")) %>%
-  dplyr::filter(prism_replicate %in% plates$prism_replicate)
-
 plates <- distinct(logMFI_normalized, prism_replicate) %>%
   dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
                                                sep = fixed("_")))
+SSMD_TABLE <- data.table::fread(paste0(base_dir, "/SSMD_TABLE.csv")) %>%
+  dplyr::filter(prism_replicate %in% plates$prism_replicate)
 
 #---- Compute log-fold changes ----
 print("Calculating log-fold changes")
@@ -102,7 +101,7 @@ if (calc_gr) {
   }, error = function(e) {
     return(NA)
   })
-
+  
   # treatment
   GR_TABLE <- tryCatch(expr = {logMFI_normalized %>%
       # now group by compound
@@ -119,7 +118,7 @@ if (calc_gr) {
   }, error = function(e) {
     return(tibble())
   })
-
+  
   # combined
   GR_TABLE <- tryCatch(expr = {GR_TABLE %>%
       # calculate control change (DMSO - base)/(t - base day),

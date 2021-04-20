@@ -27,7 +27,7 @@ elif [ "$type" == "2" ] ; then
   chmod +x /calc_lfc.R
   chmod +x /src/MTS_functions.R
   export HDF5_USE_FILE_LOCKING=FALSE
-  echo "${data_dir}" "${output_dir}"
+  echo "${data_dir}" "${output_dir}" "${assay}"
   Rscript /calc_lfc.R "${data_dir}" "${output_dir}" "${assay}"
 else
   chmod +x /pre_processing.R
