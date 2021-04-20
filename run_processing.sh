@@ -20,7 +20,7 @@ while IFS=, read -r project name id; do
   -i /data \
   -o /out_dir \
   -t "1" \
-  -a "PR300P" &
+  -a "NA" &
 
   # keep number of jobs under number of processors
   [ $( jobs | wc -l ) -ge 4 ] && wait

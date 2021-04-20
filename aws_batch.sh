@@ -17,7 +17,7 @@ done
 if [ "$type" == "1" ] ; then
   IFS=',' read -r -a a_projects <<< "${projects}"
   batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-  chmod +x /data_processing.R
+  chmod +x /drc_compound.R
   chmod +x /src/MTS_functions.R
   pert_name=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_name')
   project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].project_id')
