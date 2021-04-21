@@ -177,8 +177,10 @@ if(nrow(DRC_TABLE_cb) > 0)  {
 }
 
 # GR data if it exists
-if(nrow(DRC_TABLE_growth) > 0) {
-  readr::write_csv(DRC_TABLE_growth, paste0(comp_dir, "/DRC_TABLE_GR.csv"))
+if(calc_gr) {
+  if (nrow(DRC_TABLE_growth)) {
+    readr::write_csv(DRC_TABLE_growth, paste0(comp_dir, "/DRC_TABLE_GR.csv")) 
+  }
 }
 
 

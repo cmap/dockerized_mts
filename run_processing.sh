@@ -1,6 +1,9 @@
 #!/bin/bash
+data_dir=$1
+out_dir=$2
+key_tab=$3
 
-while IFS=, read -r project name id; do
+while IFS=, read -r name id project; do
   echo "$name $project"
 
   # skip header
@@ -12,18 +15,18 @@ while IFS=, read -r project name id; do
 
   # submit to docker
   docker run --rm \
-  -v /Users/aboghoss/Downloads/MTS016_PR300:/data \
-  -v /Users/aboghoss/Downloads/MTS016_PR300_normal:/out_dir \
+  -v "$data_dir":/data \
+  -v "$out_dir":/out_dir \
   -e projects="$arg_string" \
   -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
   aboghoss/clue-mts:dev \
   -i /data \
   -o /out_dir \
   -t "1" \
-  -a "NA" &
+  -a "0" &
 
   # keep number of jobs under number of processors
   [ $( jobs | wc -l ) -ge 4 ] && wait
 
-done < /Users/aboghoss/Downloads/MTS016_PR300/project_key.csv
+done < "$key_tab"
 wait
