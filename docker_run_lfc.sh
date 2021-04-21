@@ -2,6 +2,7 @@
 data_dir="$1"
 
 docker run \
+--rm \
 --name lfc-calculation \
 -v "$data_dir":/data \
 -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
