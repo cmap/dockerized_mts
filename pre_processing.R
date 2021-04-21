@@ -37,7 +37,7 @@ cell_info <- data.table::fread(path_cell_info) %>%
 
 # combine with CMap assay info
 inst_info <- data.table::fread(path_inst_info) %>%
-  dplyr::filter(!str_detect(pert_plate, "BASE"), !is_well_failure) %>%
+  dplyr::filter(!str_detect(prism_replicate, "BASE"), !is_well_failure) %>%
   make_long_map(.) %>%
   dplyr::mutate(pert_dose = ifelse(pert_dose >= 0.001, round(pert_dose, 4), pert_dose),
                 pert_idose = paste(pert_dose, word(pert_idose, 2)),
@@ -148,7 +148,7 @@ if(nrow(logMFI_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-
+  
   base_normalized <- logMFI_base %>%
     dplyr::left_join(logMFI_profile) %>%
     normalize(., barcodes)
@@ -163,36 +163,42 @@ logMFI_normalized %<>%
 
 #---- Calculate QC metrics ----
 
-# calculate SSMD and NNMD
-SSMD_TABLE <- calc_ssmd(logMFI_normalized %>%
-                          dplyr::filter(pool_id != "CTLBC"))
+# calculate SSMD and NNMD (allow for no QC)
+SSMD_TABLE <- tryCatch(expr = calc_ssmd(logMFI_normalized %>% dplyr::filter(pool_id != "CTLBC")),
+                       error = function(e) {
+                         message("Unable to calculate QC metrics: control conditions may be missing")
+                         return(tibble())
+                       })
 # calculate error rate of normalized table (based on threshold classifier)
-error_table <- logMFI_normalized %>%
-  dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
-                is.finite(LMFI), pool_id != "CTLBC") %>%
-  dplyr::group_by(rid, ccle_name, prism_replicate) %>%
-  dplyr::summarise(error_rate =
-                     min(PRROC::roc.curve(scores.class0 = LMFI,
-                                          weights.class0 = pert_type == "ctl_vehicle",
-                                          curve = TRUE)$curve[,1] + 1 -
-                           PRROC::roc.curve(scores.class0 = LMFI,
+if (nrow(SSMD_TABLE > 0)) {
+  error_table <- logMFI_normalized %>%
+    dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
+                  is.finite(LMFI), pool_id != "CTLBC") %>%
+    dplyr::group_by(rid, ccle_name, prism_replicate) %>%
+    dplyr::summarise(error_rate =
+                       min(PRROC::roc.curve(scores.class0 = LMFI,
                                             weights.class0 = pert_type == "ctl_vehicle",
-                                            curve = TRUE )$curve[,2])/2,
-                   .groups = "drop")
-# join with SSMD table
-SSMD_TABLE %<>%
-  dplyr::left_join(error_table) %>%
-  dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
-                                               sep = stringr::fixed("_")),
-                dr = ctl_vehicle_md - trt_poscon_md,
-                pass = error_rate <= 0.05 & dr > 1) %>%
-  dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
-  dplyr::mutate(pass = pass & sum(pass) / n_distinct(prism_replicate) > 0.5) %>%
-  dplyr::ungroup()
+                                            curve = TRUE)$curve[,1] + 1 -
+                             PRROC::roc.curve(scores.class0 = LMFI,
+                                              weights.class0 = pert_type == "ctl_vehicle",
+                                              curve = TRUE )$curve[,2])/2,
+                     .groups = "drop")
+  # join with SSMD table
+  SSMD_TABLE %<>%
+    dplyr::left_join(error_table) %>%
+    dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
+                                                 sep = stringr::fixed("_")),
+                  dr = ctl_vehicle_md - trt_poscon_md,
+                  pass = error_rate <= 0.05 & dr > 1) %>%
+    dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
+    dplyr::mutate(pass = pass & sum(pass) / n_distinct(prism_replicate) > 0.5) %>%
+    dplyr::ungroup()
+  
+  # Write QC table
+  readr::write_csv(SSMD_TABLE, paste0(out_dir, "/SSMD_TABLE.csv"))
+}
 
-#---- Write output ----
-# QC table
-readr::write_csv(SSMD_TABLE, paste0(out_dir, "/SSMD_TABLE.csv"))
+#---- Write other data ----
 
 # logMFI tables
 master_logMFI %>%
