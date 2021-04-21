@@ -55,7 +55,7 @@ LFC_TABLE %<>%
 #---- Correct for pool effects ----
 print("ComBat correcting")
 LFC_TABLE %<>%
-  dplyr::filter(pert_type != "ctl_vehicle") %>%
+  dplyr::filter(!pert_type %in% c("ctl_vehicle", "ctl_untrt")) %>%
   dplyr::left_join(plates, by = c("prism_replicate")) %>%
   tidyr::unite(col = "condition", pert_name, pert_dose, compound_plate, pert_time, project_id,
                sep = "::", remove = FALSE) %>%
