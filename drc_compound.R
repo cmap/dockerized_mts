@@ -26,6 +26,13 @@ if (!dir.exists(comp_dir)) {dir.create(comp_dir, recursive = T)}
 print("Loading data and pre-processing")
 LFC_TABLE <- data.table::fread(paste0(base_dir, "/LFC_TABLE.csv")) %>%
   dplyr::filter(pert_name == compound, project_id == project_name)
+
+# write LFC and LFC collapsed table into compound directory
+readr::write_csv(LFC_TABLE, paste0(comp_dir, "/LFC_TABLE.csv"))
+data.table::fread(paste0(base_dir, "/LFC_COLLAPSED_TABLE.csv")) %>%
+  dplyr::filter(pert_name == compound, project_id == project_name) %>%
+  readr::write_csv(., paste0(comp_dir, "/LFC_COLLAPSED_TABLE.csv"))
+
 if (calc_gr) {
   GR_TABLE <- data.table::fread(paste0(base_dir, "/GR_TABLE.csv")) %>%
     dplyr::filter(pert_name == compound, project_id == project_name)
