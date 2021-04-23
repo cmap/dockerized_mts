@@ -168,7 +168,7 @@ SSMD_TABLE <- calc_ssmd(logMFI_normalized %>% dplyr::filter(pool_id != "CTLBC"))
 if (any(is.na(SSMD_TABLE$ssmd))) message("Unable to calculate some QC metrics: control condition(s) may be missing")
 
 # calculate error rate of normalized table (based on threshold classifier)
-if ("ctl_vehicle_md" %in% colnames(SSMD_TABLE) & "trt_poscon_md" %in% colnames(SSMD_TABLE)) {
+if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
   error_table <- logMFI_normalized %>%
     dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
                   is.finite(LMFI), pool_id != "CTLBC") %>%
@@ -192,7 +192,13 @@ if ("ctl_vehicle_md" %in% colnames(SSMD_TABLE) & "trt_poscon_md" %in% colnames(S
     dplyr::mutate(pass = pass & sum(pass, na.rm = T) / n_distinct(prism_replicate) > 0.5) %>%
     dplyr::ungroup()
 } else {
-  SSMD_TABLE %<>% dplyr::mutate(error_rate = NA, dr = NA, pass = NA)
+  SSMD_TABLE %<>% dplyr::mutate(trt_poscon_md = NA,
+                                trt_poscon_mad = NA,
+                                error_rate = NA,
+                                compound_plate = stringr::word(prism_replicate, 1,
+                                                               sep = stringr::fixed("_")),
+                                dr = NA,
+                                pass = NA)
 }
 
 #---- Write data ----
