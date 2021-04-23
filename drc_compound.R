@@ -5,7 +5,7 @@ suppressMessages(source("./src/MTS_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 5) {
+if (length(script_args) != 6) {
   stop("Please supply necessary arguments",
        call. = FALSE)
 }
@@ -13,10 +13,15 @@ base_dir <- script_args[1]
 out_dir <- script_args[2]
 project_name <- script_args[3]
 compound <- script_args[4]
-calc_gr <- as.numeric(script_args[5])
+plate <- script_args[5]
+calc_gr <- as.numeric(script_args[6])
 
 safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
 write_name <- stringr::str_replace_all(compound, "[[:punct:]\\s]+", "-")
+
+if (plate != "NA") {
+  write_name <- paste(write_name, plate, sep = stringr::fixed("_"))
+}
 
 project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
 comp_dir <- paste(project_dir, write_name, sep = fixed("/"))
@@ -25,7 +30,9 @@ if (!dir.exists(comp_dir)) {dir.create(comp_dir, recursive = T)}
 #---- Load the data ----
 print("Loading data and pre-processing")
 LFC_TABLE <- data.table::fread(paste0(base_dir, "/LFC_TABLE.csv")) %>%
-  dplyr::filter(pert_name == compound, project_id == project_name)
+  dplyr::filter(pert_name == compound,
+                project_id == project_name,
+                compound_plate == plate)
 
 # write LFC and LFC collapsed table into compound directory
 readr::write_csv(LFC_TABLE, paste0(comp_dir, "/LFC_TABLE.csv"))

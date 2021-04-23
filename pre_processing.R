@@ -35,13 +35,20 @@ cell_info <- data.table::fread(path_cell_info) %>%
   dplyr::mutate(pool_id = ifelse(pool_id == "" | pool_id == -666,
                                  "CTLBC", pool_id))
 
-# combine with CMap assay info
+# make long version of platemap
 inst_info <- data.table::fread(path_inst_info) %>%
   dplyr::filter(!str_detect(prism_replicate, "BASE"), !is_well_failure) %>%
   make_long_map(.) %>%
   dplyr::mutate(pert_dose = ifelse(pert_dose >= 0.001, round(pert_dose, 4), pert_dose),
                 pert_idose = paste(pert_dose, word(pert_idose, 2)),
                 pert_idose = ifelse(pert_idose == "NA NA", NA, pert_idose))
+
+# change validation (.es) to treatment for processing
+inst_info$pert_type[which(inst_info$pert_type == "trt_poscon.es")] <-
+  "trt_cp"
+inst_info$pert_type[which(inst_info$pert_type == "trt_cpd")] <-
+  "trt_cp"
+
 base_day <- data.table::fread(path_inst_info) %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure)
 
@@ -66,12 +73,6 @@ master_logMFI <- log2(raw_matrix) %>%
   dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate, pert_time,
                 pert_type, pert_dose, pert_idose, pert_mfc_id, pert_name, pert_well,
                 logMFI, project_id)
-
-# change validation (.es) to treatment for processing
-master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_poscon.es")] <-
-  "trt_cp"
-master_logMFI$pert_type[which(master_logMFI$pert_type == "trt_cpd")] <-
-  "trt_cp"
 
 compounds_logMFI <- master_logMFI %>%
   dplyr::filter(pert_type == "trt_cp") %>%
@@ -215,6 +216,12 @@ logMFI_normalized %>%
   readr::write_csv(., paste0(out_dir, "/logMFI_NORMALIZED.csv"))
 
 # project key
-inst_info %>%
-  dplyr::distinct(pert_name, pert_mfc_id, project_id) %>%
+master_logMFI %>%
+  dplyr::filter(project_id != "controls") %>%
+  dplyr::distinct(pert_name, pert_mfc_id, project_id, prism_replicate) %>%
+  dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
+  dplyr::distinct(pert_name, pert_mfc_id, project_id, compound_plate) %>%
+  dplyr::group_by(pert_name, pert_mfc_id, project_id) %>%
+  dplyr::mutate(compound_plate = ifelse(n_distinct(compound_plate) > 1, compound_plate, NA)) %>%
+  dplyr::ungroup()
   readr::write_csv(., paste0(out_dir, "/project_key.csv"))
