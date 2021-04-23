@@ -223,5 +223,5 @@ master_logMFI %>%
   dplyr::distinct(pert_name, pert_mfc_id, project_id, compound_plate) %>%
   dplyr::group_by(pert_name, pert_mfc_id, project_id) %>%
   dplyr::mutate(compound_plate = ifelse(n_distinct(compound_plate) > 1, compound_plate, NA)) %>%
-  dplyr::ungroup()
+  dplyr::ungroup() %>%
   readr::write_csv(., paste0(out_dir, "/project_key.csv"))
