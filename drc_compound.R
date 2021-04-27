@@ -31,13 +31,16 @@ if (!dir.exists(comp_dir)) {dir.create(comp_dir, recursive = T)}
 print("Loading data and pre-processing")
 LFC_TABLE <- data.table::fread(paste0(base_dir, "/LFC_TABLE.csv")) %>%
   dplyr::filter(pert_name == compound,
-                project_id == project_name,
-                compound_plate == plate)
+                project_id == project_name)
+if (plate != "NA") {
+  LFC_TABLE %<>% dplyr::filter(compound_plate == plate)
+}
 
 # write LFC and LFC collapsed table into compound directory
 readr::write_csv(LFC_TABLE, paste0(comp_dir, "/LFC_TABLE.csv"))
 data.table::fread(paste0(base_dir, "/LFC_COLLAPSED_TABLE.csv")) %>%
   dplyr::filter(pert_name == compound, project_id == project_name) %>%
+  {if (plate != "NA") dplyr::filter(., compound_plate == plate) else .} %>%
   readr::write_csv(., paste0(comp_dir, "/LFC_COLLAPSED_TABLE.csv"))
 
 if (calc_gr) {
@@ -49,7 +52,7 @@ if (calc_gr) {
 # table with each compound cell line combo and number of doses
 DRC_TABLE_cb <- LFC_TABLE %>%
   dplyr::filter(pert_type == "trt_cp") %>%
-  dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time) %>%
+  dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time, compound_plate) %>%
   dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
   dplyr::filter(n > 3)  # only fit curves with 4+ doses
 
@@ -117,7 +120,7 @@ if (nrow(DRC_TABLE_cb > 0)) {
 if (calc_gr) {
   print("Fitting growth dose-response curves")
   DRC_TABLE_growth <- GR_TABLE %>%
-    dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time) %>%
+    dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time, compound_plate) %>%
     dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
     dplyr::filter(n > 3)
   
