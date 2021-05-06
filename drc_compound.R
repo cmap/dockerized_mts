@@ -5,7 +5,7 @@ suppressMessages(source("./src/MTS_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 6) {
+if (length(script_args) != 7) {
   stop("Please supply necessary arguments",
        call. = FALSE)
 }
@@ -14,12 +14,13 @@ out_dir <- script_args[2]
 project_name <- script_args[3]
 compound <- script_args[4]
 plate <- script_args[5]
-calc_gr <- as.numeric(script_args[6])
+n_plates <- as.numeric(script_args[6])
+calc_gr <- as.numeric(script_args[7])
 
 safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
 write_name <- stringr::str_replace_all(compound, "[[:punct:]\\s]+", "-")
 
-if (plate != "NA") {
+if (n_plates > 1) {
   write_name <- paste(write_name, plate, sep = stringr::fixed("_"))
 }
 

@@ -22,8 +22,9 @@ if [ "$type" == "1" ] ; then
   pert_name=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_name')
   project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].project_id')
   plate=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].compound_plate')
+  mult=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].multiple_plates')
   echo "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "${plate}"
-  Rscript /drc_compound.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "${plate}" "${assay}"
+  Rscript /drc_compound.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "${plate}" "${mult}" "${assay}"
 elif [ "$type" == "2" ] ; then
   chmod +x /calc_lfc.R
   chmod +x /src/MTS_functions.R

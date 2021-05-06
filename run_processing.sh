@@ -3,14 +3,14 @@ data_dir=$1
 out_dir=$2
 key_tab=$3
 
-while IFS=, read -r project id name plate; do
+while IFS=, read -r project id name plate mult; do
   echo "$name $plate $project"
 
   # skip header
   if [ "$name" == "pert_name" ] || [ "$name" == "DMSO" ] || [ "$name" == "CMAP-000" ] ; then
      continue
   fi
-  arg_string='[ { "project_id": "'$project'", "pert_name": "'$name'", "compound_plate": "'$plate'" } ]'
+  arg_string='[ { "project_id": "'$project'", "pert_name": "'$name'", "compound_plate": "'$plate'", "multiple_plates": "'$mult'" } ]'
   echo $arg_string
 
   # submit to docker

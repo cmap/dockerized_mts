@@ -84,12 +84,13 @@ controls_logMFI <- master_logMFI %>%
   dplyr::mutate(project_id = "controls")
 
 varied_compounds <- compounds_logMFI %>%
-  dplyr::distinct(pert_name, pert_idose) %>%
-  dplyr::group_by(pert_name) %>%
+  dplyr::distinct(pert_name, pert_idose, project_id) %>%
+  dplyr::group_by(pert_name, project_id) %>%
   dplyr::summarise(n = n(), .groups = "drop") %>%
   dplyr::filter(n > 1) %>%
   dplyr::mutate(full_curve = ifelse(n < 4, F, T))
 
+# handles multiple anchor doses
 curve_comps <- varied_compounds %>%
   dplyr::filter(full_curve)
 non_curve_comps <- varied_compounds %>%
@@ -98,10 +99,15 @@ compounds_logMFI %<>%
   dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
                   pert_type, pert_well, pert_time, logMFI, project_id) %>%
   dplyr::mutate(n = n()) %>%
-  dplyr::ungroup() %>%
-  dplyr::mutate(pert_name = ifelse(pert_name %in% non_curve_comps$pert_name & n > 1,
+  dplyr::ungroup()
+comps_with_dose <- non_curve_comps %>%
+  dplyr::inner_join(compounds_logMFI) %>%
+  dplyr::mutate(pert_name = ifelse(n > 1,
                                    paste(pert_name, pert_idose, sep = "_"),
                                    pert_name))
+compounds_logMFI %<>%
+  dplyr::anti_join(non_curve_comps) %>%
+  dplyr::bind_rows(comps_with_dose)
 
 compounds_logMFI %<>%
   dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
@@ -221,4 +227,7 @@ master_logMFI %>%
   dplyr::distinct(pert_name, pert_mfc_id, project_id, prism_replicate) %>%
   dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
   dplyr::distinct(pert_name, pert_mfc_id, project_id, compound_plate) %>%
+  dplyr::group_by(pert_name, pert_mfc_id, project_id) %>%
+  dplyr::mutate(n_plates = n()) %>%
+  dplyr::ungroup() %>%
   readr::write_csv(., paste0(out_dir, "/project_key.csv"))
