@@ -75,44 +75,42 @@ master_logMFI <- log2(raw_matrix) %>%
                 logMFI, project_id)
 
 compounds_logMFI <- master_logMFI %>%
-  dplyr::filter(pert_type == "trt_cp") %>%
-  dplyr::filter(!(str_detect(prism_replicate, "PMTS030") & project_id == "MTS014 Validation Compounds")) %>%
-  dplyr::filter(!(project_id == "MTS014 Validation Compounds Vibliome" & str_detect(prism_replicate, "PMTS030", negate = T)))
+  dplyr::filter(pert_type == "trt_cp")
 
 controls_logMFI <- master_logMFI %>%
   dplyr::filter(pert_type != "trt_cp") %>%
   dplyr::mutate(project_id = "controls")
 
 varied_compounds <- compounds_logMFI %>%
-  dplyr::distinct(pert_name, pert_idose, project_id) %>%
-  dplyr::group_by(pert_name, project_id) %>%
+  dplyr::distinct(pert_name, pert_idose, project_id, prism_replicate) %>%
+  dplyr::group_by(pert_name, project_id, prism_replicate) %>%
   dplyr::summarise(n = n(), .groups = "drop") %>%
   dplyr::filter(n > 1) %>%
-  dplyr::mutate(full_curve = ifelse(n < 4, F, T))
+  dplyr::mutate(full_curve = n > 4)
 
 # handles multiple anchor doses
 curve_comps <- varied_compounds %>%
   dplyr::filter(full_curve)
 non_curve_comps <- varied_compounds %>%
-  dplyr::filter(!full_curve, n > 1)
+  dplyr::filter(!full_curve | n > 9, n > 1)
 compounds_logMFI %<>%
   dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
                   pert_type, pert_well, pert_time, logMFI, project_id) %>%
   dplyr::mutate(n = n()) %>%
   dplyr::ungroup()
 comps_with_dose <- non_curve_comps %>%
+  dplyr::select(-n) %>%
   dplyr::inner_join(compounds_logMFI) %>%
   dplyr::mutate(pert_name = ifelse(n > 1,
                                    paste(pert_name, pert_idose, sep = "_"),
                                    pert_name))
 compounds_logMFI %<>%
-  dplyr::anti_join(non_curve_comps) %>%
+  dplyr::anti_join(non_curve_comps %>% dplyr::select(-n)) %>%
   dplyr::bind_rows(comps_with_dose)
 
 compounds_logMFI %<>%
   dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
-                  pert_type, pert_well, pert_time, logMFI, project_id) %>%
-  dplyr::mutate(n = n()) %>%
+                  pert_type, pert_well, pert_time, logMFI, project_id, n) %>%
   dplyr::summarise(pert_dose = ifelse(any(pert_name %in% curve_comps$pert_name),
                                       pert_dose[pert_name %in% curve_comps$pert_name],
                                       pert_dose),
@@ -123,7 +121,8 @@ compounds_logMFI %<>%
                                         pert_mfc_id[pert_name %in% curve_comps$pert_name],
                                         pert_mfc_id),
                    pert_name = paste(sort(unique(pert_name)), collapse = "_"),
-                   .groups = "drop")
+                   .groups = "drop") %>%
+  dplyr::select(-n)
 
 master_logMFI <- dplyr::bind_rows(compounds_logMFI, controls_logMFI)
 
