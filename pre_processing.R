@@ -229,4 +229,5 @@ master_logMFI %>%
   dplyr::group_by(pert_name, pert_mfc_id, project_id) %>%
   dplyr::mutate(n_plates = n()) %>%
   dplyr::ungroup() %>%
+  dplyr::distinct() %>%
   readr::write_csv(., paste0(out_dir, "/project_key.csv"))
