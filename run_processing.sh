@@ -1,28 +1,32 @@
 #!/bin/bash
+data_dir=$1
+out_dir=$2
+key_tab=$3
 
-while IFS=, read -r project id name; do
-  echo "$name $project"
+while IFS=, read -r project id name plate mult; do
+  echo "$name $plate $project"
 
   # skip header
   if [ "$name" == "pert_name" ] || [ "$name" == "DMSO" ] || [ "$name" == "CMAP-000" ] ; then
      continue
   fi
-  arg_string='[ { "project_id": "'$project'", "pert_name": "'$name'" } ]'
+  arg_string='[ { "project_id": "'$project'", "pert_name": "'$name'", "compound_plate": "'$plate'", "multiple_plates": "'$mult'" } ]'
   echo $arg_string
 
   # submit to docker
   docker run --rm \
-  -v /Users/aboghoss/Downloads/PREP_300:/data \
+  -v "$data_dir":/data \
+  -v "$out_dir":/out_dir \
   -e projects="$arg_string" \
   -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
-  cmap/clue-mts \
+  aboghoss/clue-mts:dev \
   -i /data \
-  -o /data \
+  -o /out_dir \
   -t "1" \
-  -a "PR300" &
+  -a "0" &
 
   # keep number of jobs under number of processors
   [ $( jobs | wc -l ) -ge 4 ] && wait
 
-done < /Users/aboghoss/Downloads/PREP_300_reprocess/project_key.csv
+done < "$key_tab"
 wait

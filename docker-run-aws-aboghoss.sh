@@ -2,12 +2,12 @@
 
 docker run \
 --rm \
---name processing-test \
--v /Users/aboghoss/Downloads/MTS015_PR500:/data \
--e projects='[ { "project_id": "Validation Compounds", "pert_name": "anagrelide" } ]' \
+--name drc-test \
+-v /Users/aboghoss/Downloads/MTS016:/data \
+-e projects='[ { "project_id": "MTS016_VALIDATION_COMPOUND", "pert_name": "AZ-628", "compound_plate": "PMTS037", "multiple_plates": "1" } ]' \
 -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
-cmap/clue-mts  \
+aboghoss/clue-mts:dev  \
 -i /data \
 -o /data \
 -t "1" \
--a "PR500"
+-a "0"
