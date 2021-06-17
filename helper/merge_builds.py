@@ -26,6 +26,7 @@ if __name__ == "__main__":
         if os.path.isfile(dir2_path):
             dir2_file = pd.read_csv(dir2_path, low_memory=False)
             combined_file = pd.concat([dir1_file, dir2_file])
+            combined_file = combined_file.drop_duplicates()
         else:
             combined_file = dir1_file
 
