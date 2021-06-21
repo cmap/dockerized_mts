@@ -5,8 +5,6 @@ LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
 COPY ./src/MTS_functions.R /src/MTS_functions.R
 COPY ./pre_processing.R /pre_processing.R
-COPY ./calc_lfc.R /calc_lfc.R
-COPY ./drc_compound.R /drc_compound.R
 COPY ./aws_batch.sh /clue/bin/aws_batch
 
 WORKDIR /
