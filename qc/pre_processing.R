@@ -10,9 +10,9 @@ if (length(script_args) != 3) {
   stop("Please supply path to data, output directory, project name, and assay",
        call. = FALSE)
 }
-base_dir <- script_args[1]
-out_dir <- script_args[2]
-assay <- script_args[3]
+base_dir <- script_args[1]  # input directory
+out_dir <- script_args[2]  # output directory
+assay <- script_args[3]  # assay string (e.g. PR500)
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
@@ -173,20 +173,12 @@ logMFI_normalized %<>%
 SSMD_TABLE <- calc_ssmd(logMFI_normalized %>% dplyr::filter(pool_id != "CTLBC"))
 if (any(is.na(SSMD_TABLE$ssmd))) message("Unable to calculate some QC metrics: control condition(s) may be missing")
 
-# calculate error rate of normalized table (based on threshold classifier)
+# if there are positive controls
 if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
-  error_table <- logMFI_normalized %>%
-    dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
-                  is.finite(LMFI), pool_id != "CTLBC") %>%
-    dplyr::group_by(rid, ccle_name, prism_replicate) %>%
-    dplyr::summarise(error_rate =
-                       min(PRROC::roc.curve(scores.class0 = LMFI,
-                                            weights.class0 = pert_type == "ctl_vehicle",
-                                            curve = TRUE)$curve[,1] + 1 -
-                             PRROC::roc.curve(scores.class0 = LMFI,
-                                              weights.class0 = pert_type == "ctl_vehicle",
-                                              curve = TRUE )$curve[,2])/2,
-                     .groups = "drop")
+  
+  # calculate error rate of normalized table (based on threshold classifier)
+  error_table <- calc_er(logMFI_normalized)
+  
   # join with SSMD table
   SSMD_TABLE %<>%
     dplyr::left_join(error_table) %>%
@@ -197,7 +189,9 @@ if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
     dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
     dplyr::mutate(pass = pass & sum(pass, na.rm = T) / n_distinct(prism_replicate) > 0.5) %>%
     dplyr::ungroup()
+  
 } else {
+  # add empty columns (so reports don't break)
   SSMD_TABLE %<>% dplyr::mutate(trt_poscon_md = NA,
                                 trt_poscon_mad = NA,
                                 error_rate = NA,
@@ -221,13 +215,4 @@ logMFI_normalized %>%
   readr::write_csv(., paste0(out_dir, "/logMFI_NORMALIZED.csv"))
 
 # project key
-master_logMFI %>%
-  dplyr::filter(project_id != "controls") %>%
-  dplyr::distinct(pert_name, pert_mfc_id, project_id, prism_replicate) %>%
-  dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
-  dplyr::distinct(pert_name, pert_mfc_id, project_id, compound_plate) %>%
-  dplyr::group_by(pert_name, pert_mfc_id, project_id) %>%
-  dplyr::mutate(n_plates = n()) %>%
-  dplyr::ungroup() %>%
-  dplyr::distinct() %>%
-  readr::write_csv(., paste0(out_dir, "/project_key.csv"))
+write_key(master_logMFI, out_dir)

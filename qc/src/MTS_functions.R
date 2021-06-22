@@ -40,11 +40,11 @@ read_hdf5 <- function(filename, index = NULL) {
 
 #---- Reformatting ----
 # function to rename columns (get rid of 2, for make_long_map)
-rename_col <- function(x) {
-  if (str_detect(x, "2")) {
-    return(paste(word(x, 1, sep = "_"), word(x, 3, -1, sep = "_"),  sep = "_"))
+rename_col <- function(cols) {
+  if (str_detect(cols, "2")) {
+    return(paste(word(cols, 1, sep = "_"), word(cols, 3, -1, sep = "_"),  sep = "_"))
   } else {
-    return(x)
+    return(cols)
   }
 }
 
@@ -101,25 +101,39 @@ make_long_map <- function(df) {
   return(overview)
 }
 
+# make project_key.csv
+write_key <- function(df, out_dir) {
+  df %>%
+    dplyr::filter(project_id != "controls") %>%
+    dplyr::distinct(pert_name, pert_mfc_id, project_id, prism_replicate) %>%
+    dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
+    dplyr::distinct(pert_name, pert_mfc_id, project_id, compound_plate) %>%
+    dplyr::group_by(pert_name, pert_mfc_id, project_id) %>%
+    dplyr::mutate(n_plates = n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::distinct() %>%
+    readr::write_csv(., paste0(out_dir, "/project_key.csv"))
+}
+
 
 #---- Normalization ----
 # calculate control barcode medians
-control_medians <- function(X) {
-  ref <- X %>%
+control_medians <- function(df) {
+  ref <- df %>%
     dplyr::filter(pert_type == "ctl_vehicle") %>%  # look at controls
     dplyr::group_by(prism_replicate, pert_well) %>%
     dplyr::mutate(mLMFI = median(logMFI)) %>%  # median of each well on replicate
     dplyr::group_by(prism_replicate, rid) %>%  # median well on each replicate
     dplyr::mutate(mmLMFI = logMFI - mLMFI + median(mLMFI)) %>%  # normalized value for rep (to median well)
     dplyr::summarise(rLMFI = median(mmLMFI), .groups = "drop") %>%  # median normalized value across reps
-    dplyr::left_join(X)
+    dplyr::left_join(df)
   
   return(ref)
 }
 
 # fit scam to control barcode profiles and normalize other data
-normalize <- function(X, barcodes) {
-  normalized <- X %>%
+normalize <- function(df, barcodes) {
+  normalized <- df %>%
     dplyr::group_by(prism_replicate, pert_well) %>%
     # try with k=4 and 5 (to avoid hanging), try again with unspecified k
     dplyr::mutate(LMFI = tryCatch(
@@ -152,8 +166,8 @@ normalize <- function(X, barcodes) {
 
 #---- QC calculations ----
 # calculate SSMD and NNMD
-calc_ssmd <- function(X) {
-  SSMD_table <- X %>%
+calc_ssmd <- function(df) {
+  SSMD_table <- df %>%
     # look at controls
     dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon")) %>%
     dplyr::distinct(ccle_name, rid, pert_type, prism_replicate, LMFI, profile_id,
@@ -189,6 +203,25 @@ calc_ssmd <- function(X) {
     )
   
   return(SSMD_table)
+}
+
+# calculate error rates
+calc_er <- function(df) {
+  er_table <- df %>%
+    dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
+                  is.finite(LMFI),
+                  pool_id != "CTLBC") %>%
+    dplyr::group_by(rid, ccle_name, culture, prism_replicate) %>%
+    dplyr::summarise(error_rate =
+                       min(PRROC::roc.curve(scores.class0 = LMFI,
+                                            weights.class0 = pert_type == "ctl_vehicle",
+                                            curve = TRUE)$curve[,1] + 1 -
+                             PRROC::roc.curve(scores.class0 = LMFI,
+                                              weights.class0 = pert_type == "ctl_vehicle",
+                                              curve = TRUE )$curve[,2])/2,
+                     .groups = "drop")
+  
+  return(er_table)
 }
 
 

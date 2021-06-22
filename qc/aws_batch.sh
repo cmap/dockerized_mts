@@ -15,7 +15,7 @@ done
 chmod +x /pre_processing.R
 chmod +x /src/MTS_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
-echo "${data_dir}" "${output_dir}" "${assay}" "${project_key}"
+echo "${data_dir}" "${output_dir}" "${assay}"
 Rscript /pre_processing.R "${data_dir}" "${output_dir}" "${assay}"
 
 exit_code=$?
