@@ -44,7 +44,7 @@ inst_info <- data.table::fread(path_inst_info) %>%
                 pert_idose = ifelse(pert_idose == "NA NA", NA, pert_idose))
 
 # change validation (.es) to treatment for processing
-inst_info$pert_type[which(inst_info$pert_type == "trt_poscon.es")] <-
+inst_info$pert_type[which(str_detect(inst_info$pert_type, "poscon.es"))] <-
   "trt_cp"
 inst_info$pert_type[which(inst_info$pert_type == "trt_cpd")] <-
   "trt_cp"
