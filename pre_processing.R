@@ -93,12 +93,12 @@ curve_comps <- varied_compounds %>%
   dplyr::filter(full_curve)
 non_curve_comps <- varied_compounds %>%
   dplyr::filter(!full_curve | n > 9, n > 1)
+compounds_logMFI %<>%
+  dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
+                  pert_type, pert_well, pert_time, logMFI, project_id) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::ungroup()
 if (nrow(non_curve_comps) > 0) {
-  compounds_logMFI %<>%
-    dplyr::group_by(profile_id, rid, ccle_name, pool_id, culture, prism_replicate,
-                    pert_type, pert_well, pert_time, logMFI, project_id) %>%
-    dplyr::mutate(n = n()) %>%
-    dplyr::ungroup()
   comps_with_dose <- non_curve_comps %>%
     dplyr::select(-n) %>%
     dplyr::inner_join(compounds_logMFI) %>%
