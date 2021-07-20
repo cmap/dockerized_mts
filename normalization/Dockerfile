@@ -3,8 +3,8 @@ MAINTAINER Andrew Boghossian <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
-COPY ./src/qc_functions.R /src/qc_functions.R
-COPY ./qc.R /qc.R
+COPY ./src/normalization_functions.R /src/normalization_functions.R
+COPY ./normalize.R /normalize.R
 COPY ./aws_batch.sh /clue/bin/aws_batch
 
 WORKDIR /

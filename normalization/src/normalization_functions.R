@@ -9,8 +9,6 @@ library(scam)
 library(stats)
 library(hdf5r)
 library(reshape2)
-library(sva)
-library(PRROC)
 
 #---- Reading ----
 # HDF5 file reader
@@ -55,9 +53,9 @@ make_long_map <- function(df) {
   pert2 <- df %>%
     dplyr::select(contains("2"), pert_well, pert_time,
                   prism_replicate, is_well_failure, profile_id, x_project_id)
-  
+
   colnames(pert2) <- sapply(colnames(pert2), FUN = function(x) rename_col(x))
-  
+
   if (ncol(pert2) > 6) {
     new_map <- dplyr::bind_rows(pert1, pert2)
   } else {
@@ -65,23 +63,23 @@ make_long_map <- function(df) {
       dplyr::filter(pert_iname != "Untrt") %>%
       dplyr::mutate(pert_type = ifelse(pert_iname %in% c("PBS", "DMSO"), "ctl_vehicle", pert_type)) %>%
       dplyr::rename(pert_name = pert_iname, project_id = x_project_id)
-    
+
     if (!("pert_mfc_id") %in% colnames(pert1)){
       pert1 %<>% dplyr::mutate(pert_mfc_id = pert_id)
     }
-    
+
     return(pert1)
   }
-  
+
   new_map %<>%
     dplyr::filter(!(pert_iname %in% c("Untrt", ""))) %>%
     dplyr::select(intersect(colnames(.), colnames(pert2))) %>%
     dplyr::mutate(pert_type = ifelse(pert_iname %in% c("PBS", "DMSO"), "ctl_vehicle", pert_type))
-  
+
   if (!("pert_mfc_id") %in% colnames(new_map)){
     new_map %<>% dplyr::mutate(pert_mfc_id = pert_id)
   }
-  
+
   overview <- new_map %>%
     dplyr::group_by(pert_well, prism_replicate, profile_id, x_project_id) %>%
     dplyr::summarise(pert_types = paste(unique(pert_type), collapse = fixed("+")),
@@ -97,7 +95,7 @@ make_long_map <- function(df) {
     dplyr::select(-pert_types, -pert_names, -n) %>%
     dplyr::distinct() %>%
     dplyr::rename(pert_name = pert_iname, project_id = x_project_id)
-  
+
   return(overview)
 }
 
@@ -127,7 +125,7 @@ control_medians <- function(df) {
     dplyr::mutate(mmLMFI = logMFI - mLMFI + median(mLMFI)) %>%  # normalized value for rep (to median well)
     dplyr::summarise(rLMFI = median(mmLMFI), .groups = "drop") %>%  # median normalized value across reps
     dplyr::left_join(df)
-  
+
   return(ref)
 }
 
@@ -159,103 +157,6 @@ normalize <- function(df, barcodes) {
       })) %>%
     dplyr::ungroup() %>%
     dplyr::select(-logMFI)
-  
+
   return(normalized)
-}
-
-
-#---- QC calculations ----
-# calculate SSMD and NNMD
-calc_ssmd <- function(df) {
-  SSMD_table <- df %>%
-    # look at controls
-    dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon")) %>%
-    dplyr::distinct(ccle_name, rid, pert_type, prism_replicate, LMFI, profile_id,
-                    pert_time, pool_id, culture) %>%
-    # group common controls
-    dplyr::group_by(pert_type, prism_replicate, pert_time, ccle_name, rid,
-                    pool_id, culture) %>%
-    # take median and mad of results
-    dplyr::summarise(med = median(LMFI, na.rm = TRUE),
-                     mad = mad(LMFI, na.rm = TRUE), .groups = "drop") %>%
-    # add to table
-    dplyr::mutate(pert_type_md = paste0(pert_type, '_md'),
-                  pert_type_mad = paste0(pert_type, '_mad')) %>%
-    # spread to columns
-    tidyr::spread(key = pert_type_md, value = med, fill = 0) %>%
-    tidyr::spread(key = pert_type_mad, value = mad, fill = 0) %>%
-    dplyr::ungroup() %>%
-    dplyr::select(-pert_type) %>%
-    # give each control all values (median and mad for vehicle and poscon)
-    dplyr::group_by(prism_replicate, ccle_name, pert_time, rid, pool_id, culture) %>%
-    dplyr::summarise_all(sum) %>%
-    # calculate SSMD and NNMD
-    dplyr::mutate(ssmd = tryCatch(expr = {
-      (ctl_vehicle_md - trt_poscon_md) / sqrt(ctl_vehicle_mad^2 +trt_poscon_mad^2)},
-      error = function(e) {
-        return(NA)
-      }),
-      nnmd = tryCatch(expr = {
-        (ctl_vehicle_md - trt_poscon_md) / ctl_vehicle_mad},
-        error = function(e) {
-          return(NA)
-        })
-    )
-  
-  return(SSMD_table)
-}
-
-# calculate error rates
-calc_er <- function(df) {
-  er_table <- df %>%
-    dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
-                  is.finite(LMFI),
-                  pool_id != "CTLBC") %>%
-    dplyr::group_by(rid, ccle_name, culture, prism_replicate) %>%
-    dplyr::summarise(error_rate =
-                       min(PRROC::roc.curve(scores.class0 = LMFI,
-                                            weights.class0 = pert_type == "ctl_vehicle",
-                                            curve = TRUE)$curve[,1] + 1 -
-                             PRROC::roc.curve(scores.class0 = LMFI,
-                                              weights.class0 = pert_type == "ctl_vehicle",
-                                              curve = TRUE )$curve[,2])/2,
-                     .groups = "drop")
-  
-  return(er_table)
-}
-
-
-#---- Batch Correction ----
-# corrects for pool effects using ComBat
-apply_combat <- function(Y) {
-  
-  # create "condition" column to be used as "batches"
-  df <- Y %>%
-    dplyr::distinct(ccle_name, prism_replicate, LFC, culture, pool_id, pert_well) %>%
-    tidyr::unite(cond, culture, pool_id, prism_replicate, sep = "::") %>%
-    dplyr::filter(is.finite(LFC))
-  
-  # calculate means and sd's of each condition
-  batch <- df$cond
-  m <- rbind(df$LFC,
-             rnorm(length(df$LFC),
-                   mean =  mean(df$LFC, na.rm = TRUE),
-                   sd = sd(df$LFC, na.rm = TRUE)))
-  
-  # use ComBat to align means and sd's of conditions
-  combat <- sva::ComBat(dat = m, batch = batch) %>%
-    t() %>%
-    as.data.frame() %>%
-    dplyr::mutate(ccle_name = df$ccle_name, cond = df$cond, pert_well = df$pert_well) %>%
-    dplyr::rename(LFC.cb = V1) %>%
-    dplyr::mutate(culture = stringr::word(cond, 1, sep = stringr::fixed("::")),
-                  pool_id = stringr::word(cond, 2, sep = stringr::fixed("::")),
-                  prism_replicate = stringr::word(cond, 3, sep = stringr::fixed("::"))) %>%
-    dplyr::select(-cond, -V2)
-  
-  combat_corrected <- Y %>%
-    dplyr::left_join(combat, by = c("prism_replicate", "ccle_name", "pool_id", "culture", "pert_well")) %>%
-    .$LFC.cb
-  
-  return(combat_corrected)
 }
