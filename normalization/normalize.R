@@ -1,7 +1,7 @@
 # Script to run the initial processing step of the MTS pipeline
 # creates logMFI and logMFI_NORMALIZED
 
-# import necessary libraries and functions using MTS_functions.R
+# import necessary libraries and functions
 suppressMessages(source("./src/normalization_functions.R"))
 
 #---- Read arguments ----

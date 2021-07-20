@@ -1,8 +1,8 @@
 # Script to run the QC step of the MTS pipeline
 # creates SSMD_TABLE
 
-# import necessary libraries and functions using MTS_functions.R
-suppressMessages(source("./src/MTS_functions.R"))
+# import necessary libraries and functions
+suppressMessages(source("./src/qc_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
@@ -19,11 +19,13 @@ if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 path_data <- paste0(base_dir, "/logMFI_NORMALIZED.csv")
 
 #---- Load the data ----
+print("Loading data")
 
 # read in normalized logMFI data
 logMFI_normalized <- data.table::fread(path_data)
 
 #---- Calculate QC metrics ----
+print("Calculating SSMDs")
 
 # calculate SSMD and NNMD (allow for no QC)
 SSMD_TABLE <- calc_ssmd(logMFI_normalized %>% dplyr::filter(pool_id != "CTLBC"))
@@ -33,13 +35,14 @@ if (any(is.na(SSMD_TABLE$ssmd))) {
 
 # if there are positive controls
 if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
-  
+
   # calculate error rate of normalized table (based on threshold classifier)
+  print("Calculating error rates")
   error_table <- calc_er(logMFI_normalized)
-  
+
   # join with SSMD table
   SSMD_TABLE %<>%
-    dplyr::left_join(error_table) %>%
+    dplyr::left_join(error_table, by = c("prism_replicate", "ccle_name", "rid", "culture")) %>%
     dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
                                                  sep = stringr::fixed("_")),
                   dr = ctl_vehicle_md - trt_poscon_md,
@@ -47,7 +50,7 @@ if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
     dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
     dplyr::mutate(pass = pass & sum(pass, na.rm = T) / n_distinct(prism_replicate) > 0.5) %>%
     dplyr::ungroup()
-  
+
 } else {
   # add empty columns (so reports don't break)
   SSMD_TABLE %<>% dplyr::mutate(trt_poscon_md = NA,

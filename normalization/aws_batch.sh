@@ -13,7 +13,7 @@ while getopts ":i:o:a:" arg; do
 done
 
 chmod +x /normalize.R
-chmod +x /src/MTS_functions.R
+chmod +x /src/normalization_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
 echo "${data_dir}" "${output_dir}" "${assay}"
 Rscript /normalize.R "${data_dir}" "${output_dir}" "${assay}"
