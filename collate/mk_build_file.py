@@ -96,7 +96,7 @@ def mk_gct_list(search_pattern):
 
     new_len = len(gct_list)
 
-    print 'Number of old lysate plates removed = {}'.format(old_len - new_len)
+    print('Number of old lysate plates removed = {}'.format(old_len - new_len))
 
     if new_len == 0:
         return
@@ -140,7 +140,7 @@ def mk_inst_info(inst_data, norm_data=None, args=None):
 
     if norm_data:
         inst_info.loc[[x for x in inst_info.index if x not in norm_data.data_df.columns], 'is_well_failure'] = True
-    
+
     inst_info.to_csv(os.path.join(args.build_folder, args.cohort_name + '_inst_info.txt'), sep='\t')
 
 
