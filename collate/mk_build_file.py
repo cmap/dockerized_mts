@@ -1,20 +1,18 @@
-import os
-import sys
+import argparse
 import glob
 import logging
-import argparse
-import functools
-import pandas as pd
+import os
+import sys
 
-import cmapPy.pandasGEXpress.concat as cg
 import cmapPy.pandasGEXpress.GCToo as GCToo
+import cmapPy.pandasGEXpress.concat as cg
 import cmapPy.pandasGEXpress.parse as pe
 import cmapPy.pandasGEXpress.write_gct as wg
 import cmapPy.pandasGEXpress.write_gctx as wgx
-
+import merino.build_summary.ssmd_analysis as ssmd
 import merino.misc_tools.cut_to_l2 as cut_to_l2
 import merino.setup_logger as setup_logger
-import merino.build_summary.ssmd_analysis as ssmd
+import pandas as pd
 
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
 
@@ -104,28 +102,28 @@ def mk_gct_list(search_pattern):
     return gct_list
 
 
-def mk_cell_metadata(args, failed_plates):
+def mk_cell_metadata(args, failed_plates=None):
     if args.aggregate_out:
-        paths = glob.glob(os.path.join(args.proj_dir, args.search_pattern, 'card', '*', '*NORM.gct'))
         mfi_paths = glob.glob(os.path.join(args.proj_dir, args.search_pattern, 'assemble', '*', '*MEDIAN.gct'))
     else:
-        paths = glob.glob(os.path.join(args.proj_dir, 'card', args.search_pattern, '*NORM.gct'))
         mfi_paths = glob.glob(os.path.join(args.proj_dir, 'assemble', args.search_pattern, '*MEDIAN.gct'))
 
     cell_temp = pe.parse(mfi_paths[0])
     cell_temp.row_metadata_df.to_csv(os.path.join(args.build_folder, args.cohort_name + '_cell_info.txt'), sep='\t')
 
-    # Calculate SSMD matrix using paths that were just grabbed and write out
-    ssmd_mat = ssmd.ssmd_matrix(cut_to_l2.cut_l1(paths))
 
-    ssmd_gct = GCToo.GCToo(data_df=ssmd_mat, col_metadata_df=pd.DataFrame(index=ssmd_mat.columns),
-                           row_metadata_df=pd.DataFrame(index=ssmd_mat.index))
-    wg.write(ssmd_gct, os.path.join(args.build_folder, args.cohort_name + '_ssmd_matrix_n{}_{}.gct'.format(ssmd_gct.data_df.shape[1], ssmd_gct.data_df.shape[0])))
+    if failed_plates:
+        # Calculate SSMD matrix using paths that were just grabbed and write out
+        ssmd_mat = ssmd.ssmd_matrix(cut_to_l2.cut_l1(paths))
 
-    ssmd_failures = ssmd_gct.data_df.median()[ssmd_gct.data_df.median() < 2].index.tolist()
-    fails_dict = dict({'dropout_failures': failed_plates, 'ssmd_failures': ssmd_failures})
-    fails_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in fails_dict.iteritems()]))
-    fails_df.to_csv(os.path.join(args.build_folder, 'failed_plates.txt'), sep='\t', index=False)
+        ssmd_gct = GCToo.GCToo(data_df=ssmd_mat, col_metadata_df=pd.DataFrame(index=ssmd_mat.columns),
+                               row_metadata_df=pd.DataFrame(index=ssmd_mat.index))
+        wg.write(ssmd_gct, os.path.join(args.build_folder, args.cohort_name + '_ssmd_matrix_n{}_{}.gct'.format(ssmd_gct.data_df.shape[1], ssmd_gct.data_df.shape[0])))
+
+        ssmd_failures = ssmd_gct.data_df.median()[ssmd_gct.data_df.median() < 2].index.tolist()
+        fails_dict = dict({'dropout_failures': failed_plates, 'ssmd_failures': ssmd_failures})
+        fails_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in fails_dict.iteritems()]))
+        fails_df.to_csv(os.path.join(args.build_folder, 'failed_plates.txt'), sep='\t', index=False)
 
 def mk_inst_info(inst_data, norm_data=None, args=None):
 
@@ -184,23 +182,23 @@ def mk_sig_info(search_pattern_dict, data_dict, args):
 def main(args):
     search_pattern_dict = {'*MEDIAN.gct': ['assemble', '_LEVEL2_MFI_'],
                            '*COUNT.gct': ['assemble', '_LEVEL2_COUNT_'],
-                           '*NORM.gct': ['card', '_LEVEL3_NORM_'],
-                           '*ZSPC.gct': ['card', '_LEVEL4_ZSPC_'],
-                           '*ZSPC.COMBAT.gct': ['card', '_LEVEL4_ZSPC.COMBAT_'],
-                           '*ZSVC.gct': ['card', '_LEVEL4_ZSVC_'],
-                           '*ZSVC.COMBAT.gct': ['card', '_LEVEL4_ZSVC.COMBAT_'],
-                           '*LFCPC.gct': ['card', '_LEVEL4_LFCPC_'],
-                           '*LFCPC.COMBAT.gct': ['card', '_LEVEL4_LFCPC.COMBAT_'],
-                           '*LFCVC.gct': ['card', '_LEVEL4_LFCVC_'],
-                           '*LFCVC.COMBAT.gct': ['card', '_LEVEL4_LFCVC.COMBAT_'],
-                           '*MODZ.ZSPC.gct':['weave', '_LEVEL5_MODZ.ZSPC_'],
-                           '*MODZ.LFCPC.gct':['weave', '_LEVEL5_MODZ.LFCPC_'],
-                           '*MODZ.ZSPC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.ZSPC.COMBAT_'],
-                           '*MODZ.LFCPC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.LFCPC.COMBAT_'],
-                           '*MODZ.ZSVC.gct': ['weave', '_LEVEL5_MODZ.ZSVC_'],
-                           '*MODZ.LFCVC.gct': ['weave', '_LEVEL5_MODZ.LFCVC_'],
-                           '*MODZ.ZSVC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.ZSVC.COMBAT_'],
-                           '*MODZ.LFCVC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.LFCVC.COMBAT_']
+                           # '*NORM.gct': ['card', '_LEVEL3_NORM_'],
+                           # '*ZSPC.gct': ['card', '_LEVEL4_ZSPC_'],
+                           # '*ZSPC.COMBAT.gct': ['card', '_LEVEL4_ZSPC.COMBAT_'],
+                           # '*ZSVC.gct': ['card', '_LEVEL4_ZSVC_'],
+                           # '*ZSVC.COMBAT.gct': ['card', '_LEVEL4_ZSVC.COMBAT_'],
+                           # '*LFCPC.gct': ['card', '_LEVEL4_LFCPC_'],
+                           # '*LFCPC.COMBAT.gct': ['card', '_LEVEL4_LFCPC.COMBAT_'],
+                           # '*LFCVC.gct': ['card', '_LEVEL4_LFCVC_'],
+                           # '*LFCVC.COMBAT.gct': ['card', '_LEVEL4_LFCVC.COMBAT_'],
+                           # '*MODZ.ZSPC.gct':['weave', '_LEVEL5_MODZ.ZSPC_'],
+                           # '*MODZ.LFCPC.gct':['weave', '_LEVEL5_MODZ.LFCPC_'],
+                           # '*MODZ.ZSPC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.ZSPC.COMBAT_'],
+                           # '*MODZ.LFCPC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.LFCPC.COMBAT_'],
+                           # '*MODZ.ZSVC.gct': ['weave', '_LEVEL5_MODZ.ZSVC_'],
+                           # '*MODZ.LFCVC.gct': ['weave', '_LEVEL5_MODZ.LFCVC_'],
+                           # '*MODZ.ZSVC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.ZSVC.COMBAT_'],
+                           # '*MODZ.LFCVC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.LFCVC.COMBAT_']
                            }
 
     data_dict = {}
@@ -236,9 +234,10 @@ def main(args):
 
     mk_sig_info(search_pattern_dict, data_dict, args)
 
-    #mk_cell_metadata(args, failure_list)
-
-
+    try:
+        mk_cell_metadata(args, failure_list)
+    except Exception as e:
+        mk_cell_metadata(args)
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])
