@@ -46,7 +46,7 @@ if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
     dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
                                                  sep = stringr::fixed("_")),
                   dr = ctl_vehicle_md - trt_poscon_md,
-                  pass = error_rate <= 0.05 & dr > 1) %>%
+                  pass = error_rate <= 0.05 & dr > -log2(0.3)) %>%
     dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
     dplyr::mutate(pass = pass & sum(pass, na.rm = T) / n_distinct(prism_replicate) > 0.5) %>%
     dplyr::ungroup()
