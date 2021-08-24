@@ -15,15 +15,14 @@ while IFS=, read -r project id name plate mult; do
 
   # submit to docker
   docker run --rm \
-  -v "$data_dir":/data \
-  -v "$out_dir":/out_dir \
-  -e projects="$arg_string" \
-  -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
-  aboghoss/clue-mts:dev \
-  -i /data \
-  -o /out_dir \
-  -t "1" \
-  -a "0" &
+    -v "$data_dir":/data \
+    -v "$out_dir":/out_dir \
+    -e projects="$arg_string" \
+    -e AWS_BATCH_JOB_ARRAY_INDEX=0 \
+    cmap/drc-module:dev \
+    -i /data \
+    -o /out_dir \
+    -g "0" &
 
   # keep number of jobs under number of processors
   [ $( jobs | wc -l ) -ge 4 ] && wait

@@ -1,7 +1,7 @@
 # Script to go from LFC to DRC
 
 # import necessary libraries and functions using MTS_functions.R
-suppressMessages(source("./src/MTS_functions.R"))
+suppressMessages(source("./src/drc_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
@@ -61,14 +61,14 @@ if (nrow(DRC_TABLE_cb > 0)) {
   print("Fitting dose-response curves")
   DRC_TABLE_cb %<>% dplyr::mutate(ix = 1:n())
   DRC_cb <- list()  # empty tibble to track results
-  
+
   # loop through compound cell line combos fitting curves
   for (jx in 1:nrow(DRC_TABLE_cb)) {
     d = DRC_TABLE_cb %>%
       dplyr::filter(ix == jx) %>%
       dplyr::left_join(LFC_TABLE, by = c("ccle_name", "culture", "pert_mfc_id",
                                          "pert_name", "pert_time"))
-    
+
     # fit curve
     a = tryCatch(dr4pl(dose = d$pert_dose, response = 2^d$LFC.cb,
                        method.init = "logistic", trend = "decreasing"),
@@ -80,10 +80,10 @@ if (nrow(DRC_TABLE_cb > 0)) {
         dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
       d %<>%
         dplyr::mutate(e = (2^LFC.cb - pred)^2)  # prediction residuals
-      
+
       mse <- mean(d$e)
       R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$LFC.cb)))
-      
+
       x <- tibble(ix = jx,
                   min_dose = min(d$pert_dose),
                   max_dose = max(d$pert_dose),
@@ -102,7 +102,7 @@ if (nrow(DRC_TABLE_cb > 0)) {
       DRC_cb[[jx]] <- x
     }
   }
-  
+
   if (length(DRC_cb) > 0) {
     DRC_TABLE_cb <- DRC_cb %>%
       dplyr::bind_rows() %>%
@@ -124,17 +124,17 @@ if (calc_gr) {
     dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time, compound_plate) %>%
     dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
     dplyr::filter(n > 3)
-  
+
   if (nrow(DRC_TABLE_growth > 0)) {
     DRC_TABLE_growth %<>% dplyr::mutate(ix = 1:n())
     DRC_gr <- list()
-    
+
     for (jx in 1:nrow(DRC_TABLE_growth)) {
       d = DRC_TABLE_growth %>%
         dplyr::filter(ix == jx) %>%
         dplyr::left_join(GR_TABLE, by = c("ccle_name", "culture", "pert_mfc_id",
                                           "pert_name", "pert_time"))
-      
+
       a = tryCatch(dr4pl(dose = d$pert_dose, response = d$GR,
                          method.init = "logistic", trend = "decreasing"),
                    error = function(e) return(NA))
@@ -144,10 +144,10 @@ if (calc_gr) {
           dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
         d %<>%
           dplyr::mutate(e = (GR - pred)^2)  # prediction residuals
-        
+
         mse <- mean(d$e)
         R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$GR)))
-        
+
         x <- tibble(ix = jx,
                     min_dose = min(d$pert_dose),
                     max_dose = max(d$pert_dose),
@@ -173,7 +173,7 @@ if (calc_gr) {
         DRC_gr[[jx]] <- x
       }
     }
-    
+
     if (length(DRC_gr) > 0) {
       DRC_TABLE_growth <- DRC_gr %>%
         dplyr::bind_rows() %>%
@@ -197,58 +197,6 @@ if(nrow(DRC_TABLE_cb) > 0)  {
 # GR data if it exists
 if(calc_gr) {
   if (nrow(DRC_TABLE_growth)) {
-    readr::write_csv(DRC_TABLE_growth, paste0(comp_dir, "/DRC_TABLE_GR.csv")) 
+    readr::write_csv(DRC_TABLE_growth, paste0(comp_dir, "/DRC_TABLE_GR.csv"))
   }
-}
-
-
-#---- Generate DRC plots ----
-if(nrow(DRC_TABLE_cb) > 0) {
-  print("Generating plot PDFs")
-  # dose response data
-  DRC_TABLE_cb %<>% dplyr::arrange(auc)
-  
-  # create .pdf
-  pdf(paste0(comp_dir, "/", toupper(write_name), "_DRCfigures.pdf"))
-  
-  # loop through each cell line treated by compound and plot DRC
-  conditions <- DRC_TABLE_cb %>% dplyr::distinct(ccle_name, culture, pert_time)
-  for(j in 1:nrow(conditions)) {
-    condition <- conditions[j,]
-    assay_time <- condition$pert_time
-    cell_line <- condition$ccle_name
-    culture <- condition$culture
-    
-    d <- DRC_TABLE_cb %>% dplyr::inner_join(condition,
-                                            by = c("ccle_name", "culture", "pert_time"))
-    d_cult_line <- LFC_TABLE %>% dplyr::inner_join(condition,
-                                                   by = c("ccle_name", "culture", "pert_time"))
-    
-    # DRC curve function
-    f1 = function(x) {
-      d$lower_limit + (d$upper_limit - d$lower_limit)/
-        (1 + (2^x/d$ec50)^d$slope)
-    }
-    
-    # sequence for plotting curve
-    xx = seq(log2(d$min_dose), log2(d$max_dose),
-             length.out = 1000)
-    
-    # plot individual data points and DRC fit line
-    p = d_cult_line %>%
-      ggplot() +
-      geom_point(aes(x = log2(pert_dose),
-                     color = prism_replicate, y = 2^LFC.cb)) +
-      geom_line(data = tibble(x = xx, y = f1(xx)),
-                aes(x = x, y = y, group = 1),  lwd =1) +
-      ylim(0,2) + theme_bw() +
-      labs(x = 'log2(Dose) (uM)', y = 'Viability', color = "",
-           title = paste0(compound, "-", assay_time, "\n", cell_line,' - ', culture,
-                          "\nAUC:", round(d$auc, 2),
-                          " - IC50:", round(2^d$log2.ic50, 2)))
-    # outputs to .pdf
-    print(p)
-  }
-  # closes .pdf
-  invisible(dev.off())
 }

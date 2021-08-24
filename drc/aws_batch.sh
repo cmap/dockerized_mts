@@ -15,12 +15,12 @@ done
 IFS=',' read -r -a a_projects <<< "${projects}"
 batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
 chmod +x /drc_compound.R
-chmod +x /src/MTS_functions.R
+chmod +x /src/drc_functions.R
 pert_name=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_name')
 project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].project_id')
 plate=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].compound_plate')
 mult=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].multiple_plates')
-echo "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "${plate}"
+echo "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "${plate}" "${calc_gr}"
 Rscript /drc_compound.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "${plate}" "${mult}" "${calc_gr}"
 
 exit_code=$?

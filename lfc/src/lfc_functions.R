@@ -4,7 +4,6 @@
 library(tidyverse)
 library(magrittr)
 library(data.table)
-library(tidyr)
 library(sva)
 library(readr)
 library(stats)
