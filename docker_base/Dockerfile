@@ -1,4 +1,4 @@
-FROM rocker/r-ver
+FROM rocker/r-ver:4.0.2
 MAINTAINER Andrew Boghossian <cmap-soft@broadinstitute.org>
 LABEL base.mts.pipeline.clue.io.version="0.0.1"
 LABEL base.mts.pipeline.clue.io.vendor="PRISM"

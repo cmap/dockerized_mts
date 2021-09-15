@@ -1,7 +1,7 @@
 # Script to go from normalized logMFI values to LFC
 
 # import necessary libraries and functions using MTS_functions.R
-suppressMessages(source("./src/MTS_functions.R"))
+suppressMessages(source("./src/lfc_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)

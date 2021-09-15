@@ -1,12 +1,10 @@
-FROM cmap/base-clue-mts:latest
+FROM cmap/base-clue-mts:dev
 MAINTAINER Andrew Boghossian <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
-COPY ./src/MTS_functions.R /src/MTS_functions.R
-COPY ./pre_processing.R /pre_processing.R
-COPY ./calc_lfc.R /calc_lfc.R
-COPY ./drc_compound.R /drc_compound.R
+COPY ./src/normalization_functions.R /src/normalization_functions.R
+COPY ./normalize.R /normalize.R
 COPY ./aws_batch.sh /clue/bin/aws_batch
 
 WORKDIR /

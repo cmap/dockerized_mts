@@ -1,18 +1,18 @@
 # Script to run the initial processing step of the MTS pipeline
-# creates logMFI, logMFI_NORMALIZED, and SSMD_TABLE
+# creates logMFI and logMFI_NORMALIZED
 
-# import necessary libraries and functions using MTS_functions.R
-suppressMessages(source("./src/MTS_functions.R"))
+# import necessary libraries and functions
+suppressMessages(source("./src/normalization_functions.R"))
 
 #---- Read arguments ----
 script_args <- commandArgs(trailingOnly = TRUE)
 if (length(script_args) != 3) {
-  stop("Please supply path to data, output directory, project name, and assay",
+  stop("Please supply path to data, output directory, and assay",
        call. = FALSE)
 }
-base_dir <- script_args[1]
-out_dir <- script_args[2]
-assay <- script_args[3]
+base_dir <- script_args[1]  # input directory
+out_dir <- script_args[2]  # output directory
+assay <- script_args[3]  # assay string (e.g. PR500)
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
@@ -156,7 +156,7 @@ if(nrow(logMFI_base) > 0) {
     dplyr::mutate(rLMFI = mean(rLMFI)) %>%
     dplyr::ungroup() %>%
     dplyr::distinct(rid, rLMFI)
-  
+
   base_normalized <- logMFI_base %>%
     dplyr::left_join(logMFI_profile) %>%
     normalize(., barcodes)
@@ -169,51 +169,7 @@ logMFI_normalized %<>%
   dplyr::left_join(master_logMFI) %>%
   dplyr::select(-logMFI)
 
-#---- Calculate QC metrics ----
-
-# calculate SSMD and NNMD (allow for no QC)
-SSMD_TABLE <- calc_ssmd(logMFI_normalized %>% dplyr::filter(pool_id != "CTLBC"))
-if (any(is.na(SSMD_TABLE$ssmd))) message("Unable to calculate some QC metrics: control condition(s) may be missing")
-
-# calculate error rate of normalized table (based on threshold classifier)
-if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
-  error_table <- logMFI_normalized %>%
-    dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
-                  is.finite(LMFI), pool_id != "CTLBC") %>%
-    dplyr::group_by(rid, ccle_name, prism_replicate) %>%
-    dplyr::summarise(error_rate =
-                       min(PRROC::roc.curve(scores.class0 = LMFI,
-                                            weights.class0 = pert_type == "ctl_vehicle",
-                                            curve = TRUE)$curve[,1] + 1 -
-                             PRROC::roc.curve(scores.class0 = LMFI,
-                                              weights.class0 = pert_type == "ctl_vehicle",
-                                              curve = TRUE )$curve[,2])/2,
-                     .groups = "drop")
-  # join with SSMD table
-  SSMD_TABLE %<>%
-    dplyr::left_join(error_table) %>%
-    dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
-                                                 sep = stringr::fixed("_")),
-                  dr = ctl_vehicle_md - trt_poscon_md,
-                  pass = error_rate <= 0.05 & dr > 1) %>%
-    dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
-    dplyr::mutate(pass = pass & sum(pass, na.rm = T) / n_distinct(prism_replicate) > 0.5) %>%
-    dplyr::ungroup()
-} else {
-  SSMD_TABLE %<>% dplyr::mutate(trt_poscon_md = NA,
-                                trt_poscon_mad = NA,
-                                error_rate = NA,
-                                compound_plate = stringr::word(prism_replicate, 1,
-                                                               sep = stringr::fixed("_")),
-                                dr = NA,
-                                pass = NA)
-}
-
 #---- Write data ----
-# Write QC table
-readr::write_csv(SSMD_TABLE, paste0(out_dir, "/SSMD_TABLE.csv"))
-
-# logMFI tables
 master_logMFI %>%
   dplyr::bind_rows(logMFI_base) %>%
   readr::write_csv(., paste0(out_dir, "/logMFI.csv"))
@@ -223,13 +179,4 @@ logMFI_normalized %>%
   readr::write_csv(., paste0(out_dir, "/logMFI_NORMALIZED.csv"))
 
 # project key
-master_logMFI %>%
-  dplyr::filter(project_id != "controls") %>%
-  dplyr::distinct(pert_name, pert_mfc_id, project_id, prism_replicate) %>%
-  dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
-  dplyr::distinct(pert_name, pert_mfc_id, project_id, compound_plate) %>%
-  dplyr::group_by(pert_name, pert_mfc_id, project_id) %>%
-  dplyr::mutate(n_plates = n()) %>%
-  dplyr::ungroup() %>%
-  dplyr::distinct() %>%
-  readr::write_csv(., paste0(out_dir, "/project_key.csv"))
+write_key(master_logMFI, out_dir)
