@@ -3,16 +3,30 @@
 
 # import necessary libraries and functions
 suppressMessages(source("./src/normalization_functions.R"))
+suppressMessages(library(argparse))
 
 #---- Read arguments ----
-script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 3) {
-  stop("Please supply path to data, output directory, and assay",
-       call. = FALSE)
-}
-base_dir <- script_args[1]  # input directory
-out_dir <- script_args[2]  # output directory
-assay <- script_args[3]  # assay string (e.g. PR500)
+# script_args <- commandArgs(trailingOnly = TRUE)
+# if (length(script_args) != 3) {
+#   stop("Please supply path to data, output directory, and assay",
+#        call. = FALSE)
+# }
+# base_dir <- script_args[1]  # input directory
+# out_dir <- script_args[2]  # output directory
+# assay <- script_args[3]  # assay string (e.g. PR500)
+
+parser <- ArgumentParser()
+# specify our desired options 
+parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
+parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
+parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
+
+# get command line options, if help option encountered print help and exit
+args <- parser$parse_args()
+
+base_dir <- args$base_dir
+out_dir <- args$out
+assay <- args$assay
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
