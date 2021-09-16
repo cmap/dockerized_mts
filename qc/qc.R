@@ -28,20 +28,20 @@ logMFI_normalized <- data.table::fread(path_data)
 print("Calculating SSMDs")
 
 # calculate SSMD and NNMD (allow for no QC)
-SSMD_TABLE <- calc_ssmd(logMFI_normalized %>% dplyr::filter(pool_id != "CTLBC"))
-if (any(is.na(SSMD_TABLE$ssmd))) {
+qc_table <- calc_ssmd(logMFI_normalized %>% dplyr::filter(pool_id != "CTLBC"))
+if (any(is.na(qc_table$ssmd))) {
   message("Unable to calculate some QC metrics: control condition(s) may be missing")
 }
 
 # if there are positive controls
-if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
+if ("trt_poscon_md" %in% colnames(qc_table)) {
 
   # calculate error rate of normalized table (based on threshold classifier)
   print("Calculating error rates")
   error_table <- calc_er(logMFI_normalized)
 
   # join with SSMD table
-  SSMD_TABLE %<>%
+  qc_table %<>%
     dplyr::left_join(error_table, by = c("prism_replicate", "ccle_name", "rid", "culture")) %>%
     dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
                                                  sep = stringr::fixed("_")),
@@ -53,7 +53,7 @@ if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
 
 } else {
   # add empty columns (so reports don't break)
-  SSMD_TABLE %<>% dplyr::mutate(trt_poscon_md = NA,
+  qc_table %<>% dplyr::mutate(trt_poscon_md = NA,
                                 trt_poscon_mad = NA,
                                 error_rate = NA,
                                 compound_plate = stringr::word(prism_replicate, 1,
@@ -64,4 +64,4 @@ if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
 
 #---- Write data ----
 # Write QC table
-readr::write_csv(SSMD_TABLE, paste0(out_dir, "/SSMD_TABLE.csv"))
+readr::write_csv(qc_table, paste0(out_dir, "/QC_table.csv"))
