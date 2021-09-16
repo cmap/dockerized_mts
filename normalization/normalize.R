@@ -58,7 +58,7 @@ inst_info <- data.table::fread(path_inst_info) %>%
 base_day <- data.table::fread(path_inst_info) %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure)
 
-# ensure unique profile IDs (this may cause problems for combo-perturbations)
+# ensure unique profile IDs
 raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 
 # melt matrix into data tables and join with inst and cell info
@@ -115,4 +115,4 @@ logMFI_normalized %>%
   readr::write_csv(., paste0(out_dir, "/logMFI.csv"))
 
 # project key
-write_key(master_logMFI, out_dir)
+write_key(logMFI_normalized, out_dir)

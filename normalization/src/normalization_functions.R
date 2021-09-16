@@ -37,6 +37,8 @@ read_hdf5 <- function(filename, index = NULL) {
 
 
 #---- Reformatting ----
+
+# TODO: rewrite this function with new inst_info in mind
 # make project_key.csv
 write_key <- function(df, out_dir) {
   df %>%
