@@ -16,7 +16,7 @@ out_dir <- script_args[2]  # output directory
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
-path_data <- paste0(base_dir, "/logMFI_NORMALIZED.csv")
+path_data <- paste0(base_dir, "/logMFI.csv")
 
 #---- Load the data ----
 print("Loading data")
