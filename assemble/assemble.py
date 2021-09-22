@@ -192,10 +192,10 @@ def setup_input_files(args):
     if args.config_filepath:
         config_path = path_utils.validate_path_as_uri(args.config_filepath)
         page = urllib2.urlopen(config_path)
-        f = open("local.cfg", "w")
         content = page.read()
-        f.write(content)
-        f.close()
+        #f = open("local.cfg", "w")
+        #f.write(content)
+        #f.close()
         cp.read('local.cfg')
     else:
         #todo: download from s3 to overwrite local prism_pipeline.cfg
