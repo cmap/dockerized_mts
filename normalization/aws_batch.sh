@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # read in flagged arguments
-while getopts ":i:o:a:" arg; do
+while getopts ":b:o:a:" arg; do
   case $arg in
-    i) # specify input folder
+    b) # specify input folder
       data_dir=${OPTARG};;
     o) # specifcy output folder
       output_dir=${OPTARG};;
@@ -16,7 +16,7 @@ chmod +x /normalize.R
 chmod +x /src/normalization_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
 echo "${data_dir}" "${output_dir}" "${assay}"
-Rscript /normalize.R "${data_dir}" "${output_dir}" "${assay}"
+Rscript /normalize.R -b "${data_dir}" -o "${output_dir}" -a "${assay}"
 
 exit_code=$?
 

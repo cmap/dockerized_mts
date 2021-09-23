@@ -4,6 +4,7 @@
 library(tidyverse)
 library(magrittr)
 library(data.table)
+library(argparse)
 library(readr)
 library(scam)
 library(stats)
@@ -36,13 +37,18 @@ read_hdf5 <- function(filename, index = NULL) {
 }
 
 
-#---- Reformatting ----
+#---- Compound tracking ----
 
-# TODO: rewrite this function with new inst_info in mind
-# make project_key.csv
+# make new project_key.csv tracking what to make dose response curves for
 write_key <- function(df, out_dir) {
+  single_agents <- df %>%
+    dplyr::filter(str_detect(pert_iname, pattern = fixed("|"), negate = T)) %>%
+    dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
+    dplyr::group_by(pert_iname, pert_id, x_project_id, prism_replicate, compound_plate) %>%
+    dplyr::summarise(n_doses = n_distinct(pert_idose))
+  
+  
   df %>%
-    dplyr::filter(project_id != "controls") %>%
     dplyr::distinct(pert_name, pert_mfc_id, project_id, prism_replicate) %>%
     dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
     dplyr::distinct(pert_name, pert_mfc_id, project_id, compound_plate) %>%
@@ -65,7 +71,7 @@ control_medians <- function(df) {
     dplyr::mutate(mmLMFI = logMFI - mLMFI + median(mLMFI)) %>%  # normalized value for rep (to median well)
     dplyr::summarise(rLMFI = median(mmLMFI), .groups = "drop") %>%  # median normalized value across reps
     dplyr::left_join(df)
-  
+
   return(ref)
 }
 
@@ -97,6 +103,6 @@ normalize <- function(df, barcodes) {
       })) %>%
     dplyr::ungroup() %>%
     dplyr::select(-logMFI)
-  
+
   return(normalized)
 }

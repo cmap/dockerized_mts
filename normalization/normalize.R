@@ -3,7 +3,6 @@
 
 # import necessary libraries and functions
 suppressMessages(source("./src/normalization_functions.R"))
-suppressMessages(library(argparse))
 
 #---- Read arguments ----
 # script_args <- commandArgs(trailingOnly = TRUE)
@@ -16,7 +15,7 @@ suppressMessages(library(argparse))
 # assay <- script_args[3]  # assay string (e.g. PR500)
 
 parser <- ArgumentParser()
-# specify our desired options 
+# specify our desired options
 parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
 parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
