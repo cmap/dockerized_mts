@@ -22,22 +22,18 @@ def build_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # The following arguments are required. These are files that are necessary for assembly and which change
     # frequently between cohorts, replicates, etc.
-    parser.add_argument("-proj_dir", "-pd", help="path to the pod directory you want to run card on",
+    parser.add_argument("--proj_dir", "-pd", help="Required: Path to the pod directory you want to run card on",
                         type=str, required=True)
-    parser.add_argument("-cohort_name", "-cn", help="string designating the prefix to each build file eg. PCAL075-126_T2B",
+    parser.add_argument("--cohort_name", "-cn", help="Required: String designating the prefix to each build file eg. PCAL075-126_T2B",
                         type=str, required=True)
-    parser.add_argument("-build_folder", "-bf", help="outfolder for build files",
+    parser.add_argument("--build_dir", "-bd", help="Required: outfolder for build files",
                         type=str, required=True)
-    parser.add_argument("-search_pattern", "-sp",
+    parser.add_argument("--search_pattern", "-sp",
                         help="Search for this string in the directory, only run plates which contain it. "
                              "Default is wildcard",
                         type=str, default='*', required=False)
-    parser.add_argument("-aggregate_out", "-agg", help="whether weave used aggregate_out flag", action="store_true", default=False)
-    parser.add_argument("-verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
-    parser.add_argument("-bad_wells", "-wells", help="List of wells to be excluded from processing", type=list,
-                        default=[])
-    parser.add_argument("-log_tf", "-log", help="True or false, if true log transform the data",
-                        action="store_true", default=True)
+    parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
+
 
     return parser
 
@@ -103,13 +99,10 @@ def mk_gct_list(search_pattern):
 
 
 def mk_cell_metadata(args, failed_plates=None):
-    if args.aggregate_out:
-        mfi_paths = glob.glob(os.path.join(args.proj_dir, args.search_pattern, 'assemble', '*', '*MEDIAN.gct'))
-    else:
-        mfi_paths = glob.glob(os.path.join(args.proj_dir, 'assemble', args.search_pattern, '*MEDIAN.gct'))
+    mfi_paths = glob.glob(os.path.join(args.proj_dir, 'assemble', args.search_pattern, '*MEDIAN.gct'))
 
     cell_temp = pe.parse(mfi_paths[0])
-    cell_temp.row_metadata_df.to_csv(os.path.join(args.build_folder, args.cohort_name + '_cell_info.txt'), sep='\t')
+    cell_temp.row_metadata_df.to_csv(os.path.join(args.build_dir, args.cohort_name + '_cell_info.txt'), sep='\t')
 
 
     if failed_plates:
@@ -118,12 +111,12 @@ def mk_cell_metadata(args, failed_plates=None):
 
         ssmd_gct = GCToo.GCToo(data_df=ssmd_mat, col_metadata_df=pd.DataFrame(index=ssmd_mat.columns),
                                row_metadata_df=pd.DataFrame(index=ssmd_mat.index))
-        wg.write(ssmd_gct, os.path.join(args.build_folder, args.cohort_name + '_ssmd_matrix_n{}_{}.gct'.format(ssmd_gct.data_df.shape[1], ssmd_gct.data_df.shape[0])))
+        wg.write(ssmd_gct, os.path.join(args.build_dir, args.cohort_name + '_ssmd_matrix_n{}_{}.gct'.format(ssmd_gct.data_df.shape[1], ssmd_gct.data_df.shape[0])))
 
         ssmd_failures = ssmd_gct.data_df.median()[ssmd_gct.data_df.median() < 2].index.tolist()
         fails_dict = dict({'dropout_failures': failed_plates, 'ssmd_failures': ssmd_failures})
         fails_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in fails_dict.iteritems()]))
-        fails_df.to_csv(os.path.join(args.build_folder, 'failed_plates.txt'), sep='\t', index=False)
+        fails_df.to_csv(os.path.join(args.build_dir, 'failed_plates.txt'), sep='\t', index=False)
 
 def mk_inst_info(inst_data, norm_data=None, args=None):
 
@@ -139,7 +132,7 @@ def mk_inst_info(inst_data, norm_data=None, args=None):
     if norm_data:
         inst_info.loc[[x for x in inst_info.index if x not in norm_data.data_df.columns], 'is_well_failure'] = True
 
-    inst_info.to_csv(os.path.join(args.build_folder, args.cohort_name + '_inst_info.txt'), sep='\t')
+    inst_info.to_csv(os.path.join(args.build_dir, args.cohort_name + '_inst_info.txt'), sep='\t')
 
 
 def mk_sig_info(search_pattern_dict, data_dict, args):
@@ -152,10 +145,7 @@ def mk_sig_info(search_pattern_dict, data_dict, args):
 
             data_id = key.split('.g')[0].replace('*', '')
 
-            if args.aggregate_out:
-                meta_paths = glob.glob(os.path.join(args.proj_dir, args.search_pattern, 'weave', '*{}_cc_q75.txt'.format(data_id)))
-            else:
-                meta_paths = glob.glob(os.path.join(args.proj_dir, 'weave', args.search_pattern, '*{}_cc_q75.txt'.format(data_id)))
+            meta_paths = glob.glob(os.path.join(args.proj_dir, 'weave', args.search_pattern, '*{}_cc_q75.txt'.format(data_id)))
 
 
             if len(meta_paths) == 0:
@@ -176,7 +166,7 @@ def mk_sig_info(search_pattern_dict, data_dict, args):
             for x in ['data_level', 'prism_replicate', 'det_well']:
                 del fcpc_sig_info[x]
 
-            fcpc_sig_info.to_csv(os.path.join(args.build_folder, args.cohort_name + '_sig_metrics_{}.txt'.format(data_id)), sep='\t')
+            fcpc_sig_info.to_csv(os.path.join(args.build_dir, args.cohort_name + '_sig_metrics_{}.txt'.format(data_id)), sep='\t')
 
 
 def main(args):
@@ -204,21 +194,21 @@ def main(args):
     data_dict = {}
 
     for key in search_pattern_dict:
-        if args.aggregate_out:
-            if search_pattern_dict[key][0] == "weave":
-                path = os.path.join(args.proj_dir, args.search_pattern, search_pattern_dict[key][0], key)
-            else:
-                path = os.path.join(args.proj_dir, args.search_pattern, search_pattern_dict[key][0], '*', key)
-        else:
-            path = os.path.join(args.proj_dir, search_pattern_dict[key][0],
+        path = os.path.join(args.proj_dir, search_pattern_dict[key][0],
                             args.search_pattern,key)
-
-        out_path = os.path.join(args.build_folder, args.cohort_name + search_pattern_dict[key][1])
+        
+        out_path = os.path.join(args.build_dir, args.cohort_name + search_pattern_dict[key][1])
 
         if not os.path.exists(os.path.join(args.proj_dir, search_pattern_dict[key][0])):
+            print(
+                "Path not found: {}".format(
+                    os.path.join(args.proj_dir, search_pattern_dict[key][0])
+                )
+            )
             continue
 
         logger.info("working on {}".format(path))
+       
         if 'MODZ' in key:
             data, _ = build(path, out_path, '.gctx', cut=False)
         elif 'NORM' in key:
