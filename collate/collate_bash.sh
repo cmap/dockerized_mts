@@ -54,7 +54,7 @@ done
 
 if [ ! -d $BUILD_DIR ]
 then
-  mkdir $BUILD_DIR
+  mkdir -p $BUILD_DIR
 fi
 
 ##Run Collate
@@ -82,7 +82,15 @@ then
   args+=(-v)
 fi
 
+#setup environment
 source activate merino
+cd /cmap
+git clone https://github.com/cmap/merino.git
+cd /cmap/merino/
+python setup.py develop 
+
+#return to /
+cd / 
 
 #echo python collate.py "${args[@]}"
 python /clue/bin/collate.py "${args[@]}"

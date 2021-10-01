@@ -14,4 +14,3 @@ ENV PATH /clue/bin:$PATH
 RUN ["chmod","-R", "+x", "/clue/bin"]
 ENTRYPOINT ["collate_bash"]
 
-#CMD ["python /mk_build_file.py"]
