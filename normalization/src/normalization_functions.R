@@ -10,6 +10,7 @@ library(scam)
 library(stats)
 library(hdf5r)
 library(reshape2)
+library(splitstackshape)
 
 #---- Reading ----
 # HDF5 file reader
@@ -41,22 +42,17 @@ read_hdf5 <- function(filename, index = NULL) {
 
 # make new project_key.csv tracking what to make dose response curves for
 write_key <- function(df, out_dir) {
-  single_agents <- df %>%
-    dplyr::filter(str_detect(pert_iname, pattern = fixed("|"), negate = T)) %>%
-    dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
-    dplyr::group_by(pert_iname, pert_id, x_project_id, prism_replicate, compound_plate) %>%
-    dplyr::summarise(n_doses = n_distinct(pert_idose))
-  
-  
   df %>%
-    dplyr::distinct(pert_name, pert_mfc_id, project_id, prism_replicate) %>%
+    # dplyr::filter(str_detect(pert_iname, pattern = fixed("|"), negate = F)) %>%
     dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
-    dplyr::distinct(pert_name, pert_mfc_id, project_id, compound_plate) %>%
-    dplyr::group_by(pert_name, pert_mfc_id, project_id) %>%
-    dplyr::mutate(n_plates = n()) %>%
+    dplyr::distinct(pert_iname, pert_id, x_project_id, prism_replicate, compound_plate, pert_dose) %>%
+    splitstackshape::cSplit(splitCols = "pert_dose",
+                            sep = "|", fixed = T,
+                            direction = "wide", drop = T) %>%
+    dplyr::group_by(across(-c(colnames(.)[str_detect(colnames(.), pattern = "pert_dose")]))) %>%
+    summarise_at(vars(-group_cols()), function(x) n_distinct(x, na.rm = T)) %>%
     dplyr::ungroup() %>%
-    dplyr::distinct() %>%
-    readr::write_csv(., paste0(out_dir, "/project_key.csv"))
+    readr::write_csv(., paste0(out_dir, "/compound_key.csv"))
 }
 
 
