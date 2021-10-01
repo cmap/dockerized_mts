@@ -50,7 +50,7 @@ write_key <- function(df, out_dir) {
                             sep = "|", fixed = T,
                             direction = "wide", drop = T) %>%
     dplyr::group_by(across(-c(colnames(.)[str_detect(colnames(.), pattern = "pert_dose")]))) %>%
-    summarise_at(vars(-group_cols()), function(x) n_distinct(x, na.rm = T)) %>%
+    summarise_all(function(x) n_distinct(x, na.rm = T)) %>%
     dplyr::ungroup() %>%
     readr::write_csv(., paste0(out_dir, "/compound_key.csv"))
 }
