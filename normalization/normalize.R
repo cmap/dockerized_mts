@@ -113,5 +113,5 @@ logMFI_normalized %>%
   dplyr::select(-rLMFI) %>%
   readr::write_csv(., paste0(out_dir, "/logMFI.csv"))
 
-# project key
+# compound key
 write_key(logMFI_normalized, out_dir)
