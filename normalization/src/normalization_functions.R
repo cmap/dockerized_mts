@@ -134,7 +134,7 @@ normalize <- function(df, barcodes) {
   normalized <- df %>%
     dplyr::group_by(prism_replicate, pert_well) %>%
     # try with k=4 and 5 (to avoid hanging), try again with linear model
-    dplyr::mutate(logMFI.norm = tryCatch(
+    dplyr::mutate(LMFI = tryCatch(
       expr = {tryCatch(
         expr = {scam(y ~ s(x, bs = "micv", k = 4),
                      data = tibble(
