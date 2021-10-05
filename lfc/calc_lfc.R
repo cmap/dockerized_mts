@@ -4,14 +4,19 @@
 suppressMessages(source("./src/lfc_functions.R"))
 
 #---- Read arguments ----
-script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 3) {
-  stop("Please supply necessary arguments",
-       call. = FALSE)
-}
-base_dir <- script_args[1]
-out_dir <- script_args[2]
-calc_gr <- as.numeric(script_args[3])
+# initialize parser
+parser <- ArgumentParser()
+# specify our desired options
+parser$add_argument("-b", "--base_dir", default="", help="Input directory")
+parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
+parser$add_argument("-g", "--calc_gr", default=0, help = "Boolean (1 or 0). Should GR metrics be calculated?")
+
+# get command line options, if help option encountered print help and exit
+args <- parser$parse_args()
+
+base_dir <- args$base_dir
+out_dir <- args$out
+calc_gr <- as.numeric(args$calc_gr)
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
@@ -54,9 +59,10 @@ LFC_TABLE %<>%
 #---- Correct for pool effects ----
 print("ComBat correcting")
 LFC_TABLE %<>%
+  dplyr::mutate(x_project_id = pert_iname == "KAT6A_2") %>%
   dplyr::filter(!pert_type %in% c("ctl_vehicle", "ctl_untrt")) %>%
   dplyr::left_join(plates, by = c("prism_replicate")) %>%
-  tidyr::unite(col = "condition", pert_iname, pert_dose, compound_plate, pert_time, x_project_id,
+  tidyr::unite(col = "condition", pert_iname, pert_dose, compound_plate, pert_time, any_of("x_project_id"),
                sep = "::", remove = FALSE) %>%
   split(.$condition) %>%
   purrr::map_dfr(~dplyr::mutate(.x, LFC.cb = apply_combat(.))) %>%
@@ -65,9 +71,10 @@ LFC_TABLE %<>%
 # TODO: fix grouping variables
 #---- Make collapsed LFC table ----
 LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
-  dplyr::group_by(ccle_name, culture, pool_id, pert_iname, pert_id, pert_dose,
-                  pert_idose, compound_plate, pert_vehicle, pert_time, x_mixture_contents,
-                  x_mixture_id, x_project_id) %>%
+  dplyr::select(ccle_name, culture, pool_id, pert_iname, pert_id, pert_dose,
+                pert_idose, compound_plate, pert_vehicle, pert_time, LFC, LFC.cb,
+                any_of(c("x_mixture_contents", "x_mixture_id", "x_project_id"))) %>%
+  dplyr::group_by(across(.cols = !contains("LFC"))) %>%
   # LFC and LFC.cb values will be medians across replicates
   dplyr::summarize(LFC = median(LFC, na.rm = TRUE),
                    LFC.cb = median(LFC.cb, na.rm = TRUE),
