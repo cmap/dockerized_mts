@@ -5,13 +5,17 @@
 suppressMessages(source("./src/qc_functions.R"))
 
 #---- Read arguments ----
-script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 2) {
-  stop("Please supply path to data and output directory",
-       call. = FALSE)
-}
-base_dir <- script_args[1]  # input directory
-out_dir <- script_args[2]  # output directory
+# initialize parser
+parser <- ArgumentParser()
+# specify our desired options
+parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
+parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
+
+# get command line options, if help option encountered print help and exit
+args <- parser$parse_args()
+
+base_dir <- args$base_dir
+out_dir <- args$out
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
