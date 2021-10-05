@@ -45,7 +45,8 @@ write_key <- function(df, out_dir) {
   df %>%
     # dplyr::filter(str_detect(pert_iname, pattern = fixed("|"), negate = F)) %>%
     dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
-    dplyr::distinct(pert_iname, pert_id, x_project_id, prism_replicate, compound_plate, pert_dose) %>%
+    dplyr::select(pert_iname, pert_id, prism_replicate, compound_plate, pert_dose, any_of("x_project_id")) %>%
+    dplyr::distinct() %>%
     splitstackshape::cSplit(splitCols = "pert_dose",
                             sep = "|", fixed = T,
                             direction = "wide", drop = T) %>%
