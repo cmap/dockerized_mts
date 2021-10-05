@@ -133,27 +133,27 @@ control_medians <- function(df) {
 normalize <- function(df, barcodes) {
   normalized <- df %>%
     dplyr::group_by(prism_replicate, pert_well) %>%
-    # try with k=4 and 5 (to avoid hanging), try again with unspecified k
-    dplyr::mutate(LMFI = tryCatch(
+    # try with k=4 and 5 (to avoid hanging), try again with linear model
+    dplyr::mutate(logMFI.norm = tryCatch(
       expr = {tryCatch(
         expr = {scam(y ~ s(x, bs = "micv", k = 4),
                      data = tibble(
                        y = rLMFI[rid %in% barcodes$rid],
                        x = logMFI[rid %in% barcodes$rid])) %>%
-            predict(newdata = tibble(x = logMFI))},
+            predict(newdata = tibble(x = logMFI)) %>% as.numeric()},
         error = function(e) {
           scam(y ~ s(x, bs = "micv", k = 5),
                data = tibble(
                  y = rLMFI[rid %in% barcodes$rid],
                  x = logMFI[rid %in% barcodes$rid])) %>%
-            predict(newdata = tibble(x = logMFI))
+            predict(newdata = tibble(x = logMFI) %>% as.numeric())
         })},
       error = function(e) {
-        scam(y ~ s(x, bs = "micv"),
-             data = tibble(
-               y = rLMFI[rid %in% barcodes$rid],
-               x = logMFI[rid %in% barcodes$rid])) %>%
-          predict(newdata = tibble(x = logMFI))
+        lm(y ~ x,
+           data = tibble(
+             y = rLMFI[rid %in% barcodes$rid],
+             x = logMFI[rid %in% barcodes$rid])) %>%
+          predict(newdata = tibble(x = logMFI) %>% as.numeric())
       })) %>%
     dplyr::ungroup() %>%
     dplyr::select(-logMFI)
