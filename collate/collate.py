@@ -74,7 +74,7 @@ def build(search_pattern, outfile, file_suffix, cut=True, check_size=False):
                                      col_metadata_df=pd.DataFrame(index=concat_gct.col_metadata_df.index))
 
     logger.debug("gct shape without metadata: {}".format(concat_gct_wo_meta.data_df.shape))
-
+#    logger.debug(outfile + 'n{}x{}'.format(concat_gct.data_df.shape[1], concat_gct.data_df.shape[0]) + file_suffix)
     wgx.write(concat_gct_wo_meta, outfile + 'n{}x{}'.format(concat_gct.data_df.shape[1], concat_gct.data_df.shape[0]) + file_suffix)
 
     return concat_gct, failure_list
@@ -99,11 +99,10 @@ def mk_gct_list(search_pattern):
 
 
 def mk_cell_metadata(args, failed_plates=None):
-    mfi_paths = glob.glob(os.path.join(args.proj_dir, 'assemble', args.search_pattern, '*MEDIAN.gct'))
+    mfi_paths = glob.glob(os.path.join(args.proj_dir, args.search_pattern, 'assemble', args.search_pattern, '*MEDIAN.gct'))
 
     cell_temp = pe.parse(mfi_paths[0])
     cell_temp.row_metadata_df.to_csv(os.path.join(args.build_dir, args.cohort_name + '_cell_info.txt'), sep='\t')
-
 
     if failed_plates:
         # Calculate SSMD matrix using paths that were just grabbed and write out
@@ -194,21 +193,21 @@ def main(args):
     data_dict = {}
 
     for key in search_pattern_dict:
-        path = os.path.join(args.proj_dir, search_pattern_dict[key][0],
+        path = os.path.join(args.proj_dir, args.search_pattern, search_pattern_dict[key][0],
                             args.search_pattern,key)
-        
+
         out_path = os.path.join(args.build_dir, args.cohort_name + search_pattern_dict[key][1])
 
-        if not os.path.exists(os.path.join(args.proj_dir, search_pattern_dict[key][0])):
-            print(
-                "Path not found: {}".format(
-                    os.path.join(args.proj_dir, search_pattern_dict[key][0])
-                )
-            )
-            continue
+        # if not os.path.exists(os.path.join(args.proj_dir, args.search_pattern, search_pattern_dict[key][0])):
+        #     print(
+        #         "Path not found: {}".format(
+        #             os.path.join(args.proj_dir, search_pattern_dict[key][0])
+        #         )
+        #     )
+        #     continue
 
         logger.info("working on {}".format(path))
-       
+
         if 'MODZ' in key:
             data, _ = build(path, out_path, '.gctx', cut=False)
         elif 'NORM' in key:
@@ -234,5 +233,9 @@ if __name__ == "__main__":
     setup_logger.setup(verbose=args.verbose)
 
     logger.debug("args:  {}".format(args))
-
+    
+    if not os.path.exists(args.build_dir):
+        logger.info("Making build directory: {}".format(args.build_dir))
+        os.mkdir(args.build_dir)
+        
     main(args)
