@@ -59,7 +59,6 @@ LFC_TABLE %<>%
 #---- Correct for pool effects ----
 print("ComBat correcting")
 LFC_TABLE %<>%
-  dplyr::mutate(x_project_id = pert_iname == "KAT6A_2") %>%
   dplyr::filter(!pert_type %in% c("ctl_vehicle", "ctl_untrt")) %>%
   dplyr::left_join(plates, by = c("prism_replicate")) %>%
   tidyr::unite(col = "condition", pert_iname, pert_dose, compound_plate, pert_time, any_of("x_project_id"),
@@ -107,7 +106,7 @@ if (calc_gr) {
   }, error = function(e) {
     return(NA)
   })
-  
+
   # treatment
   GR_TABLE <- tryCatch(expr = {logMFI_normalized %>%
       # now group by compound
@@ -123,7 +122,7 @@ if (calc_gr) {
   }, error = function(e) {
     return(tibble())
   })
-  
+
   # combined
   GR_TABLE <- tryCatch(expr = {GR_TABLE %>%
       # calculate control change (DMSO - base)/(t - base day),
