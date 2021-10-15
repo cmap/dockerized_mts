@@ -52,9 +52,9 @@ if (!all(is.na(qc_table$pass))) {
 }
 LFC_TABLE %<>%
   dplyr::group_by(prism_replicate, ccle_name, culture, pert_time) %>%
-  dplyr::mutate(LFC = logMFI.norm - median(logMFI.norm[pert_type == "ctl_vehicle"])) %>%
+  dplyr::mutate(LFC = logMFI_norm - median(logMFI_norm[pert_type == "ctl_vehicle"])) %>%
   dplyr::ungroup() %>%
-  dplyr::select(-logMFI, -logMFI.norm)
+  dplyr::select(-logMFI, -logMFI_norm)
 
 #---- Correct for pool effects ----
 print("ComBat correcting")
