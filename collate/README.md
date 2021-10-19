@@ -2,7 +2,7 @@
 
 Module takes in a project directory with the directory strucuture:
 
-  {PROJECT_DIR}/*/assemble/*/*.gctx
+  {PROJECT_DIR}/\*/assemble/\*/\*.gctx
   
 ## Usage
 
