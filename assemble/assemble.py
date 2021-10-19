@@ -39,6 +39,7 @@ def build_parser():
     # frequently between cohorts, replicates, etc.
     parser.add_argument("-config_filepath", "-cfg", help="path to the location of the configuration file", type=str,
                         default=merino.default_config_filepath)
+    parser.add_argument("-csv_filepath", "-csv", help="full path to csv", type=str,  required=True)
     parser.add_argument("-assay_type", "-at", help="assay data was profiled in",
                         type=str, required=False)
     parser.add_argument("-plate_map_path", "-pmp",
@@ -47,24 +48,13 @@ def build_parser():
     # These arguments are optional. Some may be superfluous now and might be removed.
     parser.add_argument("-verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
 
-    parser.add_argument("-analyte_mapping_file", "-amf",
-                        help="mapping of analytes to pools and davepools, overriding config file",
-                        type=str, default=None, required=False)
     parser.add_argument("-cell_set_definition_file", "-csdf",
                         help="file containing cell set definition to use, overriding config file",
                         type=str, default=None, required=False)
-
-    parser.add_argument("-ignore_assay_plate_barcodes", "-batmanify", help="list of assay plate barcodes that should be"
-                        " ignored / excluded from the assemble", nargs="+", default=None)
     parser.add_argument("-outfile", "-out", help="location to write gct", type=str,
                         default='')
     parser.add_argument("-truncate_to_plate_map", "-trunc", help="True or false, if true truncate data to fit framework of platemap provided",
                         action="store_true", default=True)
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-davepool_id_csv_filepath_pairs", "-dp_csv",
-                        help="space-separated list of pairs of davepool_id and corresponding csv filepath for that davepool_id",
-                        type=str, nargs="+", required=False)
-    group.add_argument("-csv_filepath", "-csv", help="full path to csv", type=str,  required=False)
 
     return parser
 
@@ -170,7 +160,7 @@ def setup_input_files(args):
         pass
 
     cell_set_file_path = args.cell_set_definition_file if args.cell_set_definition_file else cp.get(args.assay_type, "cell_set_definition_file")
-    analyte_mapping_file_path = args.analyte_mapping_file if args.analyte_mapping_file else cp.get(args.assay_type, "analyte_mapping_file")
+    analyte_mapping_file_path = cp.get(args.assay_type, "analyte_mapping_file")
 
     return (cp, cell_set_file_path, analyte_mapping_file_path)
 
@@ -214,11 +204,7 @@ def main(args, all_perturbagens=None, assay_plates=None):
     for pert in all_perturbagens:
         pert.validate_properties(ast.literal_eval(cp.get("required_metadata_fields", "column_metadata_fields")))
 
-    args.ignore_assay_plate_barcodes = set(args.ignore_assay_plate_barcodes) if args.ignore_assay_plate_barcodes is not None else set()
-
     #read actual data from relevant csv files, associate it with davepool ID
-
-
     prism_cell_list = build_prism_cell_list(cp, cell_set_file, analyte_mapping_file)
 
     logger.info("len(prism_cell_list):  {}".format(len(prism_cell_list)))
