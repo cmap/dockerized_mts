@@ -41,3 +41,4 @@ vignettes/*.pdf
 # pkgdown site
 docs/
 .idea/
+.ipynb_checkpoints/

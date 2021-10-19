@@ -94,3 +94,7 @@ cd /
 
 #echo python collate.py "${args[@]}"
 python /clue/bin/collate.py "${args[@]}"
+exit_code=$?
+
+source deactivate
+exit $exit_code
