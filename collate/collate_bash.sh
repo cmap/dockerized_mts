@@ -1,7 +1,6 @@
 #!/bin/bash
 
-#optional 
-if test $# -lt 1; then
+print_help () {
   printf "Usage ./collate_bash.sh [options]\nOptions include:\n"
   printf -- "\t-pd, --proj_dir \t Path to the pod directory, assemble should be subfolder (required) \n"
   printf -- "\t-bd, --build_dir \t Output folder for build files (required) \n"
@@ -9,19 +8,18 @@ if test $# -lt 1; then
   printf -- "\t-sp, --search_pattern \t Search string in proj_dir, only run matching plates, default is wildcard '*' \n"
   printf -- "\t-v, --verbose \t\t Verbose flag, print additional output \n"
   printf -- "\t-h, --help \t\t Print this help text\n"
+}
+
+#optional 
+if test $# -lt 1; then
+  print_help
   exit 1
 fi
 
 while test $# -gt 0; do
   case "$1" in
     -h|--help)
-      printf "Usage ./collate_bash.sh [options]\nOptions include:\n"
-      printf -- "\t-pd, --proj_dir \t Path to the pod directory, assemble should be subfolder (required) \n"
-      printf -- "\t-bd, --build_dir \t Output folder for build files (required) \n"
-      printf -- "\t-cn, --cohort_name \t String designating the prefix to each build file (required)\n"
-      printf -- "\t-sp, --search_pattern \t Search string in proj_dir, only run matching plates, default is wildcard '*' \n"
-      printf -- "\t-v, --verbose \t\t Verbose flag, print additional output \n"
-      printf -- "\t-h, --help \t\t Print this help text\n"
+      print_help
       exit 0
       ;;
     -pd| --proj_dir)
