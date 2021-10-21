@@ -12,26 +12,6 @@ logger = logging.getLogger(setup_logger.LOGGER_NAME)
 
 class TestAssemble(unittest.TestCase):
 
-    def test_read_davepool_data_objects(self):
-        l = [(1, "../functional_tests/test_data/PASG/lxb/PASG003_PR500.2_120H_X251_BX/PASG003_PR500.2_120H_X251_BX.csv"), (2, "../functional_tests/test_data/PASG/lxb/PASG003_PR500.2_120H_X252_BX/PASG003_PR500.2_120H_X252_BX.csv")]
-        r = assemble.read_davepool_data_objects(l)
-        assert len(r) > 0
-        logger.debug("r:  {}".format(r))
-
-        assert r[0].davepool_id == 1, r[0].davepool_id
-        assert r[1].davepool_id == 2, r[1].davepool_id
-
-
-    def test_build_davepool_id_csv_list(self):
-        r = assemble.build_davepool_id_csv_list(["a", "1", "b", "2", "c", "3"])
-        logger.debug("r:  {}".format(r))
-        assert len(r) == 3, len(r)
-
-        assert r[0][0] == "a", r[0][0]
-        assert r[0][1] == "1", r[0][1]
-        assert r[2][0] == "c", r[2][0]
-        assert r[2][1] == "3", r[2][1]
-
     def test_full_functional_DP78(self):
         expected_files = ["assemble/PDOG003_DP78_120H_X1_B1/PDOG003_DP78_120H_X1_B1_COUNT.gct",
                           "assemble/PDOG003_DP78_120H_X1_B1/PDOG003_DP78_120H_X1_B1_MEDIAN.gct",
