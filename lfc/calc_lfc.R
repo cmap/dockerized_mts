@@ -8,20 +8,28 @@ suppressMessages(source("./src/lfc_functions.R"))
 parser <- ArgumentParser()
 
 # specify our desired options
-parser$add_argument("-b", "--base_dir", default="", help="Input directory")
+parser$add_argument("-b", "--base_dir", default=getwd(), help="Input directory. Default is working directory")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
+parser$add_argument("-n", "--name", default="", help = "Build name. Default is none")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 
 base_dir <- args$base_dir
 out_dir <- args$out
+build_name <- args$name
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
 #---- Load the data ----
 print("Loading data and pre-processing")
-logMFI_normalized <- data.table::fread(paste0(base_dir, "/logMFI.csv"))
+logMFI_files <- list.files(base_dir, pattern = "LEVEL3_LMFI", full.names = T)
+if (length(logMFI_files) == 1) {
+  logMFI_normalized <- data.table::fread(logMFI_files[[1]])
+} else {
+  stop(paste("There are", length(logMFI_files), "in this directory. Please ensure there is one and try again."),
+       call. = FALSE)
+}
 
 # split into base and final reading
 base_normalized <- logMFI_normalized %>%
@@ -48,5 +56,15 @@ if (!all(is.na(qc_table$pass))) {
 }
 LFC_TABLE <- calculate_lfc(LFC_TABLE)
 
+#---- Make collapsed LFC table ----
+LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
+  dplyr::select(ccle_name, culture, pool_id, pert_iname, pert_id, pert_dose,
+                pert_idose, compound_plate, pert_vehicle, pert_time, LFC,
+                any_of(c("x_mixture_contents", "x_mixture_id", "x_project_id"))) %>%
+  dplyr::group_by(across(.cols = !contains("LFC"))) %>%
+  # LFC and LFC.cb values will be medians across replicates
+  dplyr::summarise(LFC = median(LFC, na.rm = T))
+
 #---- Write results ----
-readr::write_csv(LFC_TABLE, paste0(out_dir, "/LFC_TABLE.csv"))
+readr::write_csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC.csv"))
+readr::write_csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC.csv"))
