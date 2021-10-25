@@ -27,7 +27,7 @@ logMFI_files <- list.files(base_dir, pattern = "LEVEL3_LMFI", full.names = T)
 if (length(logMFI_files) == 1) {
   logMFI_normalized <- data.table::fread(logMFI_files[[1]])
 } else {
-  stop(paste("There are", length(logMFI_files), "in this directory. Please ensure there is one and try again."),
+  stop(paste("There are", length(logMFI_files), "level 3 tables in this directory. Please ensure there is one and try again."),
        call. = FALSE)
 }
 
@@ -36,8 +36,15 @@ base_normalized <- logMFI_normalized %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"))
 logMFI_normalized %<>%
   dplyr::filter(str_detect(prism_replicate, "BASE", negate = T))
-qc_table <- data.table::fread(paste0(base_dir, "/QC_table.csv")) %>%
-  dplyr::filter(prism_replicate %in% plates$prism_replicate)
+
+qc_files <- list.files(base_dir, pattern = "QC_TABLE", full.names = T)
+if (length(qc_files) == 1) {
+  qc_table <- data.table::fread(qc_files[[1]]) %>%
+    dplyr::filter(prism_replicate %in% plates$prism_replicate)
+} else {
+  stop(paste("There are", length(qc_files), "QC tables in this directory. Please ensure there is one and try again."),
+       call. = FALSE)
+}
 
 #---- Compute log-fold changes ----
 print("Calculating log-fold changes")

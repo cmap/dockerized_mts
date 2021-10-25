@@ -10,12 +10,14 @@ parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
+parser$add_argument("-n", "--name", default="", help = "Build name. Default is none")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 
 base_dir <- args$base_dir
 out_dir <- args$out
+build_name <- args$name
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
@@ -68,4 +70,4 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
 
 #---- Write data ----
 # Write QC table
-readr::write_csv(qc_table, paste0(out_dir, "/QC_table.csv"))
+readr::write_csv(qc_table, paste0(out_dir, "/", build_name, "QC_TABLE.csv"))
