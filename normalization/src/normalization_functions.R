@@ -41,7 +41,7 @@ read_hdf5 <- function(filename, index = NULL) {
 #---- Compound tracking ----
 
 # make new project_key.csv tracking what to make dose response curves for
-write_key <- function(df, out_dir) {
+write_key <- function(df, out_dir, build_name) {
   df %>%
     # dplyr::filter(str_detect(pert_iname, pattern = fixed("|"), negate = F)) %>%
     dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
@@ -53,7 +53,7 @@ write_key <- function(df, out_dir) {
     dplyr::group_by(across(-c(colnames(.)[str_detect(colnames(.), pattern = "pert_dose")]))) %>%
     summarise_all(function(x) n_distinct(x, na.rm = T)) %>%
     dplyr::ungroup() %>%
-    readr::write_csv(., paste0(out_dir, "/compound_key.csv"))
+    readr::write_csv(., paste0(out_dir, "/", build_name, "compound_key.csv"))
 }
 
 

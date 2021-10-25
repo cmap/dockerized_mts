@@ -15,7 +15,7 @@ done
 chmod +x /calc_lfc.R
 chmod +x /src/lfc_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
-echo "${data_dir}" "${output_dir}" "${calc_gr}"
+echo "${data_dir}" "${output_dir}" "${build_name}"
 Rscript /calc_lfc.R -b "${data_dir}" -o "${output_dir}" -n "${build_name}"
 
 exit_code=$?

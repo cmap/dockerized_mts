@@ -19,6 +19,7 @@ parser <- ArgumentParser()
 parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
 parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
+parser$add_argument("-n", "--name", default="", help = "Build name. Default is none")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
@@ -26,6 +27,7 @@ args <- parser$parse_args()
 base_dir <- args$base_dir
 out_dir <- args$out
 assay <- args$assay
+build_name <- args$name
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
@@ -111,7 +113,7 @@ logMFI_normalized %<>%
 logMFI_normalized %>%
   dplyr::bind_rows(base_normalized) %>%
   dplyr::select(-rLMFI) %>%
-  readr::write_csv(., paste0(out_dir, "/logMFI.csv"))
+  readr::write_csv(., paste0(out_dir, "/", build_name, "_LEVEL3_LMFI.csv"))
 
 # compound key
-write_key(logMFI_normalized, out_dir)
+write_key(logMFI_normalized, out_dir, build_name)
