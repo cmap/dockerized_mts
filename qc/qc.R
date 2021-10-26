@@ -53,12 +53,10 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
 
   # join with SSMD table
   qc_table %<>%
-    dplyr::left_join(error_table, by = c("prism_replicate", "ccle_name", "rid", "culture")) %>%
-    dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
-                                                 sep = stringr::fixed("_")),
-                  dr = ctl_vehicle_md - trt_poscon_md,
+    dplyr::left_join(error_table, by = c("prism_replicate", "pert_plate", "ccle_name", "rid", "culture")) %>%
+    dplyr::mutate(dr = ctl_vehicle_md - trt_poscon_md,
                   pass = error_rate <= 0.05 & dr > -log2(0.3)) %>%
-    dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
+    dplyr::group_by(rid, ccle_name, culture, pert_plate) %>%
     dplyr::mutate(pass = pass & sum(pass, na.rm = T) / n_distinct(prism_replicate) > 0.5) %>%
     dplyr::ungroup()
 
@@ -67,7 +65,7 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
   qc_table %<>% dplyr::mutate(trt_poscon_md = NA,
                                 trt_poscon_mad = NA,
                                 error_rate = NA,
-                                compound_plate = stringr::word(prism_replicate, 1,
+                                pert_plate = stringr::word(prism_replicate, 1,
                                                                sep = stringr::fixed("_")),
                                 dr = NA,
                                 pass = NA)

@@ -35,6 +35,11 @@ if (length(logMFI_files) == 1) {
 logMFI_normalized %<>%
   dplyr::filter(str_detect(prism_replicate, "BASE", negate = T))
 
+# track compound plates
+plates <- distinct(logMFI_normalized, prism_replicate) %>%
+  dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
+                                               sep = fixed("_")))
+
 # load QC data
 qc_files <- list.files(base_dir, pattern = "QC_TABLE", full.names = T)
 if (length(qc_files) == 1) {
