@@ -27,8 +27,13 @@ path_data <- paste0(base_dir, "/logMFI.csv")
 #---- Load the data ----
 print("Loading data")
 
-# read in normalized logMFI data
-logMFI_normalized <- data.table::fread(path_data)
+logMFI_files <- list.files(base_dir, pattern = "LEVEL3_LMFI", full.names = T)
+if (length(logMFI_files) == 1) {
+  logMFI_normalized <- data.table::fread(logMFI_files[[1]])
+} else {
+  stop(paste("There are", length(logMFI_files), "level 3 tables in this directory. Please ensure there is one and try again."),
+       call. = FALSE)
+}
 
 #---- Calculate QC metrics ----
 print("Calculating SSMDs")
@@ -70,4 +75,4 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
 
 #---- Write data ----
 # Write QC table
-readr::write_csv(qc_table, paste0(out_dir, "/", build_name, "QC_TABLE.csv"))
+readr::write_csv(qc_table, paste0(out_dir, "/", build_name, "_QC_TABLE.csv"))
