@@ -4,6 +4,7 @@ print_help () {
   printf "Usage ./stack_build [options]\nOptions include:\n"
   printf -- "\t-b, --build_paths \t Comma separated list of build paths to collate (required) \n"
   printf -- "\t-n, --build_name \t String designating the prefix to each build file (required)\n"
+  printf -- "\t-k, --only_stack_keys \t Comma separated list of keys. Useful if parallelizing, only listed keys will be concatenated \n"
   printf -- "\t-o, --out \t Output folder for build files (required) \n"
   printf -- "\t-v, --verbose \t\t Verbose flag, print additional output \n"
   printf -- "\t-h, --help \t\t Print this help text\n"
@@ -24,6 +25,10 @@ while test $# -gt 0; do
     -b| --build_paths)
       shift
       BUILD_PATHS=$1
+      ;;
+    -k|--only_stack_keys)
+      shift
+      KEYS=$1
       ;;
     -o|--out)
       shift
@@ -67,6 +72,11 @@ args=(
 if [[ ! -z $VERBOSE ]]
 then
   args+=(-v)
+fi
+
+if [[ ! -z $KEYS ]]
+then
+  args+=(-k $KEYS)
 fi
 
 #setup environment
