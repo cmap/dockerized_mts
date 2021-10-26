@@ -35,11 +35,6 @@ if (length(logMFI_files) == 1) {
 logMFI_normalized %<>%
   dplyr::filter(str_detect(prism_replicate, "BASE", negate = T))
 
-# track compound plates
-plates <- distinct(logMFI_normalized, prism_replicate) %>%
-  dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
-                                               sep = fixed("_")))
-
 # load QC data
 qc_files <- list.files(base_dir, pattern = "QC_TABLE", full.names = T)
 if (length(qc_files) == 1) {
@@ -57,8 +52,8 @@ if (!all(is.na(qc_table$pass))) {
   LFC_TABLE %<>%
     # join with SSMD (to filter bad lines)
     dplyr::inner_join(qc_table %>%
-                        dplyr::distinct(ccle_name, prism_replicate, culture, pass),
-                      by = c("prism_replicate", "ccle_name", "culture")) %>%
+                        dplyr::distinct(ccle_name, prism_replicate, culture, pass, pert_plate),
+                      by = c("prism_replicate", "ccle_name", "culture", "pert_plate")) %>%
     dplyr::filter(pass) %>%
     dplyr::select(-pass)
 } else {
@@ -69,11 +64,11 @@ LFC_TABLE <- calculate_lfc(LFC_TABLE)
 #---- Make collapsed LFC table ----
 LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
   dplyr::select(ccle_name, culture, pool_id, pert_iname, pert_id, pert_dose,
-                pert_idose, compound_plate, pert_vehicle, pert_time, LFC,
+                pert_idose, pert_plate, pert_vehicle, pert_time, LFC,
                 any_of(c("x_mixture_contents", "x_mixture_id", "x_project_id"))) %>%
   dplyr::group_by(across(.cols = !contains("LFC"))) %>%
   # LFC and LFC.cb values will be medians across replicates
-  dplyr::summarise(LFC = median(LFC, na.rm = T))
+  dplyr::summarise(LFC = median(LFC, na.rm = T), .groups = "drop")
 
 #---- Write results ----
 readr::write_csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC.csv"))
