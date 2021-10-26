@@ -7,8 +7,6 @@ while getopts ":b:o:a:n:" arg; do
       data_dir=${OPTARG};;
     o) # specifcy output folder
       output_dir=${OPTARG};;
-    a) # specify assay/build (PR300 or PR500)
-      assay=${OPTARG} ;;
     n) # specify build name
       build_name=${OPTARG}
   esac
