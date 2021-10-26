@@ -31,16 +31,14 @@ if (length(logMFI_files) == 1) {
        call. = FALSE)
 }
 
-# split into base and final reading
-base_normalized <- logMFI_normalized %>%
-  dplyr::filter(str_detect(prism_replicate, "BASE"))
+# remove early timepoint
 logMFI_normalized %<>%
   dplyr::filter(str_detect(prism_replicate, "BASE", negate = T))
 
+# load QC data
 qc_files <- list.files(base_dir, pattern = "QC_TABLE", full.names = T)
 if (length(qc_files) == 1) {
-  qc_table <- data.table::fread(qc_files[[1]]) %>%
-    dplyr::filter(prism_replicate %in% plates$prism_replicate)
+  qc_table <- data.table::fread(qc_files[[1]])
 } else {
   stop(paste("There are", length(qc_files), "QC tables in this directory. Please ensure there is one and try again."),
        call. = FALSE)
