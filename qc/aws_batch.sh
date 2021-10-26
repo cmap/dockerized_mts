@@ -8,7 +8,7 @@ while getopts ":b:o:n:" arg; do
     o) # specifcy output folder
       output_dir=${OPTARG};;
     n) # specify build name
-      build_name=${OPTARG}};;
+      build_name=${OPTARG}
   esac
 done
 
