@@ -53,7 +53,7 @@ write_key <- function(df, out_dir, build_name) {
     dplyr::group_by(across(-c(colnames(.)[str_detect(colnames(.), pattern = "pert_dose")]))) %>%
     summarise_all(function(x) n_distinct(x, na.rm = T)) %>%
     dplyr::ungroup() %>%
-    readr::write_csv(., paste0(out_dir, "/", build_name, "compound_key.csv"))
+    readr::write_csv(., paste0(out_dir, "/", build_name, "_compound_key.csv"))
 }
 
 
