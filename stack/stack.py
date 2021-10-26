@@ -7,14 +7,14 @@ import argparse
 import pandas as pd
 from cmapPy.pandasGEXpress.parse import parse
 
-
 logger = logging.getLogger(__name__)
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--build_paths', '-b', help='Comma separated list of build paths to collate')
     parser.add_argument('--build_name', '-n', help='Build Name, prepended to files')
-    parser.add_argument('--ignore_missing', action="store_true", default=False)
+    parser.add_argument('--only_stack_keys', '-k', help='Comma separated list of keys. Useful if parallelizing, only listed keys will be concatenated')
+    #parser.add_argument('--ignore_missing', action="store_true", default=False)
     parser.add_argument('--out', '-o', help='Output for collated build')
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
 
@@ -88,13 +88,21 @@ def main(args):
     build_paths = args.build_paths.split(',')
     nbuilds = len(build_paths)
 
+    if args.only_stack_keys:
+        only_keys = args.only_stack_keys.split(',')
+        print(only_keys)
+        build_contents_dict = { key: build_contents_dict[key] for key in only_keys }
+        print(build_contents_dict)
+
     build_name = args.build_name
 
     for key in build_contents_dict:
+        print(key)
         result = map(lambda x: os.path.join(x, build_contents_dict[key]['search_pattern']), build_paths)
         fps = map(glob.glob, result)
         fps = [item for sublist in fps for item in sublist]
         #print(fps)
+        assert len(fps) >= nbuilds, 'Files not found in build_paths'
         assert len(fps) == nbuilds, 'Too many files found for key: {}'.format(key)
 
         if build_contents_dict[key]['type'] == 'gctx':
@@ -114,7 +122,7 @@ def main(args):
             out_path = os.path.join(out,'{}_{}_n{}x{}.csv'.format(build_name, key, nc, nr))
             print("Writing file to: \n\t{}".format(out_path))
             combined_data.to_csv(out_path, index=False)
-        elif build_contents_dict[key]['type'] == 'txt':
+        elif build_contents_dict[key]['type'] == 'metadata':
             print('Merging the following files:\n\t{}'.format('\n\t'.join(fps)))
             combined_data = pd.concat([pd.read_csv(fp, sep='\t') for fp in fps]).reset_index(drop=True)
             out_path = os.path.join(out,'{}_{}.txt'.format(build_name, key))
