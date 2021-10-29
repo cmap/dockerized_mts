@@ -56,7 +56,6 @@ then
 fi
 
 ##Run Collate
-
 if [[ -z $BUILD_PATHS || -z $BUILD_DIR || -z $BUILD_NAME ]]
 then
   printf "Required arguments missing\n"
@@ -74,10 +73,7 @@ then
   args+=(-v)
 fi
 
-if [[ ! -z $KEYS ]]
-then
-  args+=(-k $KEYS)
-fi
+
 
 #setup environment
 source activate merino
@@ -89,9 +85,45 @@ python setup.py develop
 #return to /
 cd /
 
-#echo python collate.py "${args[@]}"
-python /clue/bin/stack.py "${args[@]}"
+if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+    if [[ ! -z $KEYS ]]
+    then
+      args+=(-k $KEYS)
+    fi
+    python /clue/bin/stack.py "${args[@]}"
+else
+    batch=${AWS_BATCH_JOB_ARRAY_INDEX}
+    if [[ $batch = "0" ]]; then
+        args+=(-k 'inst_info')
+        python /clue/bin/stack.py "${args[@]}"
+    elif [[ $batch = "1" ]]; then
+        args+=(-k 'cell_info')
+        python /clue/bin/stack.py "${args[@]}"
+    elif [[ $batch = "2" ]]; then
+        args+=(-k 'QC_table')
+        python /clue/bin/stack.py "${args[@]}"
+    elif [[ $batch = "3" ]]; then
+        args+=(-k 'compound_key')
+        python /clue/bin/stack.py "${args[@]}"
+    elif [[ $batch = "4" ]]; then
+        args+=(-k 'LEVEL2_COUNT')
+        python /clue/bin/stack.py "${args[@]}"
+    elif [[ $batch = "5" ]]; then
+        args+=(-k 'LEVEL2_MFI')
+        python /clue/bin/stack.py "${args[@]}"
+    elif [[ $batch = "6" ]]; then
+        args+=(-k 'LEVEL3_LMFI')
+        python /clue/bin/stack.py "${args[@]}"
+    elif [[ $batch = "7" ]]; then
+        args+=(-k 'LEVEL4_LFC')
+        python /clue/bin/stack.py "${args[@]}"
+    elif [[ $batch = "8" ]]; then
+        args+=(-k 'LEVEL5_LFC')
+        python /clue/bin/stack.py "${args[@]}"
+    else
+        echo "Done"
+    fi
+fi
 exit_code=$?
-
 conda deactivate
 exit $exit_code

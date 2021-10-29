@@ -50,31 +50,31 @@ def main(args):
             'type':'metadata'
         },
         'QC_table' : {
-            'search_pattern': 'QC_table.csv',
+            'search_pattern': '*QC_TABLE*.csv',
             'type': 'report',
         },
         'compound_key' : {
-            'search_pattern': 'compound_key.csv',
+            'search_pattern': '*compound_key.csv',
             'type': 'key'
         },
         'LEVEL2_COUNT': {
-            'search_pattern': '*_LEVEL2_COUNT_*.gctx',
+            'search_pattern': '*_LEVEL2_COUNT*.gctx',
             'type':'gctx'
         },
         'LEVEL2_MFI': {
-            'search_pattern': '*_LEVEL2_MFI_*.gctx',
+            'search_pattern': '*_LEVEL2_MFI*.gctx',
             'type':'gctx'
         },
         'LEVEL3_LMFI': {
-            'search_pattern': '*_LEVEL3_LMFI_*.csv',
+            'search_pattern': '*_LEVEL3_LMFI*.csv',
             'type':'csv_data'
         },
         'LEVEL4_LFC': {
-            'search_pattern': '*_LEVEL4_LFC_*.csv',
+            'search_pattern': '*_LEVEL4_LFC*.csv',
             'type':'csv_data'
         },
         'LEVEL5_LFC': {
-            'search_pattern': '*_LEVEL5_LFC_*.csv',
+            'search_pattern': '*_LEVEL5_LFC*.csv',
             'type':'csv_data'
         },
     }
