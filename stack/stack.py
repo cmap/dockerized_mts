@@ -14,7 +14,10 @@ def build_parser():
     parser.add_argument('--build_paths', '-b', help='Comma separated list of build paths to collate')
     parser.add_argument('--build_name', '-n', help='Build Name, prepended to files')
     parser.add_argument('--only_stack_keys', '-k', help='Comma separated list of keys. Useful if parallelizing, only listed keys will be concatenated')
-    parser.add_argument('--sid_id_cols', '-s', help='Comma separated list of col names to create sig_ids if not present')
+    parser.add_argument('--sid_id_cols', '-s',
+        help='Comma separated list of col names to create sig_ids if not present',
+        default='compound_plate,culture,pert_id,pert_idose,pert_time',
+        )
     #parser.add_argument('--ignore_missing', action="store_true", default=False)
     parser.add_argument('--out', '-o', help='Output for collated build')
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
@@ -126,7 +129,7 @@ def main(args):
             combined_data['feature_id'] = combined_data.apply(lambda row: '{}:{}'.format(row['culture'], row['ccle_name']), axis=1)
             if key == 'LEVEL5_LFC':
                 if not 'sig_id' in combined_data.columns:
-                    combined_data = make_sig_id(combined_data, id_cols='compound_plate,culture,pert_id,pert_idose,pert_time')
+                    combined_data = make_sig_id(combined_data, id_cols=args.sig_id_cols)
                 prof_key = 'sig_id'
             else:
                 prof_key='profile_id'
