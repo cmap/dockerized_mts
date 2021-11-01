@@ -5,6 +5,7 @@ print_help () {
   printf -- "\t-b, --build_paths \t Comma separated list of build paths to collate (required) \n"
   printf -- "\t-n, --build_name \t String designating the prefix to each build file (required)\n"
   printf -- "\t-k, --only_stack_keys \t Comma separated list of keys. Useful if parallelizing, only listed keys will be concatenated \n"
+  printf -- "\t-s, --sig_id_cols \t Comma separated list of col names to create sig_ids if not present \n"
   printf -- "\t-o, --out \t Output folder for build files (required) \n"
   printf -- "\t-v, --verbose \t\t Verbose flag, print additional output \n"
   printf -- "\t-h, --help \t\t Print this help text\n"
@@ -29,6 +30,10 @@ while test $# -gt 0; do
     -k|--only_stack_keys)
       shift
       KEYS=$1
+      ;;
+    -s|--sig_id_cols)
+      shift
+      SIG_ID_COLS=$1
       ;;
     -o|--out)
       shift
@@ -90,6 +95,12 @@ if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
     then
       args+=(-k $KEYS)
     fi
+    
+    if [[ ! -z $SIG_ID_COLS ]]
+    then
+      args+=(-s $SIG_ID_COLS)
+    fi
+    
     python /clue/bin/stack.py "${args[@]}"
 else
     batch=${AWS_BATCH_JOB_ARRAY_INDEX}
@@ -119,6 +130,10 @@ else
         python /clue/bin/stack.py "${args[@]}"
     elif [[ $batch = "8" ]]; then
         args+=(-k 'LEVEL5_LFC')
+        if [[ ! -z $SIG_ID_COLS ]]
+        then
+          args+=(-s $SIG_ID_COLS)
+        fi
         python /clue/bin/stack.py "${args[@]}"
     else
         echo "Done"
