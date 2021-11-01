@@ -14,6 +14,7 @@ def build_parser():
     parser.add_argument('--build_paths', '-b', help='Comma separated list of build paths to collate')
     parser.add_argument('--build_name', '-n', help='Build Name, prepended to files')
     parser.add_argument('--only_stack_keys', '-k', help='Comma separated list of keys. Useful if parallelizing, only listed keys will be concatenated')
+    parser.add_argument('--sid_id_cols', '-s', help='Comma separated list of col names to create sig_ids if not present')
     #parser.add_argument('--ignore_missing', action="store_true", default=False)
     parser.add_argument('--out', '-o', help='Output for collated build')
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
@@ -38,6 +39,13 @@ def sum_dims_from_paths(file_paths):
 
     return nc,nr
 
+"""
+Make sig_ids based on id_cols.
+"""
+def make_sig_id(level5_table, id_cols='compound_plate,culture,pert_id,pert_idose,pert_time')
+    col_hds = ids.split(',')
+    level5_table['sig_id'] = level5_table.apply(lambda row: '_'.join([row[col] for col in col_hds]), axis=1)
+    return level5_table
 
 def main(args):
     build_contents_dict = {
@@ -116,7 +124,12 @@ def main(args):
             print('Merging the following files:\n\t{}'.format('\n\t'.join(fps)))
             combined_data = pd.concat([pd.read_csv(fp) for fp in fps]).reset_index(drop=True)
             combined_data['feature_id'] = combined_data.apply(lambda row: '{}:{}'.format(row['culture'], row['ccle_name']), axis=1)
-            prof_key= ('sig_id' if key == 'LEVEL5_LFC' else 'profile_id')
+            if key == 'LEVEL5_LFC':
+                if not 'sig_id' in combined_data.columns:
+                    combined_data = make_sig_id(combined_data, id_cols='compound_plate,culture,pert_id,pert_idose,pert_time')
+                prof_key = 'sig_id'
+            else:
+                prof_key='profile_id'
             nc = len(combined_data[prof_key].unique())
             nr = len(combined_data['feature_id'].unique())
             out_path = os.path.join(out,'{}_{}_n{}x{}.csv'.format(build_name, key, nc, nr))
@@ -142,7 +155,7 @@ def main(args):
                 df = df.merge(other_df, how='outer', on=list(other_df.columns)) #this avoids duplicate rows
             out_path = os.path.join(out,'{}.csv'.format(key))
             print("Writing file to: \n\t{}".format(out_path))
-            combined_data.to_csv(out_path, sep='\t')
+            df.to_csv(out_path, sep='\t')
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])
