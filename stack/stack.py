@@ -144,13 +144,13 @@ def main(args):
             combined_data = pd.concat([pd.read_csv(fp, sep='\t') for fp in fps]).reset_index(drop=True)
             out_path = os.path.join(out,'{}_{}.txt'.format(build_name, key))
             print("Writing file to: \n\t{}".format(out_path))
-            combined_data.to_csv(out_path, sep='\t')
+            combined_data.to_csv(out_path, sep='\t', index=False)
         elif build_contents_dict[key]['type'] == 'report':
             print('Merging the following files:\n\t{}'.format('\n\t'.join(fps)))
             combined_data = pd.concat([pd.read_csv(fp) for fp in fps]).reset_index(drop=True)
             out_path = os.path.join(out,'{}_{}.csv'.format(build_name,key))
             print("Writing file to: \n\t{}".format(out_path))
-            combined_data.to_csv(out_path, sep='\t')
+            combined_data.to_csv(out_path, index=False)
         elif build_contents_dict[key]['type'] == 'key':
             print('Merging the following files:\n\t{}'.format('\n\t'.join(fps)))
             key_list = [pd.read_csv(fp) for fp in fps]
@@ -159,7 +159,7 @@ def main(args):
                 df = df.merge(other_df, how='outer', on=list(other_df.columns)) #this avoids duplicate rows
             out_path = os.path.join(out,'{}.csv'.format(key))
             print("Writing file to: \n\t{}".format(out_path))
-            df.to_csv(out_path, sep='\t')
+            df.to_csv(out_path, index=False, )
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])
