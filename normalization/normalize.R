@@ -5,21 +5,13 @@
 suppressMessages(source("./src/normalization_functions.R"))
 
 #---- Read arguments ----
-# script_args <- commandArgs(trailingOnly = TRUE)
-# if (length(script_args) != 3) {
-#   stop("Please supply path to data, output directory, and assay",
-#        call. = FALSE)
-# }
-# base_dir <- script_args[1]  # input directory
-# out_dir <- script_args[2]  # output directory
-# assay <- script_args[3]  # assay string (e.g. PR500)
 
 parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
 parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
-parser$add_argument("-n", "--name", default="", help = "Build name. Default is none")
+parser$add_argument("-n", "--name", default="", help="Build name. Default is none")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()

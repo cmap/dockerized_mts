@@ -35,14 +35,3 @@ compute_aoc <- function(l, u, ec50, h, md, MD) {
   return(tryCatch(integrate(f1, log2(md),log2(MD))$value/(log2(MD/md)),
                   error = function(x) NA))
 }
-
-# log gr50 from given dose-response parameters
-compute_log_gr50 <- function(l, u, ec50, h, md, MD) {
-  if((l >= 0.5) | (u <= 0.5)) {
-    return(NA)
-  } else {
-    f1 = function(x) (l + (u - l)/(1 + (2^x/ec50)^h) - 0.5)
-    return(tryCatch(uniroot(f1, c(log2(md), log2(MD)))$root,
-                    error = function(x) NA))
-  }
-}
