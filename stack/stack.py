@@ -7,16 +7,16 @@ import argparse
 import pandas as pd
 from cmapPy.pandasGEXpress.parse import parse
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('stack')
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--build_paths', '-b', help='Comma separated list of build paths to collate')
     parser.add_argument('--build_name', '-n', help='Build Name, prepended to files')
     parser.add_argument('--only_stack_keys', '-k', help='Comma separated list of keys. Useful if parallelizing, only listed keys will be concatenated')
-    parser.add_argument('--sid_id_cols', '-s',
+    parser.add_argument('--sig_id_cols', '-s',
         help='Comma separated list of col names to create sig_ids if not present',
-        default='compound_plate,culture,pert_id,pert_idose,pert_time',
+        default='pert_plate,culture,pert_id,pert_idose,pert_time',
         )
     #parser.add_argument('--ignore_missing', action="store_true", default=False)
     parser.add_argument('--out', '-o', help='Output for collated build')
@@ -45,9 +45,9 @@ def sum_dims_from_paths(file_paths):
 """
 Make sig_ids based on id_cols.
 """
-def make_sig_id(level5_table, id_cols='compound_plate,culture,pert_id,pert_idose,pert_time')
-    col_hds = ids.split(',')
-    level5_table['sig_id'] = level5_table.apply(lambda row: '_'.join([row[col] for col in col_hds]), axis=1)
+def make_sig_id(level5_table, id_cols):
+    col_hds = id_cols.split(',')
+    level5_table['sig_id'] = level5_table.apply(lambda row: '_'.join([str(row[col]) for col in col_hds]), axis=1)
     return level5_table
 
 def main(args):
@@ -129,6 +129,7 @@ def main(args):
             combined_data['feature_id'] = combined_data.apply(lambda row: '{}:{}'.format(row['culture'], row['ccle_name']), axis=1)
             if key == 'LEVEL5_LFC':
                 if not 'sig_id' in combined_data.columns:
+                    logger.info('Sig ids not found, creating from sig_id_cols param')
                     combined_data = make_sig_id(combined_data, id_cols=args.sig_id_cols)
                 prof_key = 'sig_id'
             else:
@@ -147,7 +148,7 @@ def main(args):
         elif build_contents_dict[key]['type'] == 'report':
             print('Merging the following files:\n\t{}'.format('\n\t'.join(fps)))
             combined_data = pd.concat([pd.read_csv(fp) for fp in fps]).reset_index(drop=True)
-            out_path = os.path.join(out,'{}.csv'.format(key))
+            out_path = os.path.join(out,'{}_{}.csv'.format(build_name,key))
             print("Writing file to: \n\t{}".format(out_path))
             combined_data.to_csv(out_path, sep='\t')
         elif build_contents_dict[key]['type'] == 'key':
