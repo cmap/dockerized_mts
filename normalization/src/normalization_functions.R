@@ -44,8 +44,7 @@ read_hdf5 <- function(filename, index = NULL) {
 write_key <- function(df, out_dir, build_name) {
   df %>%
     # dplyr::filter(str_detect(pert_iname, pattern = fixed("|"), negate = F)) %>%
-    dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
-    dplyr::select(pert_iname, pert_id, compound_plate, pert_dose, any_of("x_project_id")) %>%
+    dplyr::select(pert_iname, pert_id, pert_plate, pert_dose, any_of("x_project_id")) %>%
     dplyr::distinct() %>%
     splitstackshape::cSplit(splitCols = "pert_dose",
                             sep = "|", fixed = T,

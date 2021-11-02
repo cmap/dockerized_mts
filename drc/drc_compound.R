@@ -4,47 +4,25 @@
 suppressMessages(source("./src/drc_functions.R"))
 
 #---- Read arguments ----
-script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 7) {
-  stop("Please supply necessary arguments",
-       call. = FALSE)
-}
-base_dir <- script_args[1]
-out_dir <- script_args[2]
-project_name <- script_args[3]
-compound <- script_args[4]
-plate <- script_args[5]
-n_plates <- as.numeric(script_args[6])
 
-project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
-comp_dir <- paste(project_dir, write_name, sep = fixed("/"))
-if (!dir.exists(comp_dir)) {dir.create(comp_dir, recursive = T)}
+parser <- ArgumentParser()
+# specify our desired options
+parser$add_argument("-i", "--input_file", default="", help="Input level 4 (LFC) file")
+parser$add_argument("-o", "--out", default="", help="Output directory")
+
+# get command line options, if help option encountered print help and exit
+args <- parser$parse_args()
+
+lfc_file <- args$input_file
+out_dir <- args$out
 
 #---- Load the data ----
 print("Loading data and pre-processing")
-LFC_TABLE <- data.table::fread(paste0(base_dir, "/LFC_TABLE.csv")) %>%
-  dplyr::filter(pert_name == compound,
-                project_id == project_name)
-if (plate != "NA") {
-  LFC_TABLE %<>% dplyr::filter(compound_plate == plate)
-}
-
-# write LFC and LFC collapsed table into compound directory
-readr::write_csv(LFC_TABLE, paste0(comp_dir, "/LFC_TABLE.csv"))
-data.table::fread(paste0(base_dir, "/LFC_COLLAPSED_TABLE.csv")) %>%
-  dplyr::filter(pert_name == compound, project_id == project_name) %>%
-  {if (plate != "NA") dplyr::filter(., compound_plate == plate) else .} %>%
-  readr::write_csv(., paste0(comp_dir, "/LFC_COLLAPSED_TABLE.csv"))
-
-if (calc_gr) {
-  GR_TABLE <- data.table::fread(paste0(base_dir, "/GR_TABLE.csv")) %>%
-    dplyr::filter(pert_name == compound, project_id == project_name)
-}
+LFC_TABLE <- data.table::fread(lfc_file)
 
 #---- Compute dose-response parameters ----
 # table with each compound cell line combo and number of doses
 DRC_TABLE_cb <- LFC_TABLE %>%
-  dplyr::filter(pert_type == "trt_cp") %>%
   dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time, compound_plate) %>%
   dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
   dplyr::filter(n > 3)  # only fit curves with 4+ doses
