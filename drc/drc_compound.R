@@ -23,9 +23,7 @@ LFC_TABLE <- data.table::fread(lfc_file)
 #---- Compute dose-response parameters ----
 # table with each compound cell line combo and number of doses
 DRC_TABLE_cb <- LFC_TABLE %>%
-  dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time, compound_plate) %>%
-  dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
-  dplyr::filter(n > 3)  # only fit curves with 4+ doses
+  
 
 if (nrow(DRC_TABLE_cb > 0)) {
   print("Fitting dose-response curves")

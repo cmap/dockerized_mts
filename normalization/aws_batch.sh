@@ -7,6 +7,8 @@ while getopts ":b:o:a:n:" arg; do
       data_dir=${OPTARG};;
     o) # specifcy output folder
       output_dir=${OPTARG};;
+    a) # specifcy output folder
+      assay=${OPTARG};;
     n) # specify build name
       build_name=${OPTARG}
   esac

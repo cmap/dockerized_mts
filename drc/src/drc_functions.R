@@ -9,6 +9,7 @@ library(readr)
 library(stats)
 library(reshape2)
 library(argparse)
+library(splitstackshape)
 
 #---- Dose-Response Parameters ----
 # area under curve given dose-response parameters
