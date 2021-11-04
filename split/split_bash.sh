@@ -24,6 +24,18 @@ while test $# -gt 0; do
       shift
       BUILD_PATH=$1
       ;;
+    -p| --pert)
+      shift
+      PERT=$1
+      ;;
+    -pr| --project)
+      shift
+      PROJECT=$1
+      ;;
+    -pp| --pert_plate)
+      shift
+      PERT_PLATE=$1
+      ;;
     -o|--out)
       shift
       BUILD_DIR=$1
@@ -42,7 +54,7 @@ done
 
 if [ ! -d $BUILD_DIR ]
 then
-  mkdir -p $BUILD_DIR
+  mkdir -p $BUILD_DIR/$PROJECT/$PERT_PLATE/$PERT
 fi
 
 # ##Run Collate
@@ -55,6 +67,9 @@ fi
 args=(
   -b "$BUILD_PATH"
   -o "$BUILD_DIR"
+  -p "$PERT"
+  -pr "$PROJECT"
+  -pp "$PERT_PLATE"
 )
 
 if [[ ! -z $VERBOSE ]]
@@ -71,7 +86,7 @@ python setup.py develop
 #return to /
 cd /
 
-python /clue/bin/split.py "${args[@]}"
+python /clue/bin/split_individual.py "${args[@]}"
 
 exit_code=$?
 conda deactivate
