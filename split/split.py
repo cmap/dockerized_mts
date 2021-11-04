@@ -22,7 +22,7 @@ def build_parser():
 
 def main(args):
     out = args.out
-    compound_key = pd.read_csv(glob.glob(os.path.join(args.build_path, '*compound_key.csv'))[0],sep='\t')
+    compound_key = pd.read_csv(glob.glob(os.path.join(args.build_path, '*compound_key.csv'))[0])
     #compound_key = pd.read_csv(glob.glob(os.path.join(args.build_path, '*compound_key.csv'))[0])
     level4 = pd.read_csv(glob.glob(os.path.join(args.build_path, '*LEVEL4_LFC*'))[0])
     #compound_key = pd.read_csv('compound_key.csv')

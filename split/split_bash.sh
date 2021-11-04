@@ -63,11 +63,10 @@ then
 fi
 
 #setup environment
-# source activate merino
-# cd /cmap
-# git clone https://github.com/cmap/merino.git
-# cd /cmap/merino/
-# python setup.py develop
+source activate merino
+
+cd /cmap/merino/
+python setup.py develop
 
 #return to /
 cd /
