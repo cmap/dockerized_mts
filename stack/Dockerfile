@@ -8,6 +8,8 @@ COPY ./stack.py /clue/bin/stack.py
 
 RUN ["chmod","-R", "+x", "/clue/bin"]
 
+RUN cd /cmap && git clone https://github.com/cmap/merino.git
+
 WORKDIR /
 
 ENV PATH /clue/bin:$PATH
