@@ -67,14 +67,20 @@ fi
 args=(
   -b "$BUILD_PATH"
   -o "$BUILD_DIR"
-  -p "$PERT"
-  -pr "$PROJECT"
-  -pp "$PERT_PLATE"
 )
 
 if [[ ! -z $VERBOSE ]]
 then
   args+=(-v)
+fi
+
+if [[ ! -z $PROJECT || ! -z $PERT_PLATE || ! -z $PERT ]]
+then
+  args+=(
+    -p "$PERT"
+    -pr "$PROJECT"
+    -pp "$PERT_PLATE"
+  )
 fi
 
 #setup environment
@@ -86,7 +92,7 @@ python setup.py develop
 #return to /
 cd /
 
-python /clue/bin/split_individual.py "${args[@]}"
+python /clue/bin/split.py "${args[@]}"
 
 exit_code=$?
 conda deactivate

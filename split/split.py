@@ -12,67 +12,93 @@ logger = logging.getLogger('split')
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--build_path', '-b', help='Build path', required=True)
-    # parser.add_argument('--compound_key', '-k', help='compound_key file')
-    # parser.add_argument('--level4_filename', '-d', help='Level4 annotated CSV')
+    parser.add_argument('--project', '-pr', help='Project name')
+    parser.add_argument('--pert', '-p', help='Pert name')
+    parser.add_argument('--pert_plate', '-pp', help='Pert plate')
     parser.add_argument('--out', '-o', help='Output for project level folders', required=True)
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
 
     return parser
 
+def write_csv_with_dim(data, outpath, filename):
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
+
+    nprofiles =  len(data['profile_id'].unique())
+    ncell_lines = len(data['rid'].unique())
+
+    out_file = os.path.join(outpath, '{}_n{}x{}.csv'.format(filename,nprofiles,ncell_lines))
+    logger.debug("Writing csv to {}".format(out_file))
+    data.to_csv(out_file, index=False)
+
+
+def make_compound_slice(data, out, project, pert_plate, pert):
+
+    pert_data = data.loc[
+        (data['x_project_id'] == project) &
+        (data['pert_plate'] == pert_plate) &
+        (data['pert_iname'] == pert)
+    ]
+
+    pert_clean = pert.replace('|', '_') #filenames should not contain '|'
+    pert_outdir = os.path.join(out, project,pert_plate, pert_clean)
+
+    write_csv_with_dim(
+        data = pert_data.loc[pert_data.pert_plate.eq(pert_plate)],
+        outpath = pert_outdir,
+        filename = 'LEVEL4_LFC_{}'.format(pert_clean)
+    )
+
+
 
 def main(args):
+    try:
+        fstr = os.path.join(args.build_path, '*LEVEL4_LFC*')
+        fmatch = glob.glob(fstr)
+        assert (len(fmatch) == 1) , "Too many files found"
+        level4 = pd.read_csv(fmatch[0])
+    except IndexError as err:
+        logger.error(err)
+        logger.error("Index Error: No file found Check --build_path arg")
+        raise
+
     out = args.out
-    compound_key = pd.read_csv(glob.glob(os.path.join(args.build_path, '*compound_key.csv'))[0])
-    #compound_key = pd.read_csv(glob.glob(os.path.join(args.build_path, '*compound_key.csv'))[0])
-    level4 = pd.read_csv(glob.glob(os.path.join(args.build_path, '*LEVEL4_LFC*'))[0])
-    #compound_key = pd.read_csv('compound_key.csv')
 
-    for project in compound_key.x_project_id.unique():
-        logger.debug(project)
-        project_outdir = os.path.join(out, project)
-        if not os.path.exists(project_outdir):
-            os.makedirs(project_outdir)
-
-        project_perts = compound_key.loc[
-            compound_key.x_project_id.eq(project)
-        ]['pert_iname'].unique()
-
-        project_data = level4[
-            level4['pert_iname'].isin(project_perts)  &
-            (level4['x_project_id'] == project)
-        ]
-
-        project_data.to_csv(
-            os.path.join(project_outdir, '{}_LEVEL4_LFC_n{}x{}.csv'.format(
-                project,
-                len(project_data['profile_id'].unique()),
-                len(project_data['rid'].unique())
-                )
-            ),
-            index=False
+    if all([args.pert, args.pert_plate, args.project]):
+        make_compound_slice(
+            data=level4,
+            out = args.out,
+            project = args.project,
+            pert_plate = args.pert_plate,
+            pert = args.pert
         )
+    else:
+        #compound_key = pd.read_csv(glob.glob(os.path.join(args.build_path, '*compound_key.csv'))[0])
+        logger.debug("Projects: {}".format( level4.x_project_id.unique()))
+        for project in level4.x_project_id.unique():
+            logger.debug(project)
 
-        logger.info("\nPROJECT: {} \nPROJECT PERT_INAMES: {}\n".format(project, list(project_perts)))
-        for pert in project_perts:
-            logger.debug(pert)
-            pert_clean = pert.replace('|', '_') #filenames should not contain '|'
-            pert_outdir = os.path.join(out, project,pert_clean)
-
-            logger.debug(pert_outdir)
-            if not os.path.exists(pert_outdir):
-                os.makedirs(pert_outdir)
-
-            pert_data = project_data.loc[
-                project_data['pert_iname'] == pert
+            project_data = level4.loc[
+                level4['x_project_id'] == project
             ]
 
-            nprofiles =  len(pert_data['profile_id'].unique())
-            ncell_lines = len(pert_data['rid'].unique())
+            logger.debug("Project data size: {}".format(len(project_data)))
 
-            pert_data.to_csv(
-                os.path.join(pert_outdir, '{}_LEVEL4_LFC_n{}x{}.csv'.format(pert_clean, nprofiles, ncell_lines)),
-                index=False
-            )
+            project_perts = project_data['pert_iname'].unique()
+
+            logger.info("\nPROJECT: {} \nPROJECT PERT_INAMES: {}\n".format(project, list(project_perts)))
+            for pert in project_perts:
+                logger.debug(pert)
+                for pert_plate in project_data[project_data['pert_iname'] == pert].pert_plate.unique():
+                    make_compound_slice(
+                        data = project_data,
+                        out = args.out,
+                        project = project,
+                        pert_plate = pert_plate,
+                        pert = pert
+                    )
+
+
 
 
 if __name__ == "__main__":
