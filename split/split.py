@@ -64,18 +64,6 @@ def main(args):
         raise
 
     out = args.out
-    #read the environment variables for AWS Batch if any
-    #AWS_BATCH_JOB_ARRAY_INDEX - a special index set by AWS
-    #PROJECT_KEYS - list of project keys as a JSON string
-    project_keys = os.getenv('PROJECT_KEYS')
-    aws_batch_index = os.getenv('AWS_BATCH_JOB_ARRAY_INDEX')
-    if all([project_keys,aws_batch_index]):
-        project_keys  = json.loads(project_keys)
-        project_key = project_keys[int(aws_batch_index)]
-        args.pert = project_key["pert_iname"]
-        args.project = project_key["x_project_id"]
-        args.pert_plate = project_key["pert_plate"]
-        print(args)
 
     if all([args.pert, args.pert_plate, args.project]):
         make_compound_slice(
