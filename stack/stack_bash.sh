@@ -79,7 +79,6 @@ then
 fi
 
 
-
 #setup environment
 source activate merino
 cd /cmap/merino/
@@ -93,12 +92,12 @@ if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
     then
       args+=(-k $KEYS)
     fi
-    
+
     if [[ ! -z $SIG_ID_COLS ]]
     then
       args+=(-s $SIG_ID_COLS)
     fi
-    
+
     python /clue/bin/stack.py "${args[@]}"
 else
     batch=${AWS_BATCH_JOB_ARRAY_INDEX}
