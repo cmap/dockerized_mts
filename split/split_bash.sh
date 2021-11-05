@@ -1,23 +1,23 @@
 #!/bin/bash
+#setup environment
+source activate merino
 
-print_help () {
-  printf "Usage ./split [options]\nOptions include:\n"
-  printf -- "\t-b, --build_path \t Build path (required) \n"
-  printf -- "\t-o, --out \t Output for project level folders (required) \n"
-  printf -- "\t-v, --verbose \t\t Verbose flag, print additional output \n"
-  printf -- "\t-h, --help \t\t Print this help text\n"
-}
+cd /cmap/merino/
+python setup.py develop
+
+#return to /
+cd /
 
 #optional
 if test $# -lt 1; then
-  print_help
+  python /clue/bin/split.py --help
   exit 1
 fi
 
 while test $# -gt 0; do
   case "$1" in
     -h|--help)
-      print_help
+      python /clue/bin/split.py --help
       exit 0
       ;;
     -b| --build_path)
@@ -82,15 +82,6 @@ then
     -pp "$PERT_PLATE"
   )
 fi
-
-#setup environment
-source activate merino
-
-cd /cmap/merino/
-python setup.py develop
-
-#return to /
-cd /
 
 python /clue/bin/split.py "${args[@]}"
 
