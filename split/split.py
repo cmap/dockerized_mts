@@ -5,6 +5,7 @@ import glob
 import logging
 import argparse
 import pandas as pd
+import json
 # from cmapPy.pandasGEXpress.parse import parse
 
 logger = logging.getLogger('split')
@@ -53,7 +54,7 @@ def make_compound_slice(data, out, project, pert_plate, pert):
 
 def main(args):
     try:
-        fstr = os.path.join(args.build_path, '*LEVEL4_LFC*')
+        fstr = os.path.join(args.build_path, '*LEVEL4_LFC_COMBAT*')
         fmatch = glob.glob(fstr)
         assert (len(fmatch) == 1) , "Too many files found"
         level4 = pd.read_csv(fmatch[0])
@@ -63,6 +64,18 @@ def main(args):
         raise
 
     out = args.out
+    #read the environment variables for AWS Batch if any
+    #AWS_BATCH_JOB_ARRAY_INDEX - a special index set by AWS
+    #PROJECT_KEYS - list of project keys as a JSON string
+    project_keys = os.getenv('PROJECT_KEYS')
+    aws_batch_index = os.getenv('AWS_BATCH_JOB_ARRAY_INDEX')
+    if all([project_keys,aws_batch_index]):
+        project_keys  = json.loads(project_keys)
+        project_key = project_keys[int(aws_batch_index)]
+        args.pert = project_key["pert_iname"]
+        args.project = project_key["x_project_id"]
+        args.pert_plate = project_key["pert_plate"]
+        print(args)
 
     if all([args.pert, args.pert_plate, args.project]):
         make_compound_slice(

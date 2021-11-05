@@ -54,7 +54,7 @@ done
 
 if [ ! -d $BUILD_DIR ]
 then
-  mkdir -p $BUILD_DIR/$PROJECT/$PERT_PLATE/$PERT
+  mkdir -p $BUILD_DIR
 fi
 
 # ##Run Collate
