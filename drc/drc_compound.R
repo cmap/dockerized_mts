@@ -77,7 +77,7 @@ for (i in 1:nrow(dosed_compounds)) {
     param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) return(NA))
     
     if (!is.na(param)) {
-      d$pred <- dr4pl::MeanResponse(d[[dose_var]], param)
+      d$pred <- dr4pl::MeanResponse(a$parameters, d[[dose_var]])
       d$e <-  (2^d[[LFC_column]] - d$pred)^2  # prediction residuals
       
       mse <- mean(d$e)
