@@ -5,6 +5,7 @@ import glob
 import logging
 import argparse
 import pandas as pd
+import json
 # from cmapPy.pandasGEXpress.parse import parse
 
 logger = logging.getLogger('split')
@@ -55,7 +56,7 @@ def make_compound_slice(data, out, project, pert_plate, pert):
 
 def main(args):
     try:
-        fstr = os.path.join(args.build_path, '*LEVEL4_LFC*')
+        fstr = os.path.join(args.build_path, '*LEVEL4_LFC_COMBAT*')
         fmatch = glob.glob(fstr)
         assert (len(fmatch) == 1) , "Too many files found"
         level4 = pd.read_csv(fmatch[0])

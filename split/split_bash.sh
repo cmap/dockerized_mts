@@ -54,15 +54,18 @@ done
 
 if [ ! -d $BUILD_DIR ]
 then
-  mkdir -p $BUILD_DIR/$PROJECT/$PERT_PLATE/$PERT
+  mkdir -p $BUILD_DIR
 fi
 
-# ##Run Collate
-# if [[ -z $BUILD_PATHS || -z $BUILD_DIR ]]
-# then
-#   printf "Required arguments missing\n"
-#   exit -1
-# fi
+if [[ ! -z $projects ]]
+then
+    IFS=',' read -r -a a_projects <<< "${projects}"
+    batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    PERT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_iname')
+    PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    PERT_PLATE=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+fi
+
 
 args=(
   -b "$BUILD_PATH"
