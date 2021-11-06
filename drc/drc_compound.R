@@ -13,9 +13,17 @@ parser$add_argument("-o", "--out", default="", help="Output directory")
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 
-lfc_file <- args$input_file
+lfc_dir <- args$input_file
 out_dir <- args$out
 
+lfc_files <- list.files(lfc_dir, pattern = "LEVEL4_LFC_", full.names = T)
+if (length(lfc_files) == 1) {
+
+} else {
+    stop(paste("There are", length(lfc_files), "level 4 tables in this directory. Please ensure there is one and try again."),
+    call. = FALSE)
+}
+lfc_file <- lfc_files[[1]]
 #---- Load the data ----
 print("Loading data and pre-processing")
 LFC_TABLE <- data.table::fread(lfc_file)
@@ -61,6 +69,10 @@ DRC <- list()
 for (i in 1:nrow(dosed_compounds)) {
   comp <- dosed_compounds[i, ]
   dose_var <- paste0("pert_dose_", comp$index)
+  print(comp)
+  print(dose_var)
+  print(comp$index)
+
   df <- DRC_TABLE_cb %>%
     dplyr::group_by(across(!contains(comp$index))) %>%
     dplyr::summarise(n = n(), .groups = "drop") %>%
@@ -75,7 +87,7 @@ for (i in 1:nrow(dosed_compounds)) {
                   error = function(e) {print(e); return(NA)})
     # get parameters
     param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) return(NA))
-    
+
     if (!is.na(param)) {
       d$pred <- dr4pl::MeanResponse(a$parameters, d[[dose_var]])
       d$e <-  (2^d[[LFC_column]] - d$pred)^2  # prediction residuals

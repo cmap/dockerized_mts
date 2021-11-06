@@ -3,6 +3,7 @@ MAINTAINER Anup Jonchhe <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
+RUN apt-get install -y jq
 COPY ./split_bash.sh /clue/bin/split
 COPY ./split.py /clue/bin/split.py
 

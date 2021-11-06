@@ -61,7 +61,7 @@ if [[ ! -z $projects ]]
 then
     IFS=',' read -r -a a_projects <<< "${projects}"
     batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-    PERT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_iname')
+    PERT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     PERT_PLATE=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
 fi
