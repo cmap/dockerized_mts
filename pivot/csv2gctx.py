@@ -31,7 +31,7 @@ def build_parser():
     parser = argparse.ArgumentParser(description=desc, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser._action_groups.pop()
     required = parser.add_argument_group('required arguments')
-    required.add_argument('--csv', '-d', help='Build path', required=True)
+    required.add_argument('--csv', '-d', help='Path to CSV', required=True)
     required.add_argument('--data_header', '-dhd', help='Columns required for data', required=True)
     required.add_argument('--out', '-o', help='Output path. Defualt is current working directory.', default=os.getcwd())
 
@@ -75,26 +75,50 @@ def write_gctoo(gctoo, filename, append_dims=True, use_gctx=True):
     else:
         writer(gctoo,filename)
 
+
+def csv2gctoo(df, rid_header, cid_header, data_header, col_metadata_headers, row_meta_headers):
+    data_df = df[
+        [cid_header, rid_header, data_header]
+    ].pivot_table(
+        index=rid_header,
+        columns=cid_header,
+        values=data_header
+    )
+
+    col_metadata_df = df[col_metadata_headers]
+    row_metadata_df = df[row_meta_headers]
+    col_metadata_df = col_metadata_df.groupby(cid_header).agg(concat_unique_values)
+    row_metadata_df = row_metadata_df.groupby(rid_header).agg(concat_unique_values)
+
+    gct_obj = GCToo(data_df = data_df, col_metadata_df = col_metadata_df, row_metadata_df = row_metadata_df)
+    return gct_obj
+
 def main(args):
     df = pd.read_csv(args.csv)
 
     col_hds = args.col_metadata_headers.split(',')
     row_hds = args.row_metadata_headers.split(',')
 
-    data_df = df[
-        [args.cid_header, args.rid_header, args.data_header]
-    ].pivot_table(
-        index=args.rid_header,
-        columns=args.cid_header,
-        values=args.data_header
+    col_hds = list(set(col_hds).intersection(df.columns))
+    col_hds_missing = set(col_hds).difference(df.columns)
+
+    if len(row_hds_missing) > 0:
+        logger.info("Columns missing from row_metadata_headers:\n{}".format(row_hds_missing))
+
+    row_hds = list(set(row_hds).intersection(df.columns))
+    row_hds_missing = set(row_hds).symmetric_difference(df.columns)
+
+    if len(row_hds_missing) > 0:
+        logger.info("Columns missing from row_metadata_headers:\n{}".format(row_hds_missing))
+
+    gct_obj = csv2gctoo(
+        df = df,
+        rid_header = args.rid_header,
+        cid_header = args.cid_header,
+        data_header = args.data_header,
+        col_metadata_headers = col_hds,
+        row_meta_headers = row_hds
     )
-
-    col_metadata_df = df[col_hds]
-    row_metadata_df = df[row_hds]
-    col_metadata_df = col_metadata_df.groupby(args.cid_header).agg(concat_unique_values)
-    row_metadata_df = row_metadata_df.groupby(args.rid_header).agg(concat_unique_values)
-
-    gct_obj = GCToo(data_df = data_df, col_metadata_df = col_metadata_df, row_metadata_df = row_metadata_df)
 
     write_gctoo(gct_obj, os.path.join(args.out, args.outname), append_dims=args.append_dims, use_gctx=args.write_gctx)
 
