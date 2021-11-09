@@ -10,11 +10,23 @@ while getopts ":i:o:" arg; do
   esac
 done
 
-batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-chmod +x /drc_compound.R
-chmod +x /src/drc_functions.R
-echo "${data_dir}" "${output_dir}"
-Rscript /drc_compound.R -i "${data_dir}" -o "${output_dir}"
+out="${output_dir}"
+data="${data_dir}"
+if [[ ! -z $projects ]]
+then
+    IFS=',' read -r -a a_projects <<< "${projects}"
+    batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    pert_id=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+    project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    plate=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
+    sanitized_pert_id="${cleaned_pert_id^^}"
+    data="${data_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
+    out="${output_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
+fi
+
+echo "${data}" "${out}"
+Rscript /drc_compound.R -i "${data}" -o "${out}"
 
 exit_code=$?
 

@@ -14,7 +14,7 @@ def build_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--build_path', '-b', help='Build path', required=True)
     parser.add_argument('--project', '-pr', help='Project name')
-    parser.add_argument('--pert', '-p', help='Pert name')
+    parser.add_argument('--pert', '-p', help='Pert ID')
     parser.add_argument('--pert_plate', '-pp', help='Pert plate')
     parser.add_argument('--out', '-o', help='Output for project level folders', required=True)
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
@@ -38,10 +38,12 @@ def make_compound_slice(data, out, project, pert_plate, pert):
     pert_data = data.loc[
         (data['x_project_id'] == project) &
         (data['pert_plate'] == pert_plate) &
-        (data['pert_iname'] == pert)
+        (data['pert_id'] == pert)
     ]
 
-    pert_clean = pert.replace('|', '_') #filenames should not contain '|'
+    assert len(pert_data) > 0, "No matches found, using pert_ids?"
+
+    pert_clean = re.sub('[^0-9a-zA-Z\-\_]+', '', pert.replace('|', '_')) #filenames should not contain '|'
     pert_outdir = os.path.join(out, project,pert_plate, pert_clean)
 
     write_csv_with_dim(
@@ -85,12 +87,12 @@ def main(args):
 
             logger.debug("Project data size: {}".format(len(project_data)))
 
-            project_perts = project_data['pert_iname'].unique()
+            project_perts = project_data['pert_id'].unique()
 
-            logger.info("\nPROJECT: {} \nPROJECT PERT_INAMES: {}\n".format(project, list(project_perts)))
+            logger.info("\nPROJECT: {} \nPROJECT PERT_IDS: {}\n".format(project, list(project_perts)))
             for pert in project_perts:
                 logger.debug(pert)
-                for pert_plate in project_data[project_data['pert_iname'] == pert].pert_plate.unique():
+                for pert_plate in project_data[project_data['pert_id'] == pert].pert_plate.unique():
                     make_compound_slice(
                         data = project_data,
                         out = args.out,

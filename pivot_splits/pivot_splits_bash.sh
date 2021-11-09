@@ -10,19 +10,19 @@ cd /
 
 #optional
 if test $# -lt 1; then
-  python /clue/bin/split.py --help
+  python /clue/bin/pivot_splits.py --help
   exit 1
 fi
 
 while test $# -gt 0; do
   case "$1" in
     -h|--help)
-      python /clue/bin/split.py --help
+      python /clue/bin/pivot_splits.py --help
       exit 0
       ;;
-    -b| --build_path)
+    -d| --splits_dir)
       shift
-      BUILD_PATH=$1
+      SPLITS_DIR=$1
       ;;
     -p| --pert)
       shift
@@ -68,8 +68,7 @@ fi
 
 
 args=(
-  -b "$BUILD_PATH"
-  -o "$BUILD_DIR"
+  -d "$SPLITS_DIR"
 )
 
 if [[ ! -z $VERBOSE ]]
@@ -86,7 +85,7 @@ then
   )
 fi
 
-python /clue/bin/split.py "${args[@]}"
+python /clue/bin/pivot_splits.py "${args[@]}"
 
 exit_code=$?
 conda deactivate

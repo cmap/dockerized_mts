@@ -4,8 +4,8 @@ LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
 RUN apt-get install -y jq
-COPY ./split_bash.sh /clue/bin/split
-COPY ./split.py /clue/bin/split.py
+COPY ./pivot_splits.py /clue/bin/pivot_splits.py
+COPY ./pivot_splits_bash.sh /clue/bin/pivot_splits_bash
 
 RUN ["chmod","-R", "+x", "/clue/bin"]
 
@@ -15,4 +15,4 @@ WORKDIR /
 
 ENV PATH /clue/bin:$PATH
 RUN ["chmod","-R", "+x", "/clue/bin"]
-ENTRYPOINT ["split"]
+ENTRYPOINT ["pivot_splits_bash"]
