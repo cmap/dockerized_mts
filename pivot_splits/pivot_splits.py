@@ -47,9 +47,9 @@ def build_parser():
     )
     write_gct_opt = optional.add_mutually_exclusive_group()
     write_gct_opt.add_argument('--write_gctx', help='Use HDF5 based GCTX format',
-            action='store_true', default=True)
+            action='store_false', default=False)
     write_gct_opt.add_argument('--write_gct', help='Use text based GCT format',
-            action='store_false', dest='write_gctx', default=False)
+            action='store_true', dest='write_gctx', default=True)
     append_dims_grp = optional.add_mutually_exclusive_group()
     append_dims_grp.add_argument('--append_dims', help='Add dimensions to filename (default: true)',
             action='store_true', default=True)
