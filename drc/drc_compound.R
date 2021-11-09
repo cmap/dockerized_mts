@@ -45,6 +45,8 @@ dosed_compounds %<>%
   dplyr::select(pert_iname, pert_id, n_doses, index) %>%
   dplyr::filter(n_doses >= 4)
 
+stopifnot("Not enough dose points to fit curves for compound(s) in table" = nrow(dosed_compounds) > 0)
+
 # distinct cell line/dose combinations
 DRC_TABLE_cb <- LFC_TABLE %>%
   dplyr::distinct(pert_iname, pert_idose, pert_dose, pert_iname, pert_id, ccle_name, culture, pool_id) %>%
