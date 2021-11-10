@@ -7,23 +7,23 @@ suppressMessages(source("./src/drc_functions.R"))
 
 parser <- ArgumentParser()
 # specify our desired options
-parser$add_argument("-i", "--input_file", default="", help="Input level 4 (LFC) file")
+parser$add_argument("-i", "--input_dir", default="", help="Input directory with one level 4 LFC file")
 parser$add_argument("-o", "--out", default="", help="Output directory")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 
-lfc_dir <- args$input_file
+lfc_dir <- args$input_dir
 out_dir <- args$out
 
 lfc_files <- list.files(lfc_dir, pattern = "LEVEL4_LFC_", full.names = T)
-if (length(lfc_files) == 1) {
-
+if (length(lfc_files) != 1) {
+  warning(sprintf("There are %s LFC files in the supplied directory. Please try again with 1", length(lfc_files)))
+  quit(save = "no")
 } else {
-    stop(paste("There are", length(lfc_files), "level 4 tables in this directory. Please ensure there is one and try again."),
-    call. = FALSE)
+  lfc_file <- lfc_files[[1]]
 }
-lfc_file <- lfc_files[[1]]
+
 #---- Load the data ----
 print("Loading data and pre-processing")
 LFC_TABLE <- data.table::fread(lfc_file)
@@ -53,7 +53,10 @@ dosed_compounds %<>%
   dplyr::select(pert_iname, pert_id, n_doses, index) %>%
   dplyr::filter(n_doses >= 4)
 
-stopifnot("Not enough dose points to fit curves for compound(s) in table" = nrow(dosed_compounds) > 0)
+if (nrow(dosed_compounds) < 1) {
+  message("Not enough dose points to fit curves for compound(s) in table")
+  quit(save = "no")
+}
 
 # distinct cell line/dose combinations
 DRC_TABLE_cb <- LFC_TABLE %>%
@@ -71,9 +74,6 @@ DRC <- list()
 for (i in 1:nrow(dosed_compounds)) {
   comp <- dosed_compounds[i, ]
   dose_var <- paste0("pert_dose_", comp$index)
-  print(comp)
-  print(dose_var)
-  print(comp$index)
 
   df <- DRC_TABLE_cb %>%
     dplyr::group_by(across(!contains(comp$index))) %>%
