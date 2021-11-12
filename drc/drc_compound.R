@@ -60,13 +60,13 @@ if (nrow(dosed_compounds) < 1) {
 
 # distinct cell line/dose combinations
 DRC_TABLE_cb <- LFC_TABLE %>%
-  dplyr::distinct(pert_iname, pert_idose, pert_dose, pert_iname, pert_id, ccle_name, culture, pool_id) %>%
-  splitstackshape::cSplit(splitCols = c("pert_idose", "pert_iname", "pert_id", "pert_dose"),
+  dplyr::distinct(pert_iname, pert_dose, pert_iname, pert_id, ccle_name, culture, pool_id) %>%
+  splitstackshape::cSplit(splitCols = c("pert_iname", "pert_id", "pert_dose"),
                           sep = "|", fixed = T,
                           direction = "wide", drop = T)
 # widened version for joining
 LFC_TABLE.split <- LFC_TABLE %>%
-  splitstackshape::cSplit(splitCols = c("pert_idose", "pert_iname", "pert_id", "pert_dose"),
+  splitstackshape::cSplit(splitCols = c("pert_iname", "pert_id", "pert_dose"),
                           sep = "|", fixed = T,
                           direction = "wide", drop = F)
 
@@ -118,7 +118,6 @@ for (i in 1:nrow(dosed_compounds)) {
       if (ncol(df) > 4) {
         added_comp_table <- df[j, ] %>%
           tidyr::unite(col = added_compounds, starts_with("pert_iname_"), sep = "|") %>%
-          tidyr::unite(col = added_idoses, starts_with("pert_idose_"), sep = "|") %>%
           tidyr::unite(col = added_doses, starts_with("pert_dose_"), sep = "|") %>%
           tidyr::unite(col = added_ids, starts_with("pert_id_"), sep = "|") %>%
           dplyr::select(-n)
