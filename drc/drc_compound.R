@@ -15,11 +15,10 @@ args <- parser$parse_args()
 
 lfc_dir <- args$input_dir
 out_dir <- args$out
-
-lfc_files <- list.files(lfc_dir, pattern = "LEVEL4_LFC_", full.names = T)
+lfc_files <- list.files(lfc_dir,pattern=("LEVEL4_LFC_.*\\.csv$"), full.names=T)
 if (length(lfc_files) != 1) {
-  warning(sprintf("There are %s LFC files in the supplied directory. Please try again with 1", length(lfc_files)))
-  quit(save = "no")
+    stop(paste("There are", length(lfc_files), "LFC files in the supplied directory. Please try again with 1."),
+    call. = FALSE)
 } else {
   lfc_file <- lfc_files[[1]]
 }
