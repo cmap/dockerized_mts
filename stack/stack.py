@@ -60,7 +60,7 @@ def main(args):
             'search_pattern': '*_cell_info.txt',
             'type':'metadata'
         },
-        'QC_table' : {
+        'QC_TABLE' : {
             'search_pattern': '*QC_TABLE*.csv',
             'type': 'report',
         },
