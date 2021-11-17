@@ -108,7 +108,7 @@ else
         args+=(-k 'cell_info')
         python /clue/bin/stack.py "${args[@]}"
     elif [[ $batch = "2" ]]; then
-        args+=(-k 'QC_table')
+        args+=(-k 'QC_TABLE')
         python /clue/bin/stack.py "${args[@]}"
     elif [[ $batch = "3" ]]; then
         args+=(-k 'compound_key')
