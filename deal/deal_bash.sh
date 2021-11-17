@@ -98,39 +98,14 @@ if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
     python /clue/bin/deal.py "${args[@]}"
 else
     batch=${AWS_BATCH_JOB_ARRAY_INDEX}
-    if [[ $batch = "0" ]]; then
-        args+=(-k 'inst_info')
+    if [[ ! -z $projects ]]
+    then
+        IFS=',' read -r -a a_projects <<< "${projects}"
+        PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].x_project_id')
+        KEY=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].level')
+        args+=(-p "$PROJECT")
+        args+=(-k "$KEY")
         python /clue/bin/deal.py "${args[@]}"
-    elif [[ $batch = "1" ]]; then
-        args+=(-k 'cell_info')
-        python /clue/bin/deal.py "${args[@]}"
-    elif [[ $batch = "2" ]]; then
-        args+=(-k 'QC_table')
-        python /clue/bin/deal.py "${args[@]}"
-    elif [[ $batch = "3" ]]; then
-        args+=(-k 'compound_key')
-        python /clue/bin/deal.py "${args[@]}"
-    elif [[ $batch = "4" ]]; then
-        args+=(-k 'LEVEL2_COUNT')
-        python /clue/bin/deal.py "${args[@]}"
-    elif [[ $batch = "5" ]]; then
-        args+=(-k 'LEVEL2_MFI')
-        python /clue/bin/deal.py "${args[@]}"
-    elif [[ $batch = "6" ]]; then
-        args+=(-k 'LEVEL3_LMFI')
-        python /clue/bin/deal.py "${args[@]}"
-    elif [[ $batch = "7" ]]; then
-        args+=(-k 'LEVEL4_LFC')
-        python /clue/bin/deal.py "${args[@]}"
-    elif [[ $batch = "8" ]]; then
-        args+=(-k 'LEVEL5_LFC')
-        if [[ ! -z $SIG_ID_COLS ]]
-        then
-          args+=(-s $SIG_ID_COLS)
-        fi
-        python /clue/bin/deal.py "${args[@]}"
-    else
-        echo "Done"
     fi
 fi
 exit_code=$?
