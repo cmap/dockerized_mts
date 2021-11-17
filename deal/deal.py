@@ -178,7 +178,7 @@ def main(args):
             slice_and_write_project(data, key, project, outpath, args)
 
     else:
-        assert len(glob.glob(build_contents_dict['inst_info']['search_pattern'])) == 1, "Incorrect number of inst_info files found"
+        assert len(glob.glob(os.path.join(build_path, build_contents_dict['inst_info']['search_pattern']))) == 1, "Incorrect number of inst_info files found"
 
         inst = pd.read_csv(
             glob.glob(os.path.join(build_path,build_contents_dict['inst_info']['search_pattern']))[0],
@@ -206,8 +206,10 @@ def main(args):
 
             proj_inst.to_csv(os.path.join(proj_dir, '{}_inst_info.csv'.format(project)),
                             index=False)
-
-
+            shutil.copy(
+                glob.glob(os.path.join(build_path, build_contents_dict['cell_info']['search_pattern']))[0],
+                os.path.join(outpath, project, '{}_cell_info.txt'.format(project))
+            )
             proj_qc.to_csv(os.path.join(proj_dir, '{}_QC_TABLE.csv'.format(project)),
                           index=False)
 
