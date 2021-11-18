@@ -59,7 +59,7 @@ if (nrow(dosed_compounds) < 1) {
 
 # distinct cell line/dose combinations
 DRC_TABLE_cb <- LFC_TABLE %>%
-  dplyr::distinct(pert_iname, pert_dose, pert_iname, pert_id, ccle_name, culture, pool_id) %>%
+  dplyr::distinct(pert_iname, pert_time, pert_dose, pert_iname, pert_id, ccle_name, culture, pool_id, pert_plate) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_id", "pert_dose"),
                           sep = "|", fixed = T,
                           direction = "wide", drop = T)
@@ -113,7 +113,9 @@ for (i in 1:nrow(dosed_compounds)) {
                       varied_iname = comp$pert_iname,
                       varied_id = comp$pert_id,
                       ccle_name = df[j,]$ccle_name,
-                      culture = df[j,]$culture)
+                      culture = df[j,]$culture,
+                      pert_time = df[j,]$pert_time,
+                      pert_plate = df[j,]$pert_plate)
       if (ncol(df) > 4) {
         added_comp_table <- df[j, ] %>%
           tidyr::unite(col = added_compounds, starts_with("pert_iname_"), sep = "|") %>%
