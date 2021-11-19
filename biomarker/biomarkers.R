@@ -114,6 +114,7 @@ runs <- all_Y %>%
 # linear associations
 linear_table <- list(); ix <- 1
 for(feat in 1:length(linear_data)) {
+  print(linear_data[feat])
   
   # load feature set
   X <- data.table::fread(paste0(biomarker_dir, "/", linear_data[feat], ".csv")) %>%
@@ -206,25 +207,28 @@ for(feat in 1:length(linear_data)) {
   }
 }
 linear_table %<>% dplyr::bind_rows()
-readr::write_csv(linear_table, paste0(output_dir, "/continuous_associations.csv"))
+readr::write_csv(linear_table, paste0(out_dir, "/continuous_associations.csv"))
 
-
-# TODO: fix after this mark
 # repeat for discrete t-test
 discrete_table <- list(); ix <- 1
 for(feat in 1:length(discrete_data)) {
-  X <- taigr::load.from.taiga(data.name="biomarker-features-5baa", data.version=ver,
-                              data.file=discrete_data[feat], quiet=T)
+  print(discrete_data[feat])
+  
+  # load feature set
+  X <- data.table::fread(paste0(biomarker_dir, "/", discrete_data[feat], ".csv")) %>%
+    column_to_rownames("V1") %>% as.matrix()
+  
   for(i in 1:nrow(runs)) {
+    # filter down to current dose (run)
     run <- runs[i,]
     Y <- all_Y %>%
-      dplyr::inner_join(run, by = c("pert_time", "pert_name", "pert_mfc_id", "dose"))
+      dplyr::inner_join(run)
     y <- Y$response; names(y) <- Y$ccle_name
     y <- y[is.finite(y)]
     
+    # get overlapping data
     overlap <- dplyr::intersect(rownames(X), names(y))
     y <- y[overlap]
-    
     if (!is.null(qc_table)) {
       W <- qc_table[overlap, ]
     } else {
@@ -237,11 +241,7 @@ for(feat in 1:length(discrete_data)) {
       res.disc <- cdsrmodels::discrete_test(X[overlap,], y, W = W)
       
       res.disc %<>%
-        dplyr::mutate(pert_mfc_id = run$pert_mfc_id,
-                      pert_name = run$pert_name,
-                      pert_time = run$pert_time,
-                      dose = run$dose,
-                      feature_type = toupper(discrete_data[feat]))
+        dplyr::bind_cols(run)
       
       # only keep top 500 mutations
       if (discrete_data[feat] == "mut" & nrow(res.disc) > 0) {
@@ -257,30 +257,32 @@ for(feat in 1:length(discrete_data)) {
   }
 }
 discrete_table %<>% dplyr::bind_rows()
-readr::write_csv(discrete_table, paste0(output_dir, "/discrete_associations.csv"))
+readr::write_csv(discrete_table, paste0(out_dir, "/discrete_associations.csv"))
 
 # repeat for random forest
 random_forest_table <- list(); model_table <- list(); ix <- 1
 
 for(feat in 1:length(rf_data)) {
+  print(rf_data[feat])
   
-  X <- taigr::load.from.taiga(data.name="biomarker-features-5baa", data.version=ver,
-                              data.file=rf_data[feat], quiet=T)
+  # load feature set
+  X <- data.table::fread(paste0(biomarker_dir, "/", rf_data[feat], ".csv")) %>%
+    column_to_rownames("V1") %>% as.matrix()
+  
   model <- word(rf_data[feat], 2, sep = fixed("-"))
   
   for (i in 1:nrow(runs)) {
     run <- runs[i,]
     Y <- all_Y %>%
-      dplyr::inner_join(run, by = c("pert_time", "pert_name", "pert_mfc_id", "dose"))
+      dplyr::inner_join(run)
     y <- Y$response; names(y) <- Y$ccle_name
     y <- y[is.finite(y)]
     
+    # get overlapping data
     overlap <- dplyr::intersect(rownames(X), names(y))
     y <- y[overlap]
-    
     if (!is.null(qc_table)) {
       W <- qc_table[overlap, ]
-      colnames(W) <- paste0("CONF_", colnames(W))
     } else {
       W <- NULL
     }
@@ -291,23 +293,17 @@ for(feat in 1:length(rf_data)) {
       res.rf <- cdsrmodels::random_forest(X[overlap,], y, W = W)
       res.model <- res.rf$model_table %>%
         dplyr::distinct(MSE, MSE.se, R2, PearsonScore) %>%
-        dplyr::mutate(model = model,
-                      pert_mfc_id = run$pert_mfc_id,
-                      pert_name = run$pert_name,
-                      pert_time = run$pert_time,
-                      dose = run$dose)
+        dplyr::mutate(model = model) %>%
+        dplyr::bind_cols(run)
       res.features <- res.rf$model_table %>%
         dplyr::distinct(feature, RF.imp.mean, RF.imp.sd, RF.imp.stability, rank) %>%
-        dplyr::mutate(model = model,
-                      pert_mfc_id = run$pert_mfc_id,
-                      pert_name = run$pert_name,
-                      pert_time = run$pert_time,
-                      dose = run$dose)
+        dplyr::mutate(model = model) %>%
+        dplyr::bind_cols(run)
       random_forest_table[[ix]] <- res.features; model_table[[ix]] <- res.model
       ix <- ix + 1
     }
   }
 }
 random_forest_table %<>% dplyr::bind_rows(); model_table %<>% dplyr::bind_rows()
-readr::write_csv(random_forest_table, paste0(output_dir, "/RF_table.csv"))
-readr::write_csv(model_table, paste0(output_dir, "/Model_table.csv"))
+readr::write_csv(random_forest_table, paste0(out_dir, "/RF_table.csv"))
+readr::write_csv(model_table, paste0(out_dir, "/model_table.csv"))

@@ -1,22 +1,24 @@
 #!/bin/bash
 
 # read in flagged arguments
-while getopts ":b:o:n:" arg; do
+while getopts ":b:o:d:q:" arg; do
   case $arg in
     b) # specify input folder
       data_dir=${OPTARG};;
     o) # specifcy output folder
       output_dir=${OPTARG};;
-    n) # specify build name
-      build_name=${OPTARG}
+    d) # specify directory with -omics data
+      biomarker_dir=${OPTARG};;
+    q) # specify path to confounder table
+      qc_table=${OPTARG}
   esac
 done
 
-chmod +x /calc_lfc.R
-chmod +x /src/lfc_functions.R
+chmod +x /biomarkers.R
+chmod +x /src/biomarker_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
-echo "${data_dir}" "${output_dir}" "${build_name}"
-Rscript /calc_lfc.R -b "${data_dir}" -o "${output_dir}" -n "${build_name}"
+echo "${data_dir}" "${output_dir}" "${biomarker_dir}"
+Rscript /calc_lfc.R -b "${data_dir}" -o "${output_dir}" -d "${biomarker_dir}" -q "${qc_table}"
 
 exit_code=$?
 
