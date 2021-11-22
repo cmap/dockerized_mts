@@ -33,7 +33,7 @@ if (length(LFC_files) == 1) {
 #---- Correct for pool effects ----
 print("ComBat correcting")
 LFC_TABLE %<>%
-  dplyr::filter(!pert_type %in% c("ctl_vehicle", "ctl_untrt")) %>%
+  dplyr::filter(!pert_type %in% c("ctl_vehicle", "ctl_untrt"), is.finite(LFC)) %>%
   tidyr::unite(col = "condition", pert_iname, pert_dose, pert_plate, pert_time, pert_vehicle, any_of("x_project_id"),
                sep = "::", remove = FALSE) %>%
   split(.$condition) %>%
@@ -42,7 +42,7 @@ LFC_TABLE %<>%
 
 #---- Make collapsed LFC table ----
 LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
-  dplyr::mutate(sig_id = paste(pert_plate, culture, pert_id, pert_idose, pert_time, sep = fixed("_")))
+  dplyr::mutate(sig_id = paste(pert_plate, culture, pert_id, pert_idose, pert_time, sep = fixed("_"))) %>%
   dplyr::select(rid, ccle_name, culture, pool_id, pert_iname, pert_id, pert_dose,
                 pert_idose, pert_plate, pert_vehicle, pert_time, LFC, LFC_cb, sig_id,
                 any_of(c("x_mixture_contents", "x_mixture_id", "x_project_id"))) %>%
@@ -60,5 +60,5 @@ dims_coll = paste(dplyr::distinct(LFC_COLLAPSED_TABLE, sig_id) %>% nrow(),
                   sep = "x")
 
 #---- Write results ----
-readr::write_csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC_COMBAT.csv"))
-readr::write_csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC_COMBAT.csv"))
+readr::write_csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC_COMBAT_n", dims_full, ".csv"))
+readr::write_csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC_COMBAT_n", dims_coll, ".csv"))
