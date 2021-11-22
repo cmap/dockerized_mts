@@ -18,7 +18,7 @@ chmod +x /biomarkers.R
 chmod +x /src/biomarker_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
 echo "${data_dir}" "${output_dir}" "${biomarker_dir}"
-Rscript /calc_lfc.R -b "${data_dir}" -o "${output_dir}" -d "${biomarker_dir}" -q "${qc_table}"
+Rscript /biomarkers.R -b "${data_dir}" -o "${output_dir}" -d "${biomarker_dir}" -q "${qc_table}"
 
 exit_code=$?
 

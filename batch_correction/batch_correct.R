@@ -52,6 +52,13 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
                    LFC_cb = median(LFC_cb, na.rm = TRUE),
                    .groups = "drop")
 
+dims_full = paste(dplyr::distinct(LFC_TABLE, sig_id) %>% nrow(),
+                  dplyr::distinct(LFC_TABLE, rid) %>% nrow(),
+                  sep = "x")
+dims_coll = paste(dplyr::distinct(LFC_COLLAPSED_TABLE, sig_id) %>% nrow(),
+                  dplyr::distinct(LFC_COLLAPSED_TABLE, rid) %>% nrow(),
+                  sep = "x")
+
 #---- Write results ----
 readr::write_csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC_COMBAT.csv"))
 readr::write_csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC_COMBAT.csv"))
