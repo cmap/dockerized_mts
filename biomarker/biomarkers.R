@@ -11,7 +11,7 @@ parser <- ArgumentParser()
 parser$add_argument("-b", "--base_dir", default="", help="Input directory.")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output directory. Default is working directory.")
 parser$add_argument("-d", "--biomarker_dir", default="https://s3.amazonaws.com/biomarker.clue.io/.cache", help="Directory containing biomarker files.")
-parser$add_argument("-q", "--qc", default="NA", help = "Path to QC file to be used as confounders")
+# parser$add_argument("-q", "--qc", default="NA", help = "Path to QC file to be used as confounders")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
@@ -19,7 +19,8 @@ args <- parser$parse_args()
 base_dir <- args$base_dir
 out_dir <- args$out
 biomarker_dir <- args$biomarker_dir
-qc_path <- args$qc
+# qc_path <- args$qc
+qc_table <- NULL
 
 
 # make output directory
@@ -74,19 +75,19 @@ if (length(lfc_path) == 1) {
 
 # TO DO: update with new pipeline columns
 # read QC table if passed
-if (qc_path != "NA" & file_test("-f", qc_path)) {
-  qc_table <- data.table::fread(qc_path) %>%
-    dplyr::filter(pass,
-                  compound_plate %in% (LFC$compound_plate %>% unique())) %>%
-    dplyr::group_by(ccle_name) %>%
-    dplyr::summarise(dr = median(dr), ssmd = median(ssmd), nnmd = median(nnmd),
-                     .groups = "drop") %>%
-    column_to_rownames("ccle_name") %>%
-    as.matrix()
-} else {
-  print("No SSMD table supplied or readable defaulting to no confounders")
-  qc_table <- NULL
-}
+# if (qc_path != "NA" & file_test("-f", qc_path)) {
+#   qc_table <- data.table::fread(qc_path) %>%
+#     dplyr::filter(pass,
+#                   compound_plate %in% (LFC$compound_plate %>% unique())) %>%
+#     dplyr::group_by(ccle_name) %>%
+#     dplyr::summarise(dr = median(dr), ssmd = median(ssmd), nnmd = median(nnmd),
+#                      .groups = "drop") %>%
+#     column_to_rownames("ccle_name") %>%
+#     as.matrix()
+# } else {
+#   print("No SSMD table supplied or readable defaulting to no confounders")
+#   qc_table <- NULL
+# }
 
 # combine into large table
 all_Y <- dplyr::bind_rows(DRC, LFC)
