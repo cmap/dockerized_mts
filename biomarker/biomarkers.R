@@ -29,7 +29,7 @@ discrete_data <- c("lin", "mut")
 linear_data <- c("ge", "xpr", "cna", "met", "mirna", "rep", "prot", "shrna")
 linear_names <- c("GE", "XPR", "CNA", "MET", "miRNA", "REP", "PROT", "shRNA")
 
-if (!biomarker_file %in% c(rf_data, discrete_data, linear_data)) {
+if (!is.null(biomarker_file) && !biomarker_file %in% c(rf_data, discrete_data, linear_data)) {
   stop("Unknown biomarker file. Please try again.")
 }
 
@@ -102,14 +102,14 @@ if (!is.null(qc_path) && file_test("-f", qc_path)) {
 # combine into large table
 all_Y <- dplyr::bind_rows(DRC, LFC)
 
-if (biomarker_file == "rep") {
+if (is.null(biomarker_file) || biomarker_file == "rep") {
   rep_meta <- data.table::fread(paste0(biomarker_dir, "/rep_info.csv")) %>%
     dplyr::select(column_name, name) %>%
     dplyr::mutate(column_name = paste0("REP_", column_name))
 }
 
 # get lineage principal components to use as confounder
-if (biomarker_file == "ge") {
+if (is.null(biomarker_file) || biomarker_file == "ge") {
   LIN_PCs <- data.table::fread(paste0(biomarker_dir, "/linPCA.csv"))
   confounder_overlap <- intersect(rownames(LIN_PCs), rownames(qc_table))
   if (!is.null(qc_table)) LIN_PCs <- cbind(LIN_PCs[confounder_overlap, ], qc_table[confounder_overlap, ])
