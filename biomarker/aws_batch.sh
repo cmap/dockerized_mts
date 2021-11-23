@@ -1,21 +1,43 @@
 #!/bin/bash
 
 # read in flagged arguments
-while getopts ":b:o:d:" arg; do
-  case $arg in
-    b) # specify input folder
-      data_dir=${OPTARG};;
-    o) # specifcy output folder
-      output_dir=${OPTARG};;
-    d) # specify directory with -omics data
-      biomarker_dir=${OPTARG};;
+while test $# -gt 0; do
+  case "$1" in
+    -h| --help)
+      Rscript /biomarkers.R --help
+      exit 0
+      ;;
+    -b| --base_dir)
+      shift
+      base_dir=$1
+      ;;
+    -o| --out)
+      shift
+      out_dir=$1
+      ;;
+    -d| --biomarker_dir)
+      shift
+      biomarker_dir=$1
+      ;;
+    -f| --file)
+      shift
+      biomarker_file=$1
+      ;;
+    -q| --qc_file)
+      shift
+      qc_file=$1
+      ;;
+    *)
+      printf "Unknown parameter: %s \n" "$1"
+      shift
+      ;;
   esac
+  shift
 done
 
 chmod +x /biomarkers.R
 chmod +x /src/biomarker_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
-echo "${data_dir}" "${output_dir}" "${biomarker_dir}"
 
 if [[ ! -z $projects ]]
 then
@@ -29,8 +51,26 @@ then
     data_dir="${data_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
     output_dir="${output_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
 fi
-echo "${data_dir}" "${output_dir}" "${biomarker_dir}" "${qc_table}"
-Rscript /biomarkers.R -b "${data_dir}" -o "${output_dir}" -d "${biomarker_dir}"
+
+echo "${data_dir}" "${out_dir}" "${biomarker_dir}" "${biomarker_file}" "${qc_file}"
+
+args=(
+  -b "${base_dir}"
+  -o "${out_dir}"
+  -d "${biomarker_dir}"
+)
+
+if [[ ! -z $biomarker_file ]]
+then
+  args+=(-f "${biomarker_file}")
+fi
+
+if [[ ! -z $qc_file ]]
+then
+  args+=(-q "${qc_file}")
+fi
+
+Rscript /biomarkers.R "${args[@]}"
 
 exit_code=$?
 
