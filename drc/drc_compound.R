@@ -84,8 +84,16 @@ for (i in 1:nrow(dosed_compounds)) {
     
     # fit curve
     a <- tryCatch(dr4pl(dose = d[[dose_var]], response = 2^d[[LFC_column]],
-                        method.init = "logistic", trend = "decreasing"),
+                        method.init = "logistic", trend = "decreasing",
+                        lowerl = c(-Inf, -Inf, -Inf, 0)),
                   error = function(e) {print(e); return(NA)})
+    
+    if (!is.na(a)) {
+      if (!a$convergence) {
+        a <- a$dr4pl.robust 
+      }
+    }
+    
     # get parameters
     param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) return(NA))
 
