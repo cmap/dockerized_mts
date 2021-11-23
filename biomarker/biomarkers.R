@@ -68,7 +68,7 @@ if (length(lfc_path) == 1) {
   LFC <- data.table::fread(lfc_path) %>%
     dplyr::distinct(across(any_of(c("ccle_name", "culture", "pool_id", "pert_id",
                                     "pert_iname", "pert_dose", "pert_plate", "LFC", "LFC.cb"))))
-  
+
   if ("LFC.cb" %in% colnames(LFC)) {
     LFC %<>%
       dplyr::rename(response = LFC.cb) %>%
@@ -77,7 +77,7 @@ if (length(lfc_path) == 1) {
     LFC %<>%
       dplyr::rename(response = LFC)
   }
-  
+
 } else {
   stop(paste("There are", length(lfc_path), "LFC files in the supplied directory. Please try again with 1."),
        call. = FALSE)
@@ -88,7 +88,7 @@ if (length(lfc_path) == 1) {
 if (!is.null(qc_path) && file_test("-f", qc_path)) {
   qc_table <- data.table::fread(qc_path) %>%
     dplyr::filter(pass,
-                  compound_plate %in% (LFC$pert_plate %>% unique())) %>%
+                  pert_plate %in% (LFC$pert_plate %>% unique())) %>%
     dplyr::group_by(ccle_name) %>%
     dplyr::summarise(dr = median(dr), ssmd = median(ssmd), nnmd = median(nnmd),
                      .groups = "drop") %>%
@@ -105,14 +105,14 @@ all_Y <- dplyr::bind_rows(DRC, LFC)
 if (biomarker_file == "rep") {
   rep_meta <- data.table::fread(paste0(biomarker_dir, "/rep_info.csv")) %>%
     dplyr::select(column_name, name) %>%
-    dplyr::mutate(column_name = paste0("REP_", column_name)) 
+    dplyr::mutate(column_name = paste0("REP_", column_name))
 }
 
 # get lineage principal components to use as confounder
 if (biomarker_file == "ge") {
   LIN_PCs <- data.table::fread(paste0(biomarker_dir, "/linPCA.csv"))
   confounder_overlap <- intersect(rownames(LIN_PCs), rownames(qc_table))
-  if (!is.null(qc_table)) LIN_PCs <- cbind(LIN_PCs[confounder_overlap, ], qc_table[confounder_overlap, ]) 
+  if (!is.null(qc_table)) LIN_PCs <- cbind(LIN_PCs[confounder_overlap, ], qc_table[confounder_overlap, ])
 }
 
 runs <- all_Y %>%
@@ -124,18 +124,18 @@ runs <- all_Y %>%
 # linear associations
 linear_table <- list(); ix <- 1
 for(feat in 1:length(linear_data)) {
-  
+
   # if specified only process for given file
   if (!is.null(biomarker_file) && linear_data[feat] != biomarker_file) {
     next
   }
-  
+
   print(linear_data[feat])
-  
+
   # load feature set
   X <- data.table::fread(paste0(biomarker_dir, "/", linear_data[feat], ".csv")) %>%
     column_to_rownames("V1") %>% as.matrix()
-  
+
   # for each perturbation get results
   for(i in 1:nrow(runs)) {
     # filter down to current dose (run)
@@ -144,7 +144,7 @@ for(feat in 1:length(linear_data)) {
       dplyr::inner_join(run)
     y <- Y$response; names(y) <- Y$ccle_name
     y <- y[is.finite(y)]
-    
+
     # get overlapping data
     overlap <- dplyr::intersect(rownames(X), names(y))
     y <- y[overlap]
@@ -153,7 +153,7 @@ for(feat in 1:length(linear_data)) {
     } else {
       W <- NULL
     }
-    
+
     # if insufficient data, skip
     if (length(y) < 10 | min(y) == max(y)) {
       next
@@ -168,7 +168,7 @@ for(feat in 1:length(linear_data)) {
         dplyr::mutate(rank = 1:n()) %>%
         dplyr::filter(rank <= 1000 | q.val < 0.1) %>%
         dplyr::bind_cols(run)
-      
+
       # for repurposing replace metadata
       if (linear_data[feat] == "rep") {
         res.cor %<>%
@@ -177,15 +177,15 @@ for(feat in 1:length(linear_data)) {
           dplyr::rename(feature = name) %>%
           dplyr::mutate(feature = paste("REP", feature, sep = "_"))
       }
-      
+
       # append to output tables
       linear_table[[ix]] <- res.cor; ix <- ix + 1
     }
   }
-  
+
   # gene expression with lineage as confounder
   if (linear_data[feat] == "ge") {
-    
+
     # for each perturbation get results
     for(i in 1:nrow(runs)) {
       # filter down to current dose (run)
@@ -194,11 +194,11 @@ for(feat in 1:length(linear_data)) {
         dplyr::inner_join(run)
       y <- Y$response; names(y) <- Y$ccle_name
       y <- y[is.finite(y)]
-      
+
       overlap <- dplyr::intersect(rownames(X), names(y)) %>%
         dplyr::intersect(., rownames(LIN_PCs))
       y <- y[overlap]
-      
+
       if (length(y) < 10 | min(y) == max(y)) {
         next
       } else {
@@ -215,7 +215,7 @@ for(feat in 1:length(linear_data)) {
             dplyr::mutate(rank = 1:n()) %>%
             dplyr::filter(rank <= 1000 | q.val < 0.1) %>%
             dplyr::bind_cols(run)
-          
+
           linear_table[[ix]] <- res.cor; ix <- ix + 1
         }
       }
@@ -236,13 +236,13 @@ for(feat in 1:length(discrete_data)) {
   if (!is.null(biomarker_file) & discrete_data[feat] != biomarker_file) {
     next
   }
-  
+
   print(discrete_data[feat])
-  
+
   # load feature set
   X <- data.table::fread(paste0(biomarker_dir, "/", discrete_data[feat], ".csv")) %>%
     column_to_rownames("V1") %>% as.matrix()
-  
+
   for(i in 1:nrow(runs)) {
     # filter down to current dose (run)
     run <- runs[i,]
@@ -250,7 +250,7 @@ for(feat in 1:length(discrete_data)) {
       dplyr::inner_join(run)
     y <- Y$response; names(y) <- Y$ccle_name
     y <- y[is.finite(y)]
-    
+
     # get overlapping data
     overlap <- dplyr::intersect(rownames(X), names(y))
     y <- y[overlap]
@@ -259,15 +259,15 @@ for(feat in 1:length(discrete_data)) {
     } else {
       W <- NULL
     }
-    
+
     if (length(y) < 10 | min(y) == max(y)) {
       next
     } else {
       res.disc <- cdsrmodels::discrete_test(X[overlap,], y, W = W)
-      
+
       res.disc %<>%
         dplyr::bind_cols(run)
-      
+
       # only keep top 500 mutations
       if (discrete_data[feat] == "mut" & nrow(res.disc) > 0) {
         res.disc %<>%
@@ -276,7 +276,7 @@ for(feat in 1:length(discrete_data)) {
           dplyr::filter(rank <= 500) %>%
           dplyr::select(-rank)
       }
-      
+
       discrete_table[[ix]] <- res.disc; ix <- ix + 1
     }
   }
@@ -285,7 +285,7 @@ if (length(discrete_table) > 0) {
   discrete_table %<>% dplyr::bind_rows()
   file_suffix <- if (is.null(biomarker_file)) "" else paste0("_", biomarker_file)
   file_name <- paste0(out_dir, "/discrete_associations", file_suffix, ".csv")
-  readr::write_csv(discrete_table, file_name) 
+  readr::write_csv(discrete_table, file_name)
 }
 
 # repeat for random forest
@@ -296,20 +296,20 @@ for(feat in 1:length(rf_data)) {
     next
   }
   print(rf_data[feat])
-  
+
   # load feature set
   X <- data.table::fread(paste0(biomarker_dir, "/", rf_data[feat], ".csv")) %>%
     column_to_rownames("V1") %>% as.matrix()
-  
+
   model <- word(rf_data[feat], 2, sep = fixed("-"))
-  
+
   for (i in 1:nrow(runs)) {
     run <- runs[i,]
     Y <- all_Y %>%
       dplyr::inner_join(run)
     y <- Y$response; names(y) <- Y$ccle_name
     y <- y[is.finite(y)]
-    
+
     # get overlapping data
     overlap <- dplyr::intersect(rownames(X), names(y))
     y <- y[overlap]
@@ -318,7 +318,7 @@ for(feat in 1:length(rf_data)) {
     } else {
       W <- NULL
     }
-    
+
     if (length(y) < 10 | min(y) == max(y)) {
       next
     } else {
@@ -342,5 +342,5 @@ if (length(random_forest_table) > 0) {
   model_name <- paste0(out_dir, "/model_table", file_suffix, ".csv")
   rf_name <- paste0(out_dir, "/RF_table", file_suffix, ".csv")
   readr::write_csv(random_forest_table, rf_name)
-  readr::write_csv(model_table, model_name)  
+  readr::write_csv(model_table, model_name)
 }
