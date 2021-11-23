@@ -9,7 +9,6 @@ docker run --rm \
 -it cmap/biomarker-module:dev \
 -b /cmap/macchiato/projects \
 -o /cmap/macchiato/projects \
--f "ge" \
 -d "/cmap/biomarker_cache"
 
 

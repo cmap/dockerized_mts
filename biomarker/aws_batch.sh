@@ -46,6 +46,7 @@ then
     pert_id=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     plate=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    biomarker_file=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].feature')
     cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
     base_dir="${base_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
