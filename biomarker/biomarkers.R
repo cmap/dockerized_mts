@@ -28,7 +28,7 @@ if (!dir.exists(out_dir)) dir.create(out_dir, recursive = T)
 
 #---- LOAD THE DATA ----
 drc_path <- list.files(base_dir, pattern = "DRC_TABLE.csv", full.names = T)
-lfc_path <- list.files(base_dir, pattern = "LEVEL5_LFC", full.names = T)
+lfc_path <- list.files(base_dir, pattern = "LEVEL5_LFC_.*\\.csv$", full.names = T)
 
 # read dose-response if it's there
 if (length(drc_path == 1)) {
