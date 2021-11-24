@@ -50,7 +50,7 @@ then
     cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
     base_dir="${base_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
-    out_dir="${out_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
+    out_dir="${out_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"/biomarker
 fi
 
 echo "${base_dir}" "${out_dir}" "${biomarker_dir}" "${biomarker_file}" "${qc_file}"

@@ -1,0 +1,82 @@
+#!/bin/bash
+#setup environment
+source activate merino
+
+cd /cmap/merino/
+python setup.py develop
+
+#return to /
+cd /
+
+#optional
+if test $# -lt 1; then
+  python /clue/bin/merge_csvs.py --help
+  exit 1
+fi
+
+while test $# -gt 0; do
+  case "$1" in
+    -h|--help)
+      python /clue/bin/merge_csvs.py --help
+      exit 0
+      ;;
+    -d| --data_dir)
+      shift
+      DATA_DIR=$1
+      ;;
+    -o|--out)
+      shift
+      OUT_DIR=$1
+      ;;
+    -s|--search_pattern)
+      shift
+      PATTERN=$1
+      ;;
+    -v| --verbose)
+      shift
+      VERBOSE=true
+      ;;
+    *)
+      printf "Unknown parameter: %s \n" "$1"
+      shift
+      ;;
+  esac
+  shift
+done
+
+if [[ ! -d $DATA_DIR ]]
+then
+  mkdir -p $DATA_DIR
+fi
+
+if [[ ! -z $projects ]]
+then
+    IFS=',' read -r -a a_projects <<< "${projects}"
+    batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    PERT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+    PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    PERT_PLATE=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    PATTERN=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pattern')
+    cleaned_pert_id=$(echo "${PERT//|/$'_'}")
+    sanitized_pert_id="${cleaned_pert_id^^}"
+    DATA_DIR="${DATA_DIR}"/"${PROJECT}"/"${PERT_PLATE}"/"${sanitized_pert_id}"/biomarker
+    OUT_DIR="${OUT_DIR}"/"${PROJECT}"/"${PERT_PLATE}"/"${sanitized_pert_id}"
+fi
+
+args=(
+  -d "$DATA_DIR"
+  -o "$OUT_DIR"
+  -s "$PATTERN"
+)
+echo "${DATA_DIR}" "${OUT_DIR}" "${PATTERN}"
+if [[ ! -z $VERBOSE ]]
+then
+  args+=(-v)
+fi
+
+
+python /clue/bin/merge_csvs.py "${args[@]}"
+
+exit_code=$?
+conda deactivate
+exit $exit_code
