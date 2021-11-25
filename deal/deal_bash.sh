@@ -94,20 +94,23 @@ if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
     then
       args+=(-s $SIG_ID_COLS)
     fi
-
-    python /clue/bin/deal.py "${args[@]}"
+    batch=0
 else
     batch=${AWS_BATCH_JOB_ARRAY_INDEX}
-    if [[ ! -z $projects ]]
-    then
-        IFS=',' read -r -a a_projects <<< "${projects}"
-        PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].x_project_id')
-        KEY=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].level')
-        args+=(-p "$PROJECT")
-        args+=(-k "$KEY")
-        python /clue/bin/deal.py "${args[@]}"
-    fi
 fi
+
+if [[ ! -z $projects ]]
+then
+    IFS=',' read -r -a a_projects <<< "${projects}"
+    PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].x_project_id')
+    KEY=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].level')
+    args+=(-p "$PROJECT")
+    args+=(-k "$KEY")
+    python /clue/bin/deal.py "${args[@]}"
+else
+    python /clue/bin/deal.py "${args[@]}"
+fi
+
 exit_code=$?
 conda deactivate
 exit $exit_code

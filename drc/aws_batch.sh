@@ -12,10 +12,15 @@ done
 
 out="${output_dir}"
 data="${data_dir}"
+
+batch_index=0
+if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+  batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+fi
+
 if [[ ! -z $projects ]]
 then
     IFS=',' read -r -a a_projects <<< "${projects}"
-    batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
     pert_id=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     plate=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
