@@ -28,9 +28,10 @@ def main(args):
         df = pd.read_csv(filename, index_col=None, header=0)
         dfs.append(df)
 
-    result = pd.concat(dfs, axis=0, ignore_index=True)
-    result.to_csv(output_file, index=False)
-
+    if len(dfs) > 0:
+        result = pd.concat(dfs, axis=0, ignore_index=True)
+        result.to_csv(output_file, index=False)
+    return
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])
