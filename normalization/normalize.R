@@ -43,13 +43,11 @@ cell_info <- data.table::fread(path_cell_info) %>%
                                  "CTLBC", pool_id))
 
 # read in inst_info
-inst_info <- data.table::fread(path_inst_info) %>%
-  dplyr::filter(!is_well_failure) %>%
-  dplyr::select(-is_well_failure)
+inst_info <- data.table::fread(path_inst_info)
 
 # split out base plate
 base_day <- data.table::fread(path_inst_info) %>%
-  dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure)
+  dplyr::filter(str_detect(prism_replicate, "BASE"))
 
 # ensure unique profile IDs
 raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
