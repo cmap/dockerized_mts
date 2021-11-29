@@ -56,6 +56,7 @@ if (length(drc_path == 1)) {
     dplyr::select(-auc) %>%
     tidyr::pivot_longer(cols = c("log2.auc", "log2.ic50"),
                         names_to = "pert_dose", values_to = "response") %>%
+    dplyr::mutate(pert_dose = as.character(pert_dose)) %>%
     dplyr::filter(is.finite(response)) %>%
     dplyr::rename(pert_iname = varied_iname, pert_id = varied_id)
 } else {
@@ -67,7 +68,8 @@ if (length(drc_path == 1)) {
 if (length(lfc_path) == 1) {
   LFC <- data.table::fread(lfc_path) %>%
     dplyr::distinct(across(any_of(c("ccle_name", "culture", "pool_id", "pert_id",
-                                    "pert_iname", "pert_dose", "pert_plate", "LFC", "LFC.cb"))))
+                                    "pert_iname", "pert_dose", "pert_plate", "LFC", "LFC.cb")))) %>%
+    dplyr::mutate(pert_dose = as.character(pert_dose))
 
   if ("LFC.cb" %in% colnames(LFC)) {
     LFC %<>%
