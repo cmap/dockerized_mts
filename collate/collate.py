@@ -117,7 +117,7 @@ def mk_cell_metadata(args, failed_plates=None):
         fails_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in fails_dict.iteritems()]))
         fails_df.to_csv(os.path.join(args.build_dir, 'failed_plates.txt'), sep='\t', index=False)
 
-def mk_inst_info(inst_data, norm_data=None, args=None):
+def mk_inst_info(inst_data, args=None):
 
     inst_info = inst_data.col_metadata_df
     inst_info['profile_id'] = inst_info.index
@@ -126,10 +126,6 @@ def mk_inst_info(inst_data, norm_data=None, args=None):
         del inst_info[x]
 
     inst_info.set_index('profile_id', inplace=True)
-    #inst_info['is_well_failure'] = False
-
-    if norm_data:
-        inst_info.loc[[x for x in inst_info.index if x not in norm_data.data_df.columns], 'is_well_failure'] = True
 
     inst_info.to_csv(os.path.join(args.build_dir, args.cohort_name + '_inst_info.txt'), sep='\t')
 
@@ -158,10 +154,7 @@ def main(args):
             data, _ = build(path, out_path, '.gctx', cut=True)
         data_dict[key] = data
 
-    if data_dict.has_key('*NORM.gct'):
-        mk_inst_info(data_dict['*MEDIAN.gct'], data_dict['*NORM.gct'], args)
-    else:
-        mk_inst_info(data_dict['*MEDIAN.gct'], args=args)
+    mk_inst_info(data_dict['*MEDIAN.gct'], args=args)
 
     try:
         mk_cell_metadata(args, failure_list)
