@@ -57,7 +57,7 @@ raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 # melt matrix into data tables and join with inst and cell info
 master_logMFI <- log2(raw_matrix) %>%
   reshape2::melt(varnames = c("rid", "profile_id"), value.name = "logMFI") %>%
-  dplyr::filter(!is.na(logMFI)) %>%
+  dplyr::filter(is.finite(logMFI)) %>%
   dplyr::inner_join(cell_info) %>%
   dplyr::inner_join(inst_info)
 

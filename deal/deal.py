@@ -99,8 +99,9 @@ def make_sig_id(level5_table, id_cols):
 """
 def slice_and_write_project(data, data_level, project, outpath, args):
     print(project)
-    if not os.path.exists(os.path.join(outpath, project)):
-        os.makedirs(os.path.join(outpath, project))
+    proj_dir = os.path.join(outpath, project, 'data')
+    if not os.path.exists(proj_dir):
+        os.makedirs(proj_dir)
 
     if ("LEVEL5" in data_level) & ('sig_id' not in data.columns):
         logger.debug("Generating sig_ids from sig_id_cols arg: {}".format(args.sig_id_cols))
@@ -135,7 +136,7 @@ def slice_and_write_project(data, data_level, project, outpath, args):
         nr = len(proj_data[row_id].unique())
 
     proj_data.to_csv(
-        os.path.join(outpath, project, '{}_{}_n{}x{}.csv'.format(project, data_level, nc, nr)),
+        os.path.join(proj_dir, '{}_{}_n{}x{}.csv'.format(project, data_level, nc, nr)),
         index=False,
     )
 
@@ -147,16 +148,16 @@ def main(args):
         key = args.only_key
         project  = args.project
         dl_dict  = build_contents_dict[key]
-
+        proj_dir = os.path.join(outpath, project, 'data')
         if key == 'inst_info':
             inst = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0], sep='\t')
             inst.loc[inst['x_project_id'] == project].to_csv(
-                os.path.join(outpath, project, '{}_{}.txt'.format(project, key))
+                os.path.join(proj_dir,'{}_{}.txt'.format(project, key))
             )
         elif key ==  'cell_info':
             shutil.copy(
                 glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0],
-                os.path.join(outpath, project, '{}_cell_info.txt'.format(project))
+                os.path.join(proj_dir,'{}_cell_info.txt'.format(project))
             )
         elif key == 'QC_TABLE':
             inst = pd.read_csv(
@@ -167,7 +168,7 @@ def main(args):
             preps =  proj_inst.prism_replicate.unique()
 
             qc = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0])
-            qc.loc[qc['prism_replicate'].isin(preps)].to_csv(os.path.join(outpath, project, '{}_{}.csv'.format(project, key)))
+            qc.loc[qc['prism_replicate'].isin(preps)].to_csv(os.path.join(proj_dir,'{}_{}.csv'.format(project, key)))
         else:
             data = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0])
             slice_and_write_project(data, key, project, outpath, args)
@@ -185,10 +186,10 @@ def main(args):
         for project in inst['x_project_id'].unique():
             if pd.isna(project):
                 continue
-            proj_dir = os.path.join(outpath, project)
+            proj_dir = os.path.join(outpath, project,'data')
 
-            if not os.path.exists(os.path.join(outpath, project)):
-                os.makedirs(os.path.join(outpath, project))
+            if not os.path.exists(os.path.join(outpath, project,'data')):
+                os.makedirs(os.path.join(outpath, project,'data'))
 
             proj_inst = inst.loc[
                 inst['x_project_id'] == project
@@ -199,11 +200,11 @@ def main(args):
                 qc['prism_replicate'].isin(proj_pp_list)
             ]
 
-            proj_inst.to_csv(os.path.join(proj_dir, '{}_inst_info.csv'.format(project)),
+            proj_inst.to_csv(os.path.join(proj_dir,'{}_inst_info.csv'.format(project)),
                             index=False)
             shutil.copy(
                 glob.glob(os.path.join(build_path, build_contents_dict['cell_info']['search_pattern']))[0],
-                os.path.join(outpath, project, '{}_cell_info.txt'.format(project))
+                os.path.join(proj_dir,'{}_cell_info.txt'.format(project))
             )
             proj_qc.to_csv(os.path.join(proj_dir, '{}_QC_TABLE.csv'.format(project)),
                           index=False)

@@ -3,10 +3,11 @@
 docker run \
 --rm \
 --name foo10 \
--v /Users/jasiedu/WebstormProjects/dockerized_mts/extract-biomarkers/continous-associations/:/cmap/continous-associations/ \
--v /Users/jasiedu/WebstormProjects/dockerized_mts/extract-biomarkers/out/:/prism/out/ \
+-v /Users/jasiedu/WebstormProjects/macchiato/test/projects/:/cmap/macchiato/ \
+-e projects="$(cat /Users/jasiedu/WebstormProjects/macchiato/foo1.json)" \
+-e AWS_BATCH_JOB_ARRAY_INDEX=0 \
 -it prismcmap/extract-biomarker \
---file_name /cmap/continous-associations/continuous_associations.csv \
---default_dataset MTS017 \
---out_dir /prism/out
+-d /cmap/macchiato \
+-o /cmap/macchiato \
+-x 10
 

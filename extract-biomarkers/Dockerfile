@@ -3,6 +3,7 @@ MAINTAINER Jacob Asiedu <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 RUN apt-get update -qq && \
+  apt-get install -y jq && \
   pip install pandas
 COPY ./extract_biomarker_bash.sh /clue/bin/extract_biomarker_bash
 COPY ./extract_biomarker.py /clue/bin/extract_biomarker.py

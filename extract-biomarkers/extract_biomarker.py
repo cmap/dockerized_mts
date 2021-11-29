@@ -8,43 +8,20 @@ import pandas as pd
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # The following arguments are required. These are files that are necessary for top_10_biomarker
-    parser.add_argument("--file_name", "-f", help="Required: Path to continous association file",type=str, required=True)
+    parser.add_argument("--data_dir", "-d", help="Required: Path to continuous association file",type=str, required=True)
     parser.add_argument("--out_dir", "-o", help="Required: out folder",type=str, required=True)
-    parser.add_argument("--default_dataset", "-ds", help="The default dataset, will be used of association file does not have a dataset column",type=str)
+    parser.add_argument("--extract_top_x", "-x", help="Extract the top x results",type=str, default="10")
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
     return parser
 
-def top_10(biomarker_table,out_path):
-    biomarker_table.reindex(biomarker_table.coef.abs().sort_values(ascending=False).index)
-    df = biomarker_table.head(10)
-    df.to_csv(out_path, index=False)
-    return
 def build(args):
-    data = pd.read_csv(args.file_name)
-    path = args.out_dir
-    if 'dataset' not in data.columns:
-        dataset = args.default_dataset
-        for pert_name, group in data.groupby(['pert_name']):
-            single_pert(pert_name,dataset,group)
-        return
-    else:
-        for (pert_name,dataset), group in data.groupby(['pert_name','dataset']):
-            single_pert(pert_name,dataset,group)
-
-    return
-
-def single_pert(pert_name,dataset,group):
-    d = f'{pert_name}'.lower().replace("(","").replace(")","").replace(" ","_")
-    path = f'{dataset}'.lower()
-    biomarker_parent_path = os.path.join(args.out_dir,'biomarker',f'{path}')
-    top10_biomarker_parent_path= os.path.join(args.out_dir,'top-10-biomarker',f'{path}')
-
-    os.makedirs(biomarker_parent_path, exist_ok=True)
-    os.makedirs(top10_biomarker_parent_path, exist_ok=True)
-    biomarker_file_path =os.path.join(biomarker_parent_path,f'{d}.csv')
-    top_10_biomarker_file_path =os.path.join(top10_biomarker_parent_path,f'{d}.csv')
-    group.to_csv(biomarker_file_path, index=False)
-    top_10(group,top_10_biomarker_file_path)
+    top_x = args.extract_top_x
+    if os.path.exists(args.data_dir):
+        data = pd.read_csv(args.data_dir)
+        top_x_biomarker_file_path =os.path.join(args.out_dir,'top_' + top_x + '_biomarkers.csv')
+        data.reindex(data.coef.abs().sort_values(ascending=False).index)
+        df = data.head(int(top_x))
+        df.to_csv(top_x_biomarker_file_path, index=False)
     return
 
 def main(args):
@@ -55,4 +32,5 @@ def main(args):
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])
+    print(args)
     main(args)

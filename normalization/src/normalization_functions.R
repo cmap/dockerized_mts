@@ -95,7 +95,7 @@ normalize <- function(df, barcodes) {
            data = tibble(
              y = rLMFI[rid %in% barcodes$rid],
              x = logMFI[rid %in% barcodes$rid])) %>%
-          predict(newdata = tibble(x = logMFI) %>% as.numeric())
+          predict(newdata = tibble(x = logMFI)) %>% as.numeric()
       })) %>%
     dplyr::ungroup() %>%
     dplyr::select(-logMFI)
