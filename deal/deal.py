@@ -26,11 +26,6 @@ build_contents_dict = {
         'type': 'report',
         'format': 'csv'
     },
-    'compound_key' : {
-        'search_pattern': '*compound_key.csv',
-        'type': 'key',
-        'format': 'csv'
-    },
     'LEVEL2_COUNT': {
         'search_pattern': '*_LEVEL2_COUNT*.csv',
         'type':'data',
