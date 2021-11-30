@@ -15,6 +15,8 @@ args <- parser$parse_args()
 
 lfc_dir <- args$input_dir
 out_dir <- args$out
+
+# find level 4 file and return error if none or more than one
 lfc_files <- list.files(lfc_dir,pattern=("LEVEL4_LFC_.*\\.csv$"), full.names=T)
 if (length(lfc_files) != 1) {
     stop(paste("There are", length(lfc_files), "LFC files in the supplied directory. Please try again with 1."),
@@ -32,7 +34,7 @@ if ("LFC_cb" %in% colnames(LFC_TABLE)) {
   LFC_column <- "LFC"
 }
 
-#---- Compute dose-response parameters ----
+#---- Pre-processing ----
 # table with each compound cell line combo and number of doses
 compound_table <- LFC_TABLE %>%
   dplyr::select(pert_iname, pert_id, pert_dose) %>%
@@ -44,6 +46,7 @@ compound_table <- LFC_TABLE %>%
   summarise_all(function(x) n_distinct(x, na.rm = T)) %>%
   dplyr::ungroup()
 
+# check which compounds were run at 4 or more doses (to fit curves)
 dosed_compounds <- compound_table %>%
   tidyr::pivot_longer(cols = contains("pert_iname"), names_to = c("foo", "bar", "index"), names_sep = "_", values_to = "pert_iname")
 dosed_compounds$n_doses <- dosed_compounds[1, paste0("pert_dose_", dosed_compounds$index)] %>% t() %>% as.numeric()
@@ -52,6 +55,7 @@ dosed_compounds %<>%
   dplyr::select(pert_iname, pert_id, n_doses, index) %>%
   dplyr::filter(n_doses >= 4)
 
+# if none exit
 if (nrow(dosed_compounds) < 1) {
   message("Not enough dose points to fit curves for compound(s) in table")
   quit(save = "no")
@@ -69,17 +73,26 @@ LFC_TABLE.split <- LFC_TABLE %>%
                           sep = "|", fixed = T,
                           direction = "wide", drop = F)
 
-DRC <- list()
+
+#---- Compute dose-response parameters ----
+DRC <- list()  # stores dose response results
+
+# for each compound run at 4+ doses
 for (i in 1:nrow(dosed_compounds)) {
   comp <- dosed_compounds[i, ]
-  dose_var <- paste0("pert_dose_", comp$index)
+  dose_var <- paste0("pert_dose_", comp$index)  # index of compound
 
+  # find all cell line drug combos for that compound with 4+ doses
   df <- DRC_TABLE_cb %>%
     dplyr::group_by(across(!contains(comp$index))) %>%
     dplyr::summarise(n = n(), .groups = "drop") %>%
     dplyr::filter(n >= 4)
-  sub_DRC <- list()
+  sub_DRC <- list()  # stores dose response results
+  
+  # for each cell line
   for (j in 1:nrow(df)) {
+    
+    # get LFC data
     d <- df[j, ] %>% dplyr::inner_join(LFC_TABLE.split)
     
     # fit curve
@@ -88,6 +101,7 @@ for (i in 1:nrow(dosed_compounds)) {
                         lowerl = c(-Inf, -Inf, -Inf, 0)),
                   error = function(e) {print(e); return(NA)})
     
+    # if it fits and doesn't converge grab robust fit
     if (!is.na(a)) {
       if (!a$convergence) {
         a <- a$dr4pl.robust 
@@ -96,14 +110,16 @@ for (i in 1:nrow(dosed_compounds)) {
     
     # get parameters
     param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) return(NA))
-
+    
+    # get results if fit
     if (!is.na(param)) {
-      d$pred <- dr4pl::MeanResponse(a$parameters, d[[dose_var]])
+      d$pred <- dr4pl::MeanResponse(a$parameters, d[[dose_var]])  # predictions
       d$e <-  (2^d[[LFC_column]] - d$pred)^2  # prediction residuals
       
       mse <- mean(d$e)
       R2 <- 1 - (sum(d$e)/(nrow(d) * var(d[[LFC_column]])))
       
+      # tibble of curve parameters
       x <- tibble(min_dose = min(d[[dose_var]]),
                   max_dose = max(d[[dose_var]]),
                   upper_limit = param[1],
@@ -124,7 +140,9 @@ for (i in 1:nrow(dosed_compounds)) {
                       culture = df[j,]$culture,
                       pert_time = df[j,]$pert_time,
                       pert_plate = df[j,]$pert_plate)
-      if (ncol(df) > 4) {
+      
+      # if this was a combination track other compounds added
+      if (any(str_detect(colnames(df), "pert_id_"))) {
         added_comp_table <- df[j, ] %>%
           tidyr::unite(col = added_compounds, starts_with("pert_iname_"), sep = "|") %>%
           tidyr::unite(col = added_doses, starts_with("pert_dose_"), sep = "|") %>%
@@ -137,10 +155,10 @@ for (i in 1:nrow(dosed_compounds)) {
       sub_DRC[[j]] <- tibble()
     }
   }
-  sub_DRC %<>% dplyr::bind_rows()
+  sub_DRC %<>% dplyr::bind_rows()  # combine results
   DRC[[i]] <- sub_DRC
 }
-DRC %<>% dplyr::bind_rows()
+DRC %<>% dplyr::bind_rows()  # combine results
 
 #---- Write to .csv ----
 if(nrow(DRC) > 0)  {
