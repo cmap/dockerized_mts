@@ -117,7 +117,7 @@ def mk_cell_metadata(args, failed_plates=None):
         fails_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in fails_dict.iteritems()]))
         fails_df.to_csv(os.path.join(args.build_dir, 'failed_plates.txt'), sep='\t', index=False)
 
-def mk_inst_info(inst_data, norm_data=None, args=None):
+def mk_inst_info(inst_data, args=None):
 
     inst_info = inst_data.col_metadata_df
     inst_info['profile_id'] = inst_info.index
@@ -126,69 +126,15 @@ def mk_inst_info(inst_data, norm_data=None, args=None):
         del inst_info[x]
 
     inst_info.set_index('profile_id', inplace=True)
-    inst_info['is_well_failure'] = False
-
-    if norm_data:
-        inst_info.loc[[x for x in inst_info.index if x not in norm_data.data_df.columns], 'is_well_failure'] = True
 
     inst_info.to_csv(os.path.join(args.build_dir, args.cohort_name + '_inst_info.txt'), sep='\t')
 
 
-def mk_sig_info(search_pattern_dict, data_dict, args):
-
-    for key in search_pattern_dict:
-
-        if 'MODZ' in key:
-
-            jon = pd.DataFrame()
-
-            data_id = key.split('.g')[0].replace('*', '')
-
-            meta_paths = glob.glob(os.path.join(args.proj_dir, 'weave', args.search_pattern, '*{}_cc_q75.txt'.format(data_id)))
-
-
-            if len(meta_paths) == 0:
-                logger.info("No metadata found for {}".format(data_id))
-                continue
-
-            for y in meta_paths:
-                temp = pd.read_table(y)
-
-                jon = jon.append(temp)
-
-            jon.set_index('sig_id', inplace=True)
-
-            sig_data = data_dict[key]
-
-            fcpc_sig_info = jon.join(sig_data.col_metadata_df)
-
-            for x in ['data_level', 'prism_replicate', 'det_well']:
-                del fcpc_sig_info[x]
-
-            fcpc_sig_info.to_csv(os.path.join(args.build_dir, args.cohort_name + '_sig_metrics_{}.txt'.format(data_id)), sep='\t')
-
-
 def main(args):
-    search_pattern_dict = {'*MEDIAN.gct': ['assemble', '_LEVEL2_MFI_'],
-                           '*COUNT.gct': ['assemble', '_LEVEL2_COUNT_'],
-                           # '*NORM.gct': ['card', '_LEVEL3_NORM_'],
-                           # '*ZSPC.gct': ['card', '_LEVEL4_ZSPC_'],
-                           # '*ZSPC.COMBAT.gct': ['card', '_LEVEL4_ZSPC.COMBAT_'],
-                           # '*ZSVC.gct': ['card', '_LEVEL4_ZSVC_'],
-                           # '*ZSVC.COMBAT.gct': ['card', '_LEVEL4_ZSVC.COMBAT_'],
-                           # '*LFCPC.gct': ['card', '_LEVEL4_LFCPC_'],
-                           # '*LFCPC.COMBAT.gct': ['card', '_LEVEL4_LFCPC.COMBAT_'],
-                           # '*LFCVC.gct': ['card', '_LEVEL4_LFCVC_'],
-                           # '*LFCVC.COMBAT.gct': ['card', '_LEVEL4_LFCVC.COMBAT_'],
-                           # '*MODZ.ZSPC.gct':['weave', '_LEVEL5_MODZ.ZSPC_'],
-                           # '*MODZ.LFCPC.gct':['weave', '_LEVEL5_MODZ.LFCPC_'],
-                           # '*MODZ.ZSPC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.ZSPC.COMBAT_'],
-                           # '*MODZ.LFCPC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.LFCPC.COMBAT_'],
-                           # '*MODZ.ZSVC.gct': ['weave', '_LEVEL5_MODZ.ZSVC_'],
-                           # '*MODZ.LFCVC.gct': ['weave', '_LEVEL5_MODZ.LFCVC_'],
-                           # '*MODZ.ZSVC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.ZSVC.COMBAT_'],
-                           # '*MODZ.LFCVC.COMBAT.gct': ['weave', '_LEVEL5_MODZ.LFCVC.COMBAT_']
-                           }
+    search_pattern_dict = {
+        '*MEDIAN.gct': ['assemble', '_LEVEL2_MFI_'],
+        '*COUNT.gct': ['assemble', '_LEVEL2_COUNT_'],
+    }
 
     data_dict = {}
 
@@ -197,14 +143,6 @@ def main(args):
                             args.search_pattern,key)
 
         out_path = os.path.join(args.build_dir, args.cohort_name + search_pattern_dict[key][1])
-
-        # if not os.path.exists(os.path.join(args.proj_dir, args.search_pattern, search_pattern_dict[key][0])):
-        #     print(
-        #         "Path not found: {}".format(
-        #             os.path.join(args.proj_dir, search_pattern_dict[key][0])
-        #         )
-        #     )
-        #     continue
 
         logger.info("working on {}".format(path))
 
@@ -216,12 +154,7 @@ def main(args):
             data, _ = build(path, out_path, '.gctx', cut=True)
         data_dict[key] = data
 
-    if data_dict.has_key('*NORM.gct'):
-        mk_inst_info(data_dict['*MEDIAN.gct'], data_dict['*NORM.gct'], args)
-    else:
-        mk_inst_info(data_dict['*MEDIAN.gct'], args=args)
-
-    mk_sig_info(search_pattern_dict, data_dict, args)
+    mk_inst_info(data_dict['*MEDIAN.gct'], args=args)
 
     try:
         mk_cell_metadata(args, failure_list)
@@ -233,9 +166,9 @@ if __name__ == "__main__":
     setup_logger.setup(verbose=args.verbose)
 
     logger.debug("args:  {}".format(args))
-    
+
     if not os.path.exists(args.build_dir):
         logger.info("Making build directory: {}".format(args.build_dir))
         os.mkdir(args.build_dir)
-        
+
     main(args)
