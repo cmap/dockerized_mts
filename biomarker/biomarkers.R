@@ -215,7 +215,8 @@ for(feat in 1:length(linear_data)) {
             tibble::as_tibble() %>%
             dplyr::rename(feature = ind.var, coef = rho) %>%
             dplyr::arrange(q.val) %>%
-            dplyr::mutate(rank = 1:n()) %>%
+            dplyr::mutate(rank = 1:n(),
+                          feature_type = "GE_noLIN") %>%
             dplyr::filter(rank <= 1000 | q.val < 0.1) %>%
             dplyr::bind_cols(run)
 
@@ -236,7 +237,7 @@ if (length(linear_table) > 0) {
 discrete_table <- list(); ix <- 1
 for(feat in 1:length(discrete_data)) {
   # if specified only process for given file
-  if (!is.null(biomarker_file) & discrete_data[feat] != biomarker_file) {
+  if (!is.null(biomarker_file) && discrete_data[feat] != biomarker_file) {
     next
   }
 
@@ -266,7 +267,8 @@ for(feat in 1:length(discrete_data)) {
     if (length(y) < 10 | min(y) == max(y)) {
       next
     } else {
-      res.disc <- cdsrmodels::discrete_test(X[overlap,], y, W = W)
+      res.disc <- cdsrmodels::discrete_test(X[overlap,], y, W = W) %>%
+        dplyr::mutate(feature_type = toupper(discrete_data[feat]))
 
       res.disc %<>%
         dplyr::bind_cols(run)
@@ -275,8 +277,7 @@ for(feat in 1:length(discrete_data)) {
       if (discrete_data[feat] == "mut" & nrow(res.disc) > 0) {
         res.disc %<>%
           dplyr::arrange(q.value) %>%
-          dplyr::mutate(rank = 1:n(),
-                        feature_type = toupper(discrete_data[feat])) %>%
+          dplyr::mutate(rank = 1:n()) %>%
           dplyr::filter(rank <= 500) %>%
           dplyr::select(-rank)
       }
@@ -296,7 +297,7 @@ if (length(discrete_table) > 0) {
 random_forest_table <- list(); model_table <- list(); ix <- 1
 for(feat in 1:length(rf_data)) {
   # if specified only process for given file
-  if (!is.null(biomarker_file) & rf_data[feat] != biomarker_file) {
+  if (!is.null(biomarker_file) && rf_data[feat] != biomarker_file) {
     next
   }
   print(rf_data[feat])
