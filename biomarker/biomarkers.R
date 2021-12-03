@@ -167,7 +167,8 @@ for(feat in 1:length(linear_data)) {
         tibble::as_tibble() %>%
         dplyr::rename(feature = ind.var, coef = rho) %>%
         dplyr::arrange(q.val) %>%
-        dplyr::mutate(rank = 1:n()) %>%
+        dplyr::mutate(rank = 1:n(),
+                      feature_type = linear_names[feat]) %>%
         dplyr::filter(rank <= 1000 | q.val < 0.1) %>%
         dplyr::bind_cols(run)
 
@@ -274,7 +275,8 @@ for(feat in 1:length(discrete_data)) {
       if (discrete_data[feat] == "mut" & nrow(res.disc) > 0) {
         res.disc %<>%
           dplyr::arrange(q.value) %>%
-          dplyr::mutate(rank = 1:n()) %>%
+          dplyr::mutate(rank = 1:n(),
+                        feature_type = toupper(discrete_data[feat])) %>%
           dplyr::filter(rank <= 500) %>%
           dplyr::select(-rank)
       }
