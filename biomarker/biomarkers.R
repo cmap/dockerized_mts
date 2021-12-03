@@ -67,7 +67,7 @@ if (length(drc_path == 1)) {
 # always expect LFC table
 if (length(lfc_path) == 1) {
   LFC <- data.table::fread(lfc_path) %>%
-    dplyr::distinct(across(any_of(c("ccle_name", "culture", "pool_id", "pert_id",
+    dplyr::distinct(across(any_of(c("ccle_name", "culture", "pool_id", "pert_id", "pert_time",
                                     "pert_iname", "pert_dose", "pert_plate", "LFC", "LFC.cb")))) %>%
     dplyr::mutate(pert_dose = as.character(pert_dose))
 
