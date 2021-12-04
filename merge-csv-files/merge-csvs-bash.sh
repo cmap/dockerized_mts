@@ -32,6 +32,10 @@ while test $# -gt 0; do
       shift
       PATTERN=$1
       ;;
+    -sp|--separator)
+      shift
+      SEPARATOR=$1
+      ;;
     -v| --verbose)
       shift
       VERBOSE=true
@@ -44,9 +48,9 @@ while test $# -gt 0; do
   shift
 done
 
-if [[ ! -d $DATA_DIR ]]
+if [[ ! -d $OUT_DIR ]]
 then
-  mkdir -p $DATA_DIR
+  mkdir -p $OUT_DIR
 fi
 
 batch_index=0
@@ -72,12 +76,19 @@ args=(
   -o "$OUT_DIR"
   -s "$PATTERN"
 )
+
 echo "${DATA_DIR}" "${OUT_DIR}" "${PATTERN}"
 if [[ ! -z $VERBOSE ]]
 then
   args+=(-v)
 fi
 
+if [[ ! -z $SEPARTOR ]]
+then
+  args+=(
+    -sp "$SEPARATOR"
+  )
+fi
 
 python /clue/bin/merge_csvs.py "${args[@]}"
 
