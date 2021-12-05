@@ -24,6 +24,10 @@ while test $# -gt 0; do
       shift
       DATA_DIR=$1
       ;;
+    -f| --compound_key_path)
+      shift
+      projects=$1
+      ;;
     -o| --out_dir)
       shift
       OUT_DIR=$1
@@ -75,7 +79,6 @@ fi
 
 if [[ ! -z $projects ]]
 then
-    IFS=',' read -r -a a_projects <<< "${projects}"
     pert_id=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     plate=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')

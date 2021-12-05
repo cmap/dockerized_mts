@@ -20,6 +20,10 @@ while test $# -gt 0; do
       python /clue/bin/split.py --help
       exit 0
       ;;
+    -f| --compound_key_path)
+      shift
+      projects=$1
+      ;;
     -b| --build_path)
       shift
       BUILD_PATH=$1
@@ -63,7 +67,6 @@ fi
 
 if [[ ! -z $projects ]]
 then
-    IFS=',' read -r -a a_projects <<< "${projects}"
     PERT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     PERT_PLATE=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')

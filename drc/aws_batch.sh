@@ -7,6 +7,8 @@ while getopts ":i:o:" arg; do
       data_dir=${OPTARG};;
     o) # specifcy output folder
       output_dir=${OPTARG};;
+    f)
+      projects=${OPTARG};;
   esac
 done
 
@@ -20,7 +22,6 @@ fi
 
 if [[ ! -z $projects ]]
 then
-    IFS=',' read -r -a a_projects <<< "${projects}"
     pert_id=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     plate=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')

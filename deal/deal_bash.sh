@@ -24,6 +24,10 @@ while test $# -gt 0; do
       print_help
       exit 0
       ;;
+    -f| --compound_key_path)
+      shift
+      projects=$1
+      ;;
     -b| --build_path)
       shift
       BUILD_PATH=$1
@@ -101,7 +105,6 @@ fi
 
 if [[ ! -z $projects ]]
 then
-    IFS=',' read -r -a a_projects <<< "${projects}"
     PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].x_project_id')
     KEY=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].level')
     args+=(-p "$PROJECT")
