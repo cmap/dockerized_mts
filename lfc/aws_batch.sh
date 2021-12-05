@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # read in flagged arguments
 while getopts ":b:o:n:" arg; do

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 docker run --rm \
 --name bar2 \
 -v /Users/jasiedu/WebstormProjects/TEST_CPS017_P1000_NEWFMT3:/cmap/macchiato \

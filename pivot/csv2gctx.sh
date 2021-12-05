@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #setup environment
 source activate merino
 

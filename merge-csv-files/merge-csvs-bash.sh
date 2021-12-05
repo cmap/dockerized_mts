@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #setup environment
 source activate merino
 
@@ -64,10 +64,10 @@ fi
 
 if [[ ! -z $projects ]]
 then
-    PERT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
-    PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-    PERT_PLATE=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
-    PATTERN=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pattern')
+    PERT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+    PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    PERT_PLATE=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    PATTERN=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pattern')
     cleaned_pert_id=$(echo "${PERT//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
     DATA_DIR="${DATA_DIR}"/"${PROJECT}"/"${PERT_PLATE}"/"${sanitized_pert_id}"/biomarker

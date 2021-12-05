@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 print_help () {
   printf "Usage ./stack_build [options]\nOptions include:\n"

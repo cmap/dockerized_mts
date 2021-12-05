@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 print_help () {
   printf "Usage ./collate_bash.sh [options]\nOptions include:\n"

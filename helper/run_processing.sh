@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 data_dir=$1
 out_dir=$2
 key_tab=$3

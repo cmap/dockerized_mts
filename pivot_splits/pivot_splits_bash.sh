@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #setup environment
 source activate merino
 
@@ -69,9 +69,9 @@ fi
 
 if [[ ! -z $projects ]]
 then
-    PERT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
-    PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-    PERT_PLATE=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    PERT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+    PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    PERT_PLATE=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
 fi
 
 

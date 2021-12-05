@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #setup environment
 source activate merino
@@ -105,8 +105,8 @@ fi
 
 if [[ ! -z $projects ]]
 then
-    PROJECT=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].x_project_id')
-    KEY=$(echo "${projects}" | jq -r --argjson index ${batch} '.[$index].level')
+    PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch} '.[$index].x_project_id')
+    KEY=$(cat "${projects}" | jq -r --argjson index ${batch} '.[$index].level')
     args+=(-p "$PROJECT")
     args+=(-k "$KEY")
     python /clue/bin/deal.py "${args[@]}"

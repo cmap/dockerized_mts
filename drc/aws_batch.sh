@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # read in flagged arguments
 while getopts ":i:o:" arg; do
@@ -22,9 +22,9 @@ fi
 
 if [[ ! -z $projects ]]
 then
-    pert_id=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
-    project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-    plate=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    pert_id=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+    project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    plate=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
     cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
     data="${data_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
