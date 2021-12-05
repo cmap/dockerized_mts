@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # read in flagged arguments
-while getopts ":i:o:" arg; do
+while getopts ":i:o:f:" arg; do
   case $arg in
     i) # specify input folder
       data_dir=${OPTARG};;
@@ -14,6 +14,7 @@ done
 
 out="${output_dir}"
 data="${data_dir}"
+echo "${data}" "${out}"
 
 batch_index=0
 if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
