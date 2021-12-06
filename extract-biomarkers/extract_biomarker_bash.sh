@@ -99,7 +99,14 @@ then
   args+=(-v)
 fi
 echo -d "${DATA_DIR}" -o "${OUT_DIR}" -x "${TOP_X}"
-python /clue/bin/extract_biomarker.py "${args[@]}"
+
+if [[ "$pert_id" == "DMSO" ]]
+then
+  echo "Skipping DMSO"
+else
+  python /clue/bin/extract_biomarker.py "${args[@]}"
+fi
+
 
 exit_code=$?
 exit $exit_code

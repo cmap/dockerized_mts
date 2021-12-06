@@ -92,7 +92,13 @@ then
   )
 fi
 
-python /clue/bin/split.py "${args[@]}"
+if [[ "$PERT" == "DMSO" ]]
+then
+   echo "Skipping DMSO"
+else
+  python /clue/bin/split.py "${args[@]}"
+fi
+
 
 exit_code=$?
 conda deactivate

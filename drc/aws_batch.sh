@@ -17,7 +17,8 @@ data="${data_dir}"
 echo "${data}" "${out}"
 
 batch_index=0
-if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]
+then
   batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
 fi
 
@@ -33,9 +34,13 @@ then
 fi
 
 echo "${data}" "${out}"
-Rscript /drc_compound.R -i "${data}" -o "${out}"
+if [[ "$pert_id" == "DMSO" ]]
+then
+  echo "Skipping DMSO"
+else
+  Rscript /drc_compound.R -i "${data}" -o "${out}"
+fi
 
 exit_code=$?
-
 echo "$exit_code"
 exit $exit_code

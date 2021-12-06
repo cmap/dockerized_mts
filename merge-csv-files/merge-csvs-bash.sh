@@ -93,7 +93,13 @@ then
   )
 fi
 
-python /clue/bin/merge_csvs.py "${args[@]}"
+if [[ "$pert_id" == "DMSO" ]]
+then
+  echo "Skipping DMSO"
+else
+  python /clue/bin/merge_csvs.py "${args[@]}"
+fi
+
 
 exit_code=$?
 conda deactivate

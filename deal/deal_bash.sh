@@ -109,10 +109,8 @@ then
     KEY=$(cat "${projects}" | jq -r --argjson index ${batch} '.[$index].level')
     args+=(-p "$PROJECT")
     args+=(-k "$KEY")
-    python /clue/bin/deal.py "${args[@]}"
-else
-    python /clue/bin/deal.py "${args[@]}"
 fi
+python /clue/bin/deal.py "${args[@]}"
 
 exit_code=$?
 conda deactivate

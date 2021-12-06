@@ -93,7 +93,13 @@ then
   )
 fi
 
-python /clue/bin/pivot_splits.py "${args[@]}"
+if [[ "$PERT" == "DMSO" ]]
+then
+  echo "Skipping DMSO"
+else
+  python /clue/bin/pivot_splits.py "${args[@]}"
+fi
+
 
 exit_code=$?
 conda deactivate

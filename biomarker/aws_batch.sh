@@ -7,7 +7,7 @@ while test $# -gt 0; do
       Rscript /biomarkers.R --help
       exit 0
       ;;
-    -f| --compound_key_path)
+    -c| --compound_key_path)
       shift
       projects=$1
       ;;
@@ -78,7 +78,13 @@ then
   args+=(-q "${qc_file}")
 fi
 
-Rscript /biomarkers.R "${args[@]}"
+if [[ "$pert_id" == "DMSO" ]]
+then
+    echo "Skipping DMSO"
+else
+    Rscript /biomarkers.R "${args[@]}"
+fi
+
 
 exit_code=$?
 
