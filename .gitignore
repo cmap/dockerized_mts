@@ -50,4 +50,4 @@ stack/run*.sh
 extract-biomarkers/docker_run_*.sh
 
 # report files
-reports/rmarkdow/*.html
+reports/rmarkdown/*.html
