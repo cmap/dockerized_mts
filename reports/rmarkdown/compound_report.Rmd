@@ -1,6 +1,6 @@
 ---
 params:
-  data_dir: ~/Desktop/test_reports/PMTS046
+  data_dir: ~/Desktop/test_reports/PMTS046/BRD-K05804044
   comp: BRD-K05804044
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
@@ -29,9 +29,8 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 
 ```{r preprocessing, include=F}
 # file paths
-compound_dir <- file.path(params$data_dir, params$comp)
-lfc_path <- list.files(compound_dir, "LEVEL5_LFC_COMBAT", full.names = T)
-drc_path <- list.files(compound_dir, "DRC_TABLE", full.names = T)
+lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
 # read in LFC
 if (length(lfc_path) == 1) {
@@ -49,12 +48,12 @@ if (length(drc_path) == 1) {
 }
 
 # read in biomarker tables
-corr_table <- data.table::fread(file.path(compound_dir, "continuous_associations.csv")) %>%
+corr_table <- data.table::fread(file.path(params$data_dir, "continuous_associations.csv")) %>%
   dplyr::mutate(feature = word(feature, 2, -1, sep = "_"))
-disc_table <- data.table::fread(file.path(compound_dir, "discrete_associations.csv")) %>%
+disc_table <- data.table::fread(file.path(params$data_dir, "discrete_associations.csv")) %>%
   dplyr::mutate(feature = word(feature, 2, -1, sep = "_"))
-model_table <- data.table::fread(file.path(compound_dir, "model_table.csv"))
-rf_table <- data.table::fread(file.path(compound_dir, "RF_table.csv")) %>%
+model_table <- data.table::fread(file.path(params$data_dir, "model_table.csv"))
+rf_table <- data.table::fread(file.path(params$data_dir, "RF_table.csv")) %>%
   dplyr::left_join(model_table)
 if (any(corr_table$pert_time %>% unique() == "") && corr_table$pert_time %>% unique() %>% length <= 2) {
   corr_table$pert_time <- "120H"
