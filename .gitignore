@@ -48,3 +48,6 @@ enter_container.sh
 stack/enter_stack.sh
 stack/run*.sh
 extract-biomarkers/docker_run_*.sh
+
+# report files
+reports/rmarkdow/*.html
