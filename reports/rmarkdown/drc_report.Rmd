@@ -20,16 +20,12 @@ knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, fig.width = 10)
 
 # packages
 library(tidyverse)
-library(psych)
 library(magrittr)
 library(ggthemes)
 library(plotly)
 library(crosstalk)
 library(htmltools)
 library(DT)
-library(heatmaply)
-library(viridis)
-library(synergyfinder)
 
 # theme
 theme_set(theme_bw())

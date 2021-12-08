@@ -16,17 +16,7 @@ export HDF5_USE_FILE_LOCKING=FALSE
 
 echo "${data_dir}" "${compound}" "${meta_path}"
 
-Rscript -e \
-  "suppressMessages(rmarkdown::render('rmarkdown/compound_report.Rmd', \
-  output_file = paste0('$compound', '_report.html'), output_dir = '$data_dir', \
-  params = list(data_dir='$data_dir', comp='$compound', meta_folder='$meta_path'), \
-  quiet = TRUE))"
-
-Rscript -e \
-  "suppressMessages(rmarkdown::render('rmarkdown/drc_report.Rmd', \
-  output_file = paste0('$compound', '_drc.html'), output_dir = '$data_dir', \
-  params = list(data_dir='$data_dir', comp='$compound'), \
-  quiet = TRUE))"
+Rscript /render_reports.R -d "${data_dir}" -c "${compound}" -m "${meta_path}"
 
 exit_code=$?
 

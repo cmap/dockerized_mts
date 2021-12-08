@@ -51,3 +51,4 @@ extract-biomarkers/docker_run_*.sh
 
 # report files
 reports/rmarkdown/*.html
+landing_pages/rmarkdown/*.html
