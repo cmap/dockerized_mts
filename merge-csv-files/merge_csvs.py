@@ -16,13 +16,20 @@ def build_parser():
     parser.add_argument('--out', '-o', help='Output directory', type=str, required=True)
     parser.add_argument('--search_pattern', '-s', help="search pattern for csv's",default='*', type=str, required=True)
     parser.add_argument('--separator', '-sp', help="File sperator defaults to ','", default=',',type=str)
-    parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
+    parser.add_argument('--addProjectName', '-ap', help="Whether to prepend the project name to the file", action="store_true", default=False)
+    parser.add_argument('--verbose', '-v', help="Whether to print a bunch of output", action="store_true", default=False)
     return parser
 
 
 def main(args):
     search_str = os.path.join(args.data_dir, args.search_pattern)
-    output_file = os.path.join(args.out, args.search_pattern).replace("*",".txt")
+    if args.addProjectName:
+        search_str = os.path.join(args.data_dir,"*/*",args.search_pattern)
+        project_name = os.path.basename(args.data_dir)
+        output_file = os.path.join(args.out,project_name + "_" + args.search_pattern)
+    else:
+        output_file = os.path.join(args.out, args.search_pattern).replace("*",".txt")
+
     matches = glob.glob(search_str)
     dfs = []
     for filename in matches:
