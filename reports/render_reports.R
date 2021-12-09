@@ -9,9 +9,6 @@ parser$add_argument("-m", "--meta_path", help="Path to folder with lineage and m
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 
-lfc_dir <- args$input_dir
-out_dir <- args$out
-
 rmarkdown::render("rmarkdown/compound_report.Rmd",
                   output_file = paste0(args$compound, "_report.html"),
                   output_dir = args$data_dir,
@@ -23,4 +20,4 @@ rmarkdown::render("rmarkdown/drc_report.Rmd",
                   output_file = paste0(args$compound, "_drc.html"),
                   output_dir = args$data_dir,
                   params = list(data_dir = args$data_dir,
-                                comp="$compound"))
+                                comp=args$compound))

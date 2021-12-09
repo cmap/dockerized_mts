@@ -3,7 +3,7 @@
 # read in flagged arguments
 while getopts ":d:c:m:" arg; do
   case $arg in
-    d) # specify input folder (plate level)
+    d) # specify input folder (compound level)
       data_dir=${OPTARG};;
     c) # compound name (ID or file name same string)
       compound=${OPTARG};;

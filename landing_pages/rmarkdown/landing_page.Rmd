@@ -18,7 +18,13 @@ library(ggthemes)
 library(cowplot)
 
 # get paths to html files
-report_files <- list.files(params$data_dir, pattern = "_report.html", recursive = T)
+plates <- list.dirs(params$data_dir, recursive = F)
+report_list <- list()
+for (i in 1:length(plates)) {
+  plate <- stringr::word(plates[[i]], -1, sep = "/")
+  report_list[[plate]] <-  paste0("./", plate, list.files(plates[[i]], pattern = "_report.html", recursive = T))
+}
+names(report_list <- )
 if (length(report_files) > 0) {
   report_files <- paste0("./", report_files)
   names(report_files) <- stringr::word(report_files, 2, sep = fixed("/")) %>% toupper(.)
