@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/test_reports/PMTS046/BRD-K05804044
-  comp: BRD-K05804044
+  data_dir: ~/Desktop/test_combo_reports/PMTS047/BRD-U00093917
+  comp: BRD-U00093917
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -74,6 +74,7 @@ n_days <- LFC$pert_time %>%
   as.numeric() / 24
 
 # factorize dosing scheme
+LFC$pert_dose <- signif(LFC$pert_dose, 5)
 dose_factors <- LFC$pert_dose %>% unique() %>% sort()
 dose_factors <- c(dose_factors, "log2.auc", "log2.ic50")
 corr_table$pert_dose <- factor(corr_table$pert_dose, levels = dose_factors)
