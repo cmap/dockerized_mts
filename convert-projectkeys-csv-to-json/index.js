@@ -5,6 +5,13 @@ const writeOutput = async function(fileName,projects){
 
     return await fsPromises.writeFile(fileName,JSON.stringify(projects));
 }
+const uniques= async function(projectKeys,fileName){
+    const outPath = fileName.replace(".json","_uniques.json");
+    const uniqueProjects = _.uniq(projectKeys, function (projectKey) {
+        return projectKey.x_project_id;
+    });
+    return await writeOutput(outPath,uniqueProjects);
+}
 const levels = async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_levels.json");
     const uniqueProjects = _.uniq(projectKeys, function (projectKey) {
@@ -87,6 +94,7 @@ const doAll = async function(projectKeyPath){
     const promises = [];
     const projKeys = await fsPromises.readFile(projectKeyPath,'utf-8');
     const projectKeys = JSON.parse(projKeys);
+    promises.push(uniques(projectKeys,projectKeyPath));
     promises.push(levels(projectKeys,projectKeyPath));
     promises.push(features(projectKeys,projectKeyPath));
     promises.push(searchPatterns(projectKeys,projectKeyPath));
