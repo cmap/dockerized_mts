@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports/PMTS047/BRD-U00093917
-  comp: BRD-U00093917
+  data_dir: ~/Desktop/test_reports
+  comp: BRD-U00093968-001-01-9
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -55,11 +55,12 @@ disc_table <- data.table::fread(file.path(params$data_dir, "discrete_association
 model_table <- data.table::fread(file.path(params$data_dir, "model_table.csv"))
 rf_table <- data.table::fread(file.path(params$data_dir, "RF_table.csv")) %>%
   dplyr::left_join(model_table)
-if (any(corr_table$pert_time %>% unique() == "") && corr_table$pert_time %>% unique() %>% length <= 2) {
-  corr_table$pert_time <- "120H"
-  disc_table$pert_time <- "120H"
-  model_table$pert_time <- "120H"
-  rf_table$pert_time <- "120H"
+
+if (all(is.na(corr_table$pert_time)) || all(corr_table$pert_time == "")) {
+  corr_table %<>% dplyr::mutate(pert_time = "120H")
+  disc_table %<>% dplyr::mutate(pert_time = "120H")
+  model_table %<>% dplyr::mutate(pert_time = "120H")
+  rf_table %<>% dplyr::mutate(pert_time = "120H")
 }
 
 # some general metadata
@@ -259,7 +260,7 @@ DT::datatable(lin_tab %>%
 ## Plots by lineage
 
 ```{r, fig.height=14}
-if (nrow(DRC) > 0) {
+if (!is.null(DRC)) {
   df <- DRC %>%
     dplyr::inner_join(lineages, by = "ccle_name") %>%
     dplyr::mutate(condition = ifelse("added_doses" %in% colnames(.),
@@ -273,8 +274,21 @@ if (nrow(DRC) > 0) {
     facet_wrap(condition ~ pert_time, nrow = 1) + 
     theme(legend.position = "none") +
     labs(x = "AUC", y = "Lineage")
-  
   p
+} else if (n_doses == 1) {
+  df <- LFC %>%
+    dplyr::inner_join(lineages, by = "ccle_name")
+  
+  p <- df %>%
+    ggplot(aes(x = LFC_cb, y = reorder(abbreviation, LFC_cb, function(x) -mean(x, na.rm = T)),
+               color = abbreviation)) +
+    geom_boxplot(outlier.alpha = 0) + geom_jitter() +
+    facet_wrap(pert_dose ~ pert_time, nrow = 1) + 
+    theme(legend.position = "none") +
+    labs(x = "Log-fold change", y = "Lineage")
+  p
+} else {
+  print("Unable to show plots by lineage for AUC or a single dose.")
 }
 ```
 
@@ -325,7 +339,7 @@ DT::datatable(MUT_table %>%
 ## Plots by mutation
 
 ```{r, fig.height=10}
-if (nrow(DRC) > 0) {
+if (!is.null(DRC)) {
   df <- DRC %>%
     dplyr::left_join(mutations, by = "ccle_name") %>%
     dplyr::group_by(across(any_of(c("mutation", "varied_iname", "added_compounds", "added_doses")))) %>%
@@ -355,6 +369,34 @@ if (nrow(DRC) > 0) {
     labs(x = "AUC", y = "Lineage")
   
   p
+} else if (n_doses == 1) {
+  df <- LFC %>%
+    dplyr::left_join(mutations, by = "ccle_name") %>%
+    dplyr::group_by(across(any_of(c("mutation", "pert_dose", "pert_name")))) %>%
+    dplyr::mutate(n = n()) %>%
+    dplyr::ungroup()
+  
+  top_muts <- MUT_table %>%
+    dplyr::inner_join(df %>% dplyr::filter(n >= 5) %>% dplyr::distinct(mutation), by = c("feature" = "mutation")) %>%
+    dplyr::arrange(q.value)
+  
+  top_muts <- c(top_muts$feature[1:20])
+  
+  df <- LFC %>%
+    dplyr::left_join(mutations %>% dplyr::filter(mutation %in% top_muts), by = "ccle_name") %>%
+    dplyr::mutate(mutation = ifelse(is.na(mutation), "others", mutation))
+  
+  p <- df %>%
+    ggplot(aes(x = LFC_cb, y = reorder(mutation, LFC_cb, function(x) -mean(x, na.rm = T)),
+               color = mutation)) +
+    geom_boxplot(outlier.alpha = 0) + geom_jitter() +
+    facet_wrap(pert_dose ~ pert_time, nrow = 1) + 
+    theme(legend.position = "none") +
+    labs(x = "Log-fold change", y = "Lineage")
+  
+  p
+} else {
+  
 }
 ```
 
