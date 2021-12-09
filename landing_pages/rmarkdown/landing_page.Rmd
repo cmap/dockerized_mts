@@ -1,0 +1,191 @@
+---
+params:
+  data_dir: ~/Desktop/test_reports
+title: "`r params$project` Overview"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: false
+    theme: paper
+    highlight: kate
+---
+
+```{r setup, include=FALSE, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(include=T, echo=FALSE, message=FALSE, warning=FALSE)
+library(DT)
+library(tidyverse)
+library(ggthemes)
+library(cowplot)
+
+# get paths to html files
+report_files <- list.files(params$data_dir, pattern = "_report.html", recursive = T)
+if (length(report_files) > 0) {
+  report_files <- paste0("./", report_files)
+  names(report_files) <- stringr::word(report_files, 2, sep = fixed("/")) %>% toupper(.)
+}
+drc_files <- list.files(params$data_dir, pattern = "_drc.html", recursive = T)
+if (length(report_files) > 0) {
+  drc_files <- paste0("./", drc_files)
+  names(drc_files) <- stringr::word(drc_files, 2, sep = fixed("/")) %>% toupper(.)
+}
+
+# get paths to data files
+data_files <- list.files(file.path(params$data_dir, "data"))
+data_files <- paste0("./", data_files)
+names(data_files) <- stringr::word(data_files, 4, -2, sep = fixed("_"))
+file_text <- c(
+  "QC" = "QC metrics",
+  "LEVEL3_LMFI" = "Raw and normalized fluorescence values",
+  "LEVEL4_LFC_COMBAT" = "Viability data",
+  "LEVEL5_LFC_COMBAT" = "Replicate-collapsed viability data"
+)
+
+# push NAs to bottom in tables
+options(DT.TOJSON_ARGS = list(na = "string"))
+```
+
+<a href="https://www.broadinstitute.org/">
+<img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/>
+</a>
+<a href="https://www.theprismlab.org/">
+<img src="misc/prism_logo_tagline_side.png" width=300px align="right"/>
+</a>
+<br><br><br>
+
+## Screen Info {.tabset .tabset-fade .tabset-pills}
+
+### Deliverables
+
+1. Mean fluorescent intensities (MFI) for each control and treatment well. This is a measure of the abundance of each PRISM barcode for each replicate/treatment/cell line, available in long-table format: `Compound Data > Raw fluorescence values` and `Normalized fluorescence values`.
+2. QC table containing all the dynamic range and error rate statistics, available: `Compound Data > QC metrics`.
+3. Normalized (log-fold change) cell-viability values with respect to negative control (DMSO), available in long-table format (`Compound Data > Viability data`) and (`Compound Data > Replicate collapsed viability data`) for median-collapsed values across cell lines.
+4. Dose-response parameters for the compound, available: `Compound Data > Dose-response curve data`, and dose-response curves for each treatment/cell line in `Dose-Response Curves`. **Please note:** we are sometimes unable to fit a dose response curve for some cell lines so they will not be included in this file.
+5. Biomarker and correlation analysis using omics and genetic dependency data from [depmap.org](https://depmap.org/portal/download/all/). Biomarkers are identified by selecting the genomic features that best explain the observed profile of sensitivity in the PRISM cell line panel. Univariate analysis for continuous and discrete variables at `Biomarker Data > Continuous associations` and `Discrete associations` respectively. Multivariate analysis available at `Biomarker Data > Random forest features` and with model level statistics at `Biomarker Data > Random forest model statistics`.
+
+Explanations of the columns within each file are available on [GitHub](https://github.com/broadinstitute/prism_data_processing/blob/master/info/ColumnHeaders.md)
+
+
+### Data Processing
+
+I.  For each plate, we first normalize the logMFI ($\log_2$ mean fluorescence intensity) of the DMSO wells to their median logMFI.
+
+II.  Each detection well contains 10 control barcodes in increasing abundances as spike-in controls. A monotonic smooth p-spline is fit for each control barcode detection well to normalize the abundance of each barcode to the corresponding value in the plate-wise median DMSO profiles. Next, all the logMFI values in the well are transformed through the inferred spline function to correct for amplification and detection artifacts.
+
+III.  Next, the separability between negative and positive control treatments is assessed. In particular, we use the error rate of the optimum simple threshold classifier between the control samples for each cell line and plate combination. Error rate is a measure of overlap of the two control sets and is defined as $$ER = \frac{FP + FN}{n}$$ where $FP$ is false positives, $FN$ is false negatives, and $n$ is the total number of controls. A threshold is set between the distributions of positive and negative control logMFI values (with everything below the threshold said to be positive and above said to be negative) such that this value is minimized. Additionally, we also filter based on the dynamic range of each cell line. Dynamic range is defined as $$DR = \mu_{-} - \mu_{+}$$ where $\mu_{+/-}$ stand for the median of the normalized logMFI values in positive/negative control samples.
+
+III.  We filter out cell lines with error rate above $0.05$ and a dynamic range less than $-log2(0.3) \approx 1.74$ from the downstream analysis. Additionally, any cell line that has less than 2 passing replicates is also omitted for the sake of reproducibility. Finally, we compute viability by normalizing with respect to the median negative control for each plate. Log-fold-changes are computed as $$\text{log-viability} = \log_2\left({x} \right) - \log_2\left({\mu_{-}} \right)$$
+where $\log_2\left({x} \right)$ is the corrected logMFI value in the treatment and $\log_2\left(\mu_{-} \right)$ is the median corrected logMFI in the negative control wells in the same plate.
+
+IV.  Log-viability scores are corrected for batch effects coming from pools and culture conditions using the `ComBat` algorithm as described in [Johnson et al.](https://www.ncbi.nlm.nih.gov/pubmed/16632515).
+
+V.  We fit a robust four-parameter logistic curve to the response of each cell line to the compound: $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$ and compute AUC and IC50 values for each dose-response curve.
+
+VI.  Finally, the replicates are collapsed to a treatment level profile by computing the median score for each cell line.
+
+
+### Points of contact
+
+People:
+
+* Melissa Ronan - Screening Lead
+* Matthew Rees - Scientific Lead
+* Jennifer Roth - Director, PRISM
+* Maggie LeMaitre - Project Coordinator
+* Brienne Engel - Alliance Manager
+* Andrew Boghossian - Associate Computational Biologist II
+
+For any questions please see our [FAQs](https://github.com/broadinstitute/prism_data_processing/blob/master/info/FAQs.md) or reach out to prism@broadinstitute.org.
+
+All code used to process this data, as well as further information about the data processing and FAQs, is available on [GitHub](https://github.com/broadinstitute/prism_data_processing).
+
+## Reports and Downloads {.tabset .tabset-pills}
+
+### Report Files
+
+These are the links to the HTML reports for each compound submitted to the screen. A summary of the analyzed data is included in the report for each compound, with a cell line viability heatmap, interactive plots, and tables. Please note that this report includes both fit-curve (AUC and IC50) and individual dose data.
+
+```{r reports, results='asis'}
+if (length(report_files) > 0) {
+  for (i in 1:length(report_files)) {
+    cat("* [", names(report_files)[i], "](", report_files[i], ") \n")
+  }
+} else {
+  cat("No report files found for this project.")
+}
+```
+
+### Dose-Response Curves
+
+These are links to interactive HTML files of the dose-response figures for each compound. Note: some cell lines that do not exhibit any sensitivity during the course of the assay cannot be fit with a dose response curve, so there may be a reduced number of cell lines represented.
+
+```{r drcs, results='asis'}
+if (length(drc_files) > 0) {
+  for (i in 1:length(drc_files)) {
+    cat("* [", names(drc_files)[i], "](", drc_files[i], ") \n")
+  }
+} else {
+  cat("No dose-response curve reports found for this project.")
+}
+
+```
+
+### Compound Data
+
+These are the links to files containing QC and sensitivity data for all compounds. Includes the QC and sensitivity data for all compounds.
+
+```{r data, results='asis'}
+for (i in 1:length(data_files)) {
+  if (names(data_files)[i] %in% names(file_text)) {
+    cat("* [", file_text[names(data_files)[i]], "](", data_files[i], ") \n")
+  } else {
+    next
+  }
+}
+```
+
+## QC Information
+
+For each cell line screened we compute the error rate, which is based on the overlap between positive and negative control distributions and dynamic range, which is the difference between positive and negative control medians (see Data Processing section for more details). These values are plotted below on the left with cell line replicate pairs that pass QC shown in blue and failing pairs in red. On the right the percentage and number of passing lines is shown for each plate relevant to this project. The complete list of these statistics, including other measures of spread, is tabulated and presented below.
+
+```{r qc, fig.width=12}
+# aesthetics
+theme_set(theme_bw())
+dodger = position_dodge(width = 0.9)
+
+# QC plot
+qc_file <- list.files(file.path(params$data_dir, "data"), "QC_TABLE", full.names = T)
+qc_table <- data.table::fread(qc_file)
+
+p1 <- ggplot(qc_table) +
+  geom_point(aes(x = dr, y = error_rate, color = pass)) +
+  geom_vline(aes(xintercept = -log2(0.3)), lty = 2, lwd =.5) +
+  geom_hline(aes(yintercept = 0.05), lty = 2, lwd =.5) +
+  facet_wrap(pert_plate + pert_time ~ .) +
+  labs(x = "Dynamic range", y = "Error rate", color = "Pass") +
+  scale_color_fivethirtyeight(limits = c("TRUE", "FALSE")) +
+  theme(legend.position = "none")
+p2 <- qc_table %>%
+  dplyr::group_by(ccle_name, culture, pool_id, pert_plate, pert_time) %>%
+  dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
+  dplyr::group_by(pass, pert_plate, pert_time) %>%
+  dplyr::summarise(count = n(), .groups = "drop") %>%
+  dplyr::group_by(pert_plate, pert_time) %>%
+  dplyr::mutate(total = sum(count)) %>%
+  dplyr::ungroup() %>%
+  ggplot(aes(x = pert_plate, y = count/total * 100, fill = pass)) +
+  geom_bar(stat = "identity", position = dodger) +
+  geom_text(aes(label = count), stat = "identity", position = dodger) +
+  theme(legend.position = "bottom") +
+  scale_fill_fivethirtyeight(limits = c("TRUE", "FALSE")) +
+  facet_wrap(pert_time ~ .) +
+  labs(fill = "Pass", y = "Percent", x = "Plate")
+cowplot::plot_grid(p1, p2, rel_widths = c(3, 1))
+DT::datatable(qc_table %>% dplyr::select(ccle_name, culture, pool_id, pert_plate, prism_replicate,
+                                         pert_time, ctl_vehicle_md, ctl_vehicle_mad,
+                                         trt_poscon_md, trt_poscon_mad, error_rate, dr, pass),
+              filter = "top", options = list(dom = c("tp")), rownames = F,
+              colnames = c("Cell line", "Culture", "Pool", "Plate", "Replicate", "Time",
+                           "DMSO median", "DMSO MAD", "Bortezomib median", "Bortezomib MAD",
+                           "Error rate", "Dynamic range", "Pass")) %>%
+  DT::formatRound(columns = c(7:12), digits = 2)
+```
