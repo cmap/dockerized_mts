@@ -29,8 +29,8 @@ const uniqueProjects= function(projectKeys){
  */
 const uniques= async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_uniques.json");
-    const uniqueProjects = uniqueProjects(projectKeys);
-    return await writeOutput(outPath,uniqueProjects);
+    const uniqueProjectKeys = uniqueProjects(projectKeys);
+    return await writeOutput(outPath,uniqueProjectKeys);
 }
 /**
  *
@@ -40,9 +40,7 @@ const uniques= async function(projectKeys,fileName){
  */
 const levels = async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_levels.json");
-    const uniqueProjects = _.uniq(projectKeys, function (projectKey) {
-        return projectKey.x_project_id;
-    });
+    const uniqueProjectKeys = uniqueProjects(projectKeys)
     const LEVELS = [
         'inst_info',
         'cell_info',
@@ -56,8 +54,8 @@ const levels = async function(projectKeys,fileName){
         'LEVEL5_LFC_COMBAT'
     ];
     const projects = [];
-    for (let index = 0; index < uniqueProjects.length; index++) {
-        const currentProject = uniqueProjects[index];
+    for (let index = 0; index < uniqueProjectKeys.length; index++) {
+        const currentProject = uniqueProjectKeys[index];
         for (let index1 = 0; index1 < LEVELS.length; index1++) {
             const level = LEVELS[index1];
             const project = {x_project_id: currentProject.x_project_id, level: level};
@@ -145,7 +143,7 @@ const uniqueProjectsWithSearch = async function(projectKeys,fileName){
  * @param fileName
  * @returns {Promise<*>}
  */
-const searchPatterns = async function(projectKeys,fileName){
+const searchProjectPatterns = async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_search_pattern.json");
     const patterns = [
         "discrete_associations*",
@@ -153,7 +151,7 @@ const searchPatterns = async function(projectKeys,fileName){
         "model_table*",
         "RF_table*"
     ];
-    const projects = searchPatterns(patterns,uniqueProjectKeys);
+    const projects = searchPatterns(patterns,projectKeys);
     return await writeOutput(outPath,projects);
 }
 /**
@@ -170,7 +168,7 @@ const doAll = async function(projectKeyPath){
     promises.push(uniques(projectKeys,projectKeyPath));
     promises.push(levels(projectKeys,projectKeyPath));
     promises.push(features(projectKeys,projectKeyPath));
-    promises.push(searchPatterns(projectKeys,projectKeyPath));
+    promises.push(searchProjectPatterns(projectKeys,projectKeyPath));
 
     const p = await Promise.all(promises);
     return "done";
