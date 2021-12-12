@@ -73,16 +73,16 @@ then
 
     if [[ $projects == *_proj_search_pattern.json ]] # * is used for pattern matching
     then
-        DATA_DIR="${DATA_DIR}"/"${PROJECT}"
-        OUT_DIR="${OUT_DIR}"/"${PROJECT}"/data
+        DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"
+        OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/data
         ADD_PROJECT_NAME=true
     else
         PERT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
         PERT_PLATE=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
         cleaned_pert_id=$(echo "${PERT//|/$'_'}")
         sanitized_pert_id="${cleaned_pert_id^^}"
-        DATA_DIR="${DATA_DIR}"/"${PROJECT}"/"${PERT_PLATE}"/"${sanitized_pert_id}"/biomarker
-        OUT_DIR="${OUT_DIR}"/"${PROJECT}"/"${PERT_PLATE}"/"${sanitized_pert_id}"
+        DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/"${PERT_PLATE}"/"${sanitized_pert_id}"/biomarker
+        OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/"${PERT_PLATE}"/"${sanitized_pert_id}"
     fi
 fi
 

@@ -17,20 +17,21 @@ data="${data_dir}"
 echo "${data}" "${out}"
 
 batch_index=0
-if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]
-then
-  batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-fi
+
 
 if [[ ! -z $projects ]]
 then
+    if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]
+    then
+      batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    fi
     pert_id=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     plate=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
     cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
-    data="${data_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
-    out="${output_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
+    data="${data_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
+    out="${output_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
 fi
 
 echo "${data}" "${out}"

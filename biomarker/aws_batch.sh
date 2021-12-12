@@ -44,20 +44,20 @@ chmod +x /src/biomarker_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
 
 batch_index=0
-if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
-  batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-fi
 
 if [[ ! -z $projects ]]
 then
+    if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+        batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    fi
     pert_id=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     plate=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
     biomarker_file=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].feature')
     cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
-    base_dir="${base_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
-    out_dir="${out_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"/biomarker
+    base_dir="${base_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
+    out_dir="${out_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"/biomarker
 fi
 
 echo "${base_dir}" "${out_dir}" "${biomarker_dir}" "${biomarker_file}" "${qc_file}"

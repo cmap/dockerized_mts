@@ -28,7 +28,7 @@ def main(args):
         project_name = os.path.basename(args.data_dir)
         output_file = os.path.join(args.out,project_name + "_" + args.search_pattern)
     else:
-        output_file = os.path.join(args.out, args.search_pattern).replace("*",".txt")
+        output_file = os.path.join(args.out, args.search_pattern).replace("*",".csv")
 
     matches = glob.glob(search_str)
     dfs = []

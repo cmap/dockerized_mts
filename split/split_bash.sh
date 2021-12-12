@@ -56,10 +56,7 @@ while test $# -gt 0; do
   shift
 done
 
-if [ ! -d $BUILD_DIR ]
-then
-  mkdir -p $BUILD_DIR
-fi
+
 batch_index=0
 if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
   batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
@@ -69,9 +66,14 @@ if [[ ! -z $projects ]]
 then
     PERT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    BUILD_DIR="${BUILD_DIR}"/"${PROJECT,,}"
     PERT_PLATE=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
 fi
 
+if [ ! -d $BUILD_DIR ]
+then
+  mkdir -p $BUILD_DIR
+fi
 
 args=(
   -b "$BUILD_PATH"

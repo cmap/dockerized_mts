@@ -28,19 +28,18 @@ while test $# -gt 0; do
 done
 
 batch_index=0
-if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
-  batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-fi
 sanitized_pert_id=""
-
 if [[ ! -z $projects ]]
 then
+    if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+      batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    fi
     pert_id=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     plate=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
     cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
-    data_dir="${data_dir}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
+    data_dir="${data_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
     compound="${sanitized_pert_id}"
 fi
 

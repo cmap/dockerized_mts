@@ -60,10 +60,7 @@ while test $# -gt 0; do
   shift
 done
 
-if [ ! -d $OUT_DIR ]
-then
-  mkdir -p $OUT_DIR
-fi
+
 
 ##Run Collate
 if [[ -z $BUILD_PATH || -z $OUT_DIR ]]
@@ -74,26 +71,17 @@ fi
 
 args=(
   -b "$BUILD_PATH"
-  -o "$OUT_DIR"
 )
-
-if [[ ! -z $VERBOSE ]]
-then
-  args+=(-v)
-fi
-
-if [[ ! -z $PROJECT ]]
-then
-  args+=(-p $PROJECT)
-fi
-
 
 if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
     if [[ ! -z $KEYS ]]
     then
       args+=(-k $KEYS)
     fi
-
+    if [[ ! -z $PROJECT ]]
+    then
+        args+=(-p $PROJECT)
+    fi
     if [[ ! -z $SIG_ID_COLS ]]
     then
       args+=(-s $SIG_ID_COLS)
@@ -106,10 +94,24 @@ fi
 if [[ ! -z $projects ]]
 then
     PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch} '.[$index].x_project_id')
+    OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"
     KEY=$(cat "${projects}" | jq -r --argjson index ${batch} '.[$index].level')
     args+=(-p "$PROJECT")
     args+=(-k "$KEY")
 fi
+
+if [ ! -d $OUT_DIR ]
+then
+  mkdir -p $OUT_DIR
+fi
+args+=(-o "$OUT_DIR")
+
+if [[ ! -z $VERBOSE ]]
+then
+  args+=(-v)
+fi
+
+
 python /clue/bin/deal.py "${args[@]}"
 
 exit_code=$?

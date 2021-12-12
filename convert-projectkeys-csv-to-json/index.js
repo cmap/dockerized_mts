@@ -128,11 +128,11 @@ const uniqueProjectsWithSearch = async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_proj_search_pattern.json");
     const uniqueProjectKeys = uniqueProjects(projectKeys);
     const patterns = [
-        "continuous_associations.csv",
-        "discrete_associations.csv",
+        "continuous_associations.txt",
+        "discrete_associations.txt",
         "DRC_TABLE.csv",
-        "model_table.csv",
-        "RF_table.csv"
+        "model_table.txt",
+        "RF_table.txt"
     ];
     const projects = searchPatterns(patterns,uniqueProjectKeys);
     return await writeOutput(outPath,projects);
