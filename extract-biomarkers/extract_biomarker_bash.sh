@@ -70,22 +70,22 @@ fi
 #return to /
 cd / 
 
-#If this is an array job set batch_index
-if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
-    batch_index=0
-else
-    batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-fi
+batch_index=0
+
 
 if [[ ! -z $projects ]]
 then
+    #If this is an array job set batch_index
+    if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+        batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    fi
     pert_id=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     plate=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
     cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
-    DATA_DIR="${DATA_DIR}"/"${project}"/"${plate}"/"${sanitized_pert_id}"/continuous_associations.csv
-    OUT_DIR="${OUT_DIR}"/"${project}"/"${plate}"/"${sanitized_pert_id}"
+    DATA_DIR="${DATA_DIR}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"/continuous_associations.csv
+    OUT_DIR="${OUT_DIR}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
 fi
 
 args=(

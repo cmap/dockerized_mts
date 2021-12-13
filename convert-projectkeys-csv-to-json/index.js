@@ -1,22 +1,46 @@
 const _ = require("underscore");
 const fsPromises = require("fs/promises");
 const Buffer = require("buffer");
-const writeOutput = async function(fileName,projects){
 
+/**
+ *
+ * @param fileName
+ * @param projects
+ * @returns {Promise<*>}
+ */
+const writeOutput = async function(fileName,projects){
     return await fsPromises.writeFile(fileName,JSON.stringify(projects));
 }
+/**
+ *
+ * @param projectKeys
+ * @returns {*}
+ */
+const uniqueProjects= function(projectKeys){
+    return _.uniq(projectKeys, function (projectKey) {
+        return projectKey.x_project_id;
+    });
+}
+/**
+ *
+ * @param projectKeys
+ * @param fileName
+ * @returns {Promise<*>}
+ */
 const uniques= async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_uniques.json");
-    const uniqueProjects = _.uniq(projectKeys, function (projectKey) {
-        return projectKey.x_project_id;
-    });
-    return await writeOutput(outPath,uniqueProjects);
+    const uniqueProjectKeys = uniqueProjects(projectKeys);
+    return await writeOutput(outPath,uniqueProjectKeys);
 }
+/**
+ *
+ * @param projectKeys
+ * @param fileName
+ * @returns {Promise<*>}
+ */
 const levels = async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_levels.json");
-    const uniqueProjects = _.uniq(projectKeys, function (projectKey) {
-        return projectKey.x_project_id;
-    });
+    const uniqueProjectKeys = uniqueProjects(projectKeys)
     const LEVELS = [
         'inst_info',
         'cell_info',
@@ -30,8 +54,8 @@ const levels = async function(projectKeys,fileName){
         'LEVEL5_LFC_COMBAT'
     ];
     const projects = [];
-    for (let index = 0; index < uniqueProjects.length; index++) {
-        const currentProject = uniqueProjects[index];
+    for (let index = 0; index < uniqueProjectKeys.length; index++) {
+        const currentProject = uniqueProjectKeys[index];
         for (let index1 = 0; index1 < LEVELS.length; index1++) {
             const level = LEVELS[index1];
             const project = {x_project_id: currentProject.x_project_id, level: level};
@@ -40,6 +64,12 @@ const levels = async function(projectKeys,fileName){
     }
     return await writeOutput(outPath,projects);
 }
+/**
+ *
+ * @param projectKeys
+ * @param fileName
+ * @returns {Promise<*>}
+ */
 const features = async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_features.json");
     const features = [
@@ -69,35 +99,76 @@ const features = async function(projectKeys,fileName){
     }
     return await writeOutput(outPath,projects);
 }
-const searchPatterns = async function(projectKeys,fileName){
-    const outPath = fileName.replace(".json","_search_pattern.json");
-    const searchPatterns = [
-        "discrete_associations*",
-        "continuous_associations*",
-        "model_table*",
-        "RF_table*"
-    ];
-
+/**
+ *
+ * @param patterns
+ * @param projectKeys
+ * @returns {[]}
+ */
+const searchPatterns = function(patterns,projectKeys){
     const projects = [];
     for (let index = 0; index < projectKeys.length; index++) {
         const project = projectKeys[index];
-        for (let index1 = 0; index1 < searchPatterns.length; index1++) {
-            const pattern = searchPatterns[index1];
+        for (let index1 = 0; index1 < patterns.length; index1++) {
+            const pattern = patterns[index1];
             const clonedProject = Object.assign({}, project);
             clonedProject.pattern = pattern;
             projects.push(clonedProject);
         }
     }
+    return projects;
+}
+/**
+ *
+ * @param projectKeys
+ * @param fileName
+ * @returns {Promise<*>}
+ */
+const uniqueProjectsWithSearch = async function(projectKeys,fileName){
+    const outPath = fileName.replace(".json","_proj_search_pattern.json");
+    const uniqueProjectKeys = uniqueProjects(projectKeys);
+    const patterns = [
+        "continuous_associations.txt",
+        "discrete_associations.txt",
+        "DRC_TABLE.csv",
+        "model_table.txt",
+        "RF_table.txt"
+    ];
+    const projects = searchPatterns(patterns,uniqueProjectKeys);
     return await writeOutput(outPath,projects);
 }
+/**
+ *
+ * @param projectKeys
+ * @param fileName
+ * @returns {Promise<*>}
+ */
+const searchProjectPatterns = async function(projectKeys,fileName){
+    const outPath = fileName.replace(".json","_search_pattern.json");
+    const patterns = [
+        "discrete_associations*",
+        "continuous_associations*",
+        "model_table*",
+        "RF_table*"
+    ];
+    const projects = searchPatterns(patterns,projectKeys);
+    return await writeOutput(outPath,projects);
+}
+/**
+ *
+ * @param projectKeyPath
+ * @returns {Promise<string>}
+ */
 const doAll = async function(projectKeyPath){
     const promises = [];
     const projKeys = await fsPromises.readFile(projectKeyPath,'utf-8');
     const projectKeys = JSON.parse(projKeys);
+
+    promises.push(uniqueProjectsWithSearch(projectKeys,projectKeyPath));
     promises.push(uniques(projectKeys,projectKeyPath));
     promises.push(levels(projectKeys,projectKeyPath));
     promises.push(features(projectKeys,projectKeyPath));
-    promises.push(searchPatterns(projectKeys,projectKeyPath));
+    promises.push(searchProjectPatterns(projectKeys,projectKeyPath));
 
     const p = await Promise.all(promises);
     return "done";

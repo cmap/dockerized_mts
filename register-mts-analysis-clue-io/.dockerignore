@@ -1,0 +1,6 @@
+node_modules
+npm-debug.log
+build_docker.sh
+docker_push_tags.sh
+docker_run.sh
+package-lock.json

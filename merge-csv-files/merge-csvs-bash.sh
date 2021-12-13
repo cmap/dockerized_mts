@@ -20,11 +20,11 @@ while test $# -gt 0; do
       python /clue/bin/merge_csvs.py --help
       exit 0
       ;;
-    -f| --compound_key_path)
+    -f|--compound_key_path)
       shift
       projects=$1
       ;;
-    -d| --data_dir)
+    -d|--data_dir)
       shift
       DATA_DIR=$1
       ;;
@@ -40,7 +40,11 @@ while test $# -gt 0; do
       shift
       SEPARATOR=$1
       ;;
-    -v| --verbose)
+    -ap|--add_project_name)
+      shift
+      ADD_PROJECT_NAME=true
+      ;;
+    -v|--verbose)
       shift
       VERBOSE=true
       ;;
@@ -64,14 +68,22 @@ fi
 
 if [[ ! -z $projects ]]
 then
-    PERT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-    PERT_PLATE=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
     PATTERN=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pattern')
-    cleaned_pert_id=$(echo "${PERT//|/$'_'}")
-    sanitized_pert_id="${cleaned_pert_id^^}"
-    DATA_DIR="${DATA_DIR}"/"${PROJECT}"/"${PERT_PLATE}"/"${sanitized_pert_id}"/biomarker
-    OUT_DIR="${OUT_DIR}"/"${PROJECT}"/"${PERT_PLATE}"/"${sanitized_pert_id}"
+
+    if [[ $projects == *_proj_search_pattern.json ]] # * is used for pattern matching
+    then
+        DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"
+        OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/data
+        ADD_PROJECT_NAME=true
+    else
+        PERT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+        PERT_PLATE=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+        cleaned_pert_id=$(echo "${PERT//|/$'_'}")
+        sanitized_pert_id="${cleaned_pert_id^^}"
+        DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/"${PERT_PLATE}"/"${sanitized_pert_id}"/biomarker
+        OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/"${PERT_PLATE}"/"${sanitized_pert_id}"
+    fi
 fi
 
 args=(
@@ -79,6 +91,11 @@ args=(
   -o "$OUT_DIR"
   -s "$PATTERN"
 )
+
+if [[ ! -z $ADD_PROJECT_NAME ]]
+then
+  args+=(-ap)
+fi
 
 echo "${DATA_DIR}" "${OUT_DIR}" "${PATTERN}"
 if [[ ! -z $VERBOSE ]]
