@@ -10,6 +10,10 @@ while test $# -gt 0; do
       shift
       out_dir=$1
       ;;
+    -p| --project_name)
+      shift
+      project_name=$1
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -28,9 +32,10 @@ then
     project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     data_dir="${data_dir}"/"${project,,}"/"${project^^}"
     out_dir="${out_dir}"/"${project,,}"
+    project_name="${project^^}"
 fi
 
-echo "${data_dir}" "${out_dir}"
+echo "${data_dir}" "${out_dir}" "${project_name}"
 
 if [[ ! -d $out_dir ]]
 then
@@ -40,6 +45,7 @@ fi
 args=(
   -d "${data_dir}"
   -o "${out_dir}"
+  -p "${project_name}"
 )
 
 Rscript /render_reports.R "${args[@]}"
