@@ -1,6 +1,6 @@
 ---
 params:
-  data_dir: ~/Desktop/test_reports
+  data_dir: ~/Desktop/full_folder_test
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -48,6 +48,13 @@ file_text <- c(
   "LEVEL3_LMFI" = "Raw and normalized fluorescence values",
   "LEVEL4_LFC_COMBAT" = "Viability data",
   "LEVEL5_LFC_COMBAT" = "Replicate-collapsed viability data"
+)
+
+biomarker_text <- c(
+  "continuous" = "Continuous associations",
+  "discrete" = "Discrete associations",
+  "model" = "Random forest model statistics",
+  "RF" = "Random forest features"
 )
 
 # push NAs to bottom in tables
@@ -117,7 +124,7 @@ These are the links to the HTML reports for each compound submitted to the scree
 ```{r reports, results='asis'}
 if (length(report_list) > 0) {
   for (i in 1:length(report_list)) {
-    cat(names(report_list)[[i]], "\n")
+    cat("####", names(report_list)[[i]], "\n\n")
     for (j in 1:length(report_list[[i]])) {
       cat("* [", stringr::word(report_list[[i]][[j]], 3, sep = "/"), "](", report_list[[i]][[j]], ") \n")
     }
@@ -134,7 +141,7 @@ These are links to interactive HTML files of the dose-response figures for each 
 ```{r drcs, results='asis'}
 if (length(drc_list) > 0) {
   for (i in 1:length(drc_list)) {
-    cat(names(drc_list)[[i]], "\n")
+    cat("####", names(drc_list)[[i]], "\n\n")
     for (j in 1:length(drc_list[[i]])) {
       cat("* [", stringr::word(drc_list[[i]][[j]], 3, sep = "/"), "](", drc_list[[i]][[j]], ") \n")
     }
@@ -152,6 +159,20 @@ These are the links to files containing QC and sensitivity data for all compound
 for (i in 1:length(data_files)) {
   if (names(data_files)[i] %in% names(file_text)) {
     cat("* [", file_text[names(data_files)[i]], "](", data_files[i], ") \n")
+  } else {
+    next
+  }
+}
+```
+
+### Biomarker Data
+
+These are links to files containing biomarker analysis results for all compounds. Includes tables for univariate and multivariate (Random Forest model) analysis.
+
+```{r biomarkers, results='asis'}
+for (i in 1:length(data_files)) {
+  if (names(data_files)[i] %in% names(biomarker_text)) {
+    cat("* [", biomarker_text[names(data_files)[i]], "](", data_files[i], ") \n")
   } else {
     next
   }
