@@ -1,0 +1,6 @@
+install.packages("data.table")
+install.packages("tidyverse")
+install.packages("ggthemes")
+install.packages("DT")
+install.packages("argparse")
+install.packages("cowplot")
