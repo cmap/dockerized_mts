@@ -146,7 +146,7 @@ These are links to interactive HTML files of the dose-response figures for each 
 ```{r drcs, results='asis'}
 if (length(drc_list) > 0) {
   for (i in 1:length(drc_list)) {
-    cat("####", names(drc_list)[[i]], "\n\n")
+    cat("\n\n ####", names(drc_list)[[i]], "\n\n")
     for (j in 1:length(drc_list[[i]])) {
       cat("* [", stringr::word(drc_list[[i]][[j]], -1, sep = "/") %>% stringr::word(., 1, -2, sep = "_"),
           "](", drc_list[[i]][[j]], ") \n")
