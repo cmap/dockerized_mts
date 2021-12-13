@@ -128,7 +128,7 @@ These are the links to the HTML reports for each compound submitted to the scree
 ```{r reports, results='asis'}
 if (length(report_list) > 0) {
   for (i in 1:length(report_list)) {
-    cat("####", names(report_list)[[i]], "\n\n")
+    cat("\n\n", names(report_list)[[i]], "\n\n")
     for (j in 1:length(report_list[[i]])) {
       cat("* [", stringr::word(report_list[[i]][[j]], -1, sep = "/") %>% stringr::word(., 1, -2, sep = "_"),
           "](", report_list[[i]][[j]], ") \n")
@@ -146,7 +146,7 @@ These are links to interactive HTML files of the dose-response figures for each 
 ```{r drcs, results='asis'}
 if (length(drc_list) > 0) {
   for (i in 1:length(drc_list)) {
-    cat("\n\n ####", names(drc_list)[[i]], "\n\n")
+    cat("\n\n", names(drc_list)[[i]], "\n\n")
     for (j in 1:length(drc_list[[i]])) {
       cat("* [", stringr::word(drc_list[[i]][[j]], -1, sep = "/") %>% stringr::word(., 1, -2, sep = "_"),
           "](", drc_list[[i]][[j]], ") \n")
