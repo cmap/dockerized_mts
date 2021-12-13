@@ -16,13 +16,10 @@ class Analysis2clue {
         this.apiKey = apiKey;
         this.apiURL = apiURL;
         this.indexFile = indexFile;
-        this.projectName = projectName.replace(
-            /(^\w{1})|(\s+\w{1})/g,
-            letter => letter.toUpperCase()
-        );
+        this.projectName = projectName.replace(/_/g, " ");
         const whereClause = {"name": this.projectName};
-        this.resourceExistsURL = this.apiURL + "preliminary-analysis/count?where=" + JSON.stringify(whereClause);
-        this.postURL = this.apiURL + "data/" + buildID + "/external_analysis";
+        this.resourceExistsURL = this.apiURL + "/api/preliminary-analysis/count?where=" + JSON.stringify(whereClause);
+        this.postURL = this.apiURL + "/api/data/" + buildID + "/external_analysis";
     }
 
     /**
@@ -32,6 +29,7 @@ class Analysis2clue {
      * @returns {Promise<any>}
      */
     async resourceExists() {
+        const fetch = require("node-fetch");
         const self = this;
         const options = {
             method: 'GET',
@@ -39,8 +37,14 @@ class Analysis2clue {
                 'user_key': self.apiKey
             }
         };
+        console.log("self.resourceExistsURL", self.resourceExistsURL)
         const response = await fetch(self.resourceExistsURL, options);
-        return await response.json();
+        if (response.status === 404) {
+            return {count: 0}
+        }
+        //check  if it exist before you do anything
+        const respJSON = await response.json();
+        return respJSON;
     }
 
     /**
@@ -52,6 +56,7 @@ class Analysis2clue {
      *
      */
     async postMethodAPI(message, url, method) {
+        const fetch = require("node-fetch");
         const self = this;
         const payload = JSON.stringify(message);
         const options = {
@@ -88,8 +93,8 @@ class Analysis2clue {
             "created_by": "MTS"
         };
         const resp = await self.postMethodAPI(postData, self.postURL, "POST");
+        const data = await resp.json();
         if (resp.ok && resp.status < 300) {
-            const data = await resp.json();
             return {ignore: false, id: data.id};
         }
         return {ignore: true};
@@ -101,7 +106,7 @@ class Analysis2clue {
      */
     async associateAnalysis2Role(prelim_analysisID) {
         const self = this;
-        const url = self.apiURL + "preliminary-analysis/" + prelim_analysisID + "/role/rel/cmap_core";
+        const url = self.apiURL + "/api/preliminary-analysis/" + prelim_analysisID + "/role/rel/cmap_core";
         const resp = await self.postMethodAPI({}, url, "PUT");
 
         if (resp.ok && resp.status < 300) {

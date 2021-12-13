@@ -37,8 +37,8 @@ then
         then
             batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
             project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-            PROJECT_NAME="${project,,}"
-            INDEX_PAGE= "${S3_LOCATION}"/"${PROJECT_NAME}"/index.html
+            PROJECT_NAME="${project}"
+            INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
         else
             errorMessage="$errorMessage Array jobs must follow the following pattern${NL}"
             errorMessage="$errorMessage register -f <COMPOUND_KEY_JSON> -s <S3_LOCATION> -i <BUILD_ID>${NL}"
@@ -47,11 +47,11 @@ then
     then
         batch_index=0
         project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-        PROJECT_NAME="${project,,}"
-        INDEX_PAGE= "${S3_LOCATION}"/"${PROJECT_NAME}"/index.html
+        PROJECT_NAME="${project}"
+        INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
     elif [[ ! -z "${PROJECT_NAME}" ]]
     then
-        INDEX_PAGE= "${S3_LOCATION}"/"${PROJECT_NAME}"/index.html
+        INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
     else
         errorMessage="$errorMessage Invoke with the following pattern${NL}"
         errorMessage="$errorMessage register -s <S3_LOCATION> -i <BUILD_ID> -p <PROJECT_NAME>${NL}"
@@ -60,6 +60,8 @@ else
     errorMessage="$errorMessage Invoke with the following pattern${NL}"
     errorMessage="$errorMessage register -s <S3_LOCATION> -i <BUILD_ID> [-p PROJECT_NAME | -f COMPOUND_KEY_JSON]${NL}"
 fi
+
+echo  "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}"
 
 if [[ -z "${errorMessage}" ]]
 then

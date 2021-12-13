@@ -4,7 +4,7 @@ parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-d", "--data_dir", default="", help="Input directory (project)")
 parser$add_argument("-o", "--out_dir", default="", help = "Output directory. Default is working directory.")
-parser$add_argument("-p", "--project_name", default="MTS018_DMC_LOXO", help = "Project folder name")
+parser$add_argument("-p", "--project_name", default="", help = "Project folder name")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
