@@ -56,10 +56,7 @@ while test $# -gt 0; do
   shift
 done
 
-if [[ ! -d $OUT_DIR ]]
-then
-  mkdir -p $OUT_DIR
-fi
+
 
 batch_index=0
 if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
@@ -84,6 +81,11 @@ then
         DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/"${PERT_PLATE}"/"${sanitized_pert_id}"/biomarker
         OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/"${PERT_PLATE}"/"${sanitized_pert_id}"
     fi
+fi
+
+if [[ ! -d $OUT_DIR ]]
+then
+  mkdir -p $OUT_DIR
 fi
 
 args=(

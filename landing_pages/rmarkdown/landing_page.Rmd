@@ -1,6 +1,7 @@
 ---
 params:
   data_dir: ~/Desktop/full_folder_test
+  project_name: "foo"
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -21,28 +22,31 @@ library(cowplot)
 plates <- list.dirs(params$data_dir, recursive = F)
 report_list <- list()
 for (i in 1:length(plates)) {
+
   plate <- stringr::word(plates[[i]], -1, sep = "/")
   if (plate == "data") next
   report_files <- list.files(plates[[i]], pattern = "_report.html", recursive = T)
   if (length(report_files) > 0) {
-    report_list[[plate]] <-  paste0("./", plate, "/", report_files)
+    report_list[[plate]] <-  paste0("./", params$project_name, "/", plate, "/", report_files)
   }
 }
 
 drc_list <- list()
 for (i in 1:length(plates)) {
+
   plate <- stringr::word(plates[[i]], -1, sep = "/")
   if (plate == "data") next
   drc_files <- list.files(plates[[i]], pattern = "_drc.html", recursive = T)
   if (length(drc_files) > 0) {
-    drc_list[[plate]] <-  paste0("./", plate, "/", drc_files)
+    drc_list[[plate]] <-  paste0("./", params$project_name, "/", plate, "/", drc_files)
   }
 }
 
 # get paths to data files
 data_files <- list.files(file.path(params$data_dir, "data"))
-data_files <- paste0("./", data_files)
-names(data_files) <- stringr::word(data_files, 4, -2, sep = fixed("_"))
+data_filesp <- paste0("./", data_files)
+data_files <- paste0("./", params$project_name,"/","data","/",data_files)
+names(data_files) <- stringr::word(data_filesp, 4, -2, sep = fixed("_"))
 file_text <- c(
   "QC" = "QC metrics",
   "LEVEL3_LMFI" = "Raw and normalized fluorescence values",
