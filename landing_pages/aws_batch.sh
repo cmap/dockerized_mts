@@ -2,6 +2,10 @@
 # read in flagged arguments
 while test $# -gt 0; do
   case "$1" in
+    -f| --compound_key_path)
+      shift
+      projects=$1
+      ;;
     -d| --data_dir)
       shift
       data_dir=$1

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 docker run --rm \
---name analysis2clue \
---env-file=/Users/jasiedu/.aws/aws_lambda \
--v /Users/jasiedu/WebstormProjects/PMTS/:/cmap/macchiato/ \
--it prismcmap/sync-mts-2-clue \
--s /cmap/macchiato \
--d s3://macchiato.clue.io/tests3
+--name bar \
+-v ~/WebstormProjects/PMTS018/projects/:/data \
+-it prismcmap/register-mts \
+-i /data/mts018_dmc_loxo/MTS018_DMC_LOXO \
+-o /data/mts018_dmc_loxo \
+-p MTS018_DMC_LOXO
 
 
