@@ -130,7 +130,8 @@ if (length(report_list) > 0) {
   for (i in 1:length(report_list)) {
     cat("####", names(report_list)[[i]], "\n\n")
     for (j in 1:length(report_list[[i]])) {
-      cat("* [", stringr::word(report_list[[i]][[j]], 3, sep = "/"), "](", report_list[[i]][[j]], ") \n")
+      cat("* [", stringr::word(report_list[[i]][[j]], -1, sep = "/") %>% stringr::word(., 1, -2, sep = "_"),
+          "](", report_list[[i]][[j]], ") \n")
     }
   }
 } else {
@@ -147,7 +148,8 @@ if (length(drc_list) > 0) {
   for (i in 1:length(drc_list)) {
     cat("####", names(drc_list)[[i]], "\n\n")
     for (j in 1:length(drc_list[[i]])) {
-      cat("* [", stringr::word(drc_list[[i]][[j]], 3, sep = "/"), "](", drc_list[[i]][[j]], ") \n")
+      cat("* [", stringr::word(drc_list[[i]][[j]], -1, sep = "/") %>% stringr::word(., 1, -2, sep = "_"),
+          "](", drc_list[[i]][[j]], ") \n")
     }
   }
 } else {
