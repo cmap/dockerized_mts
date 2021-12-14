@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/test_reports
-  comp: BRD-U00093968-001-01-9
+  data_dir: ~/Desktop/full_folder_test/MTS018_VALIDATION_COMPOUNDS/PMTS046/BRD-A12230535
+  comp: BRD-A12230535
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -78,6 +78,18 @@ n_days <- LFC$pert_time %>%
 LFC$pert_dose <- signif(LFC$pert_dose, 5)
 dose_factors <- LFC$pert_dose %>% unique() %>% sort()
 dose_factors <- c(dose_factors, "log2.auc", "log2.ic50")
+corr_table %<>% dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                                 signif(as.numeric(pert_dose), 5),
+                                                 pert_dose))
+disc_table %<>% dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                                 signif(as.numeric(pert_dose), 5),
+                                                 pert_dose))
+model_table %<>% dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                                 signif(as.numeric(pert_dose), 5),
+                                                 pert_dose))
+rf_table %<>% dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                                 signif(as.numeric(pert_dose), 5),
+                                                 pert_dose))
 corr_table$pert_dose <- factor(corr_table$pert_dose, levels = dose_factors)
 disc_table$pert_dose <- factor(disc_table$pert_dose, levels = dose_factors)
 model_table$pert_dose <- factor(model_table$pert_dose, levels = dose_factors)
@@ -125,7 +137,7 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 <a href="https://www.theprismlab.org/"><img src="misc/prism_logo_tagline_side.png" width=300px align="right"/></a>
 <br><br><br>
 
-[Back](../../index.html)
+[Back](../../../index.html)
 
 To navigate through the report please click on the blue tabs under each heading.
 
