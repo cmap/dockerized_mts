@@ -18,6 +18,10 @@ while test $# -gt 0; do
       shift
       meta_path=$1
       ;;
+    -b| --combination)
+      shift
+      combination=$1
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -26,6 +30,9 @@ while test $# -gt 0; do
   esac
   shift
 done
+
+combination=${combination:-0}
+echo $combination
 
 batch_index=0
 sanitized_pert_id=""
@@ -49,13 +56,14 @@ args=(
   -d "${data_dir}"
   -c "${compound}"
   -m "${meta_path}"
+  -b "${combination}"
 )
 
 if [[ "$sanitized_pert_id" == "DMSO" ]]
 then
-    echo "Skipping DMSO"
+  echo "Skipping DMSO"
 else
-    Rscript /render_reports.R "${args[@]}"
+  Rscript /render_reports.R "${args[@]}"
 fi
 
 
@@ -63,4 +71,3 @@ exit_code=$?
 
 echo "$exit_code"
 exit $exit_code
-

@@ -1,14 +1,15 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports/CPS003_DMC_GENENTECH/PMTS048/BRD-U00093966-001-01-9
-  comp: BRD-U00093966-001-01-9
+  data_dir: ~/Desktop/test_combo_reports/CPS003_DMC_GENENTECH/PMTS048/BRD-U00093966-001-01-9_BRD-U00093967-001-01-9
+  comp: BRD-U00093966-001-01-9_BRD-U00093967-001-01-9
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
-output:
+output: 
   html_document:
     toc: false
     theme: paper
     highlight: kate
 ---
+
 
 
 ```{r load packages, echo=F, message=F, warning=F, include=F}
@@ -75,29 +76,44 @@ n_days <- LFC$pert_time %>%
   as.numeric() / 24
 
 # factorize dosing scheme
-LFC$pert_dose <- signif(LFC$pert_dose, 5)
-dose_factors <- LFC$pert_dose %>% unique() %>% sort()
-dose_factors <- c(dose_factors, "log2.auc", "log2.ic50")
+LFC$pert_dose_sort <- stringr::word(LFC$pert_dose, 1, sep = fixed("|"))
+LFC %<>% dplyr::arrange(as.numeric(pert_dose_sort))
+dose_factors <- LFC$pert_dose %>% unique()
 corr_table %<>% 
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
+                                   pert_dose),
+                pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                   paste(pert_iname, pert_dose, added_compounds, added_doses),
                                    pert_dose))
 disc_table %<>% 
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
+                                   pert_dose),
+                pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                   paste(pert_iname, pert_dose, added_compounds, added_doses),
                                    pert_dose)) %>%
   dplyr::arrange(q.value, effect_size) %>%
-  dplyr::group_by(pert_iname, pert_dose, pert_plate, pert_time, pert_id, feature_type) %>%
+  dplyr::group_by(pert_iname, pert_dose, pert_plate, pert_time, pert_id, feature_type, added_doses, added_compounds) %>%
   dplyr::mutate(rank = 1:n()) %>%
   dplyr::ungroup()
 model_table %<>% 
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
+                                   pert_dose),
+                pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                   paste(pert_iname, pert_dose, added_compounds, added_doses),
                                    pert_dose))
 rf_table %<>% 
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
+                                   pert_dose),
+                pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                   paste(pert_iname, pert_dose, added_compounds, added_doses),
                                    pert_dose))
+
+dose_factors <- dplyr::union(dose_factors, corr_table$pert_dose %>% unique())
+LFC$pert_dose <- factor(LFC$pert_dose, levels = dose_factors)
 corr_table$pert_dose <- factor(corr_table$pert_dose, levels = dose_factors)
 disc_table$pert_dose <- factor(disc_table$pert_dose, levels = dose_factors)
 model_table$pert_dose <- factor(model_table$pert_dose, levels = dose_factors)
@@ -236,7 +252,7 @@ missing <- lineages %>%
                    by = c("lineage" = "feature"))
 
 p_table <- lin_tab %>%
-  distinct(lineage, effect_size, q.value, pert_iname, pert_dose) %>%
+  distinct(lineage, effect_size, q.value, pert_iname, pert_dose, added_doses) %>%
   dplyr::filter(q.value < 0.1)
 
 if(nrow(p_table) > 0){
