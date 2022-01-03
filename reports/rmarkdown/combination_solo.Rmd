@@ -285,7 +285,7 @@ DT::datatable(lin_tab %>%
 ## Plots by lineage
 
 ```{r, fig.height=14}
-if (!is.null(DRC)) {
+if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1 && length(DRC$added_doses %>% unique) == 1) {
   df <- DRC %>%
     dplyr::inner_join(lineages, by = "ccle_name") %>%
     dplyr::mutate(condition = ifelse("added_doses" %in% colnames(.),
@@ -361,7 +361,7 @@ DT::datatable(MUT_table %>%
 ## Plots by mutation
 
 ```{r, fig.height=10}
-if (!is.null(DRC)) {
+if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1 && length(DRC$added_doses %>% unique) == 1) {
   df <- DRC %>%
     dplyr::left_join(mutations, by = "ccle_name") %>%
     dplyr::group_by(across(any_of(c("mutation", "varied_iname", "added_compounds", "added_doses")))) %>%
