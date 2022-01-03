@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/test_reports/PMTS046/BRD-K05804044
-  comp: BRD-K05804044
+  data_dir: ~/Desktop/test_combo_reports/CPS003_DMC_GENENTECH/PMTS048/BRD-U00093966-001-01-9_BRD-U00093967-001-01-9
+  comp: BRD-U00093966-001-01-9_BRD-U00093967-001-01-9
 output:
   html_document:
     toc: false
@@ -71,6 +71,7 @@ if (length(drc_path) == 1) {
 }
 
 pert_iname <- lfc$pert_iname %>% unique()
+varied_comps <- DRC$varied_iname %>% unique()
 
 # dose response
 drc <- data.table::fread(file.path(params$data_dir, "DRC_TABLE.csv"))
@@ -102,7 +103,7 @@ drc_plots %<>%
 
 # metadata for each row
 drc_meta <- drc_plots %>%
-  dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "pert_plate", "varied_iname", "added_compounds",
+  dplyr::distinct(across(any_of(c("ccle_name", "culture", "varied_iname", "added_compounds",
                                   "added_doses", "ec50", "slope", "upper_limit", "lower_limit", "auc", "log2.ic50")))) %>%
   dplyr::mutate(ic50 = 2^log2.ic50) %>%
   dplyr::select(-log2.ic50) %>%
@@ -129,46 +130,53 @@ These data, in addition to the area under the dose-response curves (AUC) and the
 
 The table and plots are interactive. To highlight a cell line either search it using the search box or select it in the table.
 
-## Plots
 
-```{r dose response, fig.height=4}
-curves_all <- highlight_key(drc_plots %>%
-                              dplyr::filter(is.finite(auc)) %>%
-                              dplyr::arrange(auc),
-                            ~cell_id, group = "Dose-response")
-lfc_all <- highlight_key(lfc %>%
-                           dplyr::inner_join(drc_meta) %>%
-                           dplyr::rename(Dose = pert_dose) %>%
-                           dplyr::mutate(Viability = 2^LFC_cb,
-                                         Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
-                           dplyr::distinct(ccle_name, culture, cell_id, Dose, Viability, Replicate),
-                         ~cell_id, group = "Dose-response")
-p <- plot_ly() %>% 
-  add_trace(data = curves_all,
-            x = ~x, y = ~y, type = "scatter", mode = "lines", line = list(shape = "line"),
-            hoverinfo = "text", text = ~ccle_name, opacity = 0.1) %>%
-  add_trace(data = lfc_all,
-            x = ~Dose, y = ~Viability, type = "scatter", mode = "markers",
-            hoverinfo = "text", text = ~Viability, opacity = 0.1, color = ~Replicate) %>%
-  layout(xaxis = list(title = "Dose", type = "log"),
-         yaxis = list(title = "Viability", range = c(0, 2)),
-         hovermode = "closest") %>%
-  highlight(on = "plotly_selected", off = "plotly_deselect",
-            dynamic = FALSE, selectize = TRUE, persistent = FALSE,
-            opacityDim = 1, defaultValues = "",
-            selected = attrs_selected(opacity = 1))
+## Plots {.tabset .tabset-fade}
 
-compounds_all <- highlight_key(drc_meta %>% 
-                                 dplyr::filter(is.finite(auc)) %>% 
-                                 dplyr::arrange(auc),
-                               ~cell_id, group = "Dose-response")
-dt <- DT::datatable(compounds_all, style="bootstrap",
-                    options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
-                                   columnDefs = list(list(visible = FALSE, targets = c(9)))),
-                    colnames = c("Compound", "Cell Line", "Culture", "Time", "a", "b", "s", "EC50", "AUC", "IC50", "ID"),
-                    rownames = FALSE,
-                    selection = "single", filter = "top") %>%
-  DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50"), digits = 3)
+```{r dummy plot, include=F}
+plot_ly()
+datatable(tibble(),style="bootstrap")
+```
 
-p; dt
+```{r correlations, results='asis', include=T, fig.height=4}
+for (comp in varied_comps) {
+  cat(sprintf('\n\n### %s \n\n', comp, '\n\n'))
+  
+  curves_all <- highlight_key(drc_plots %>%
+                                dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+                                dplyr::arrange(auc),
+                              ~cell_id, group = comp)
+  p <- plot_ly() %>% 
+    add_trace(data = curves_all,
+              x = ~x, y = ~y, color = ~ added_doses,
+              type = "scatter", mode = "lines", line = list(shape = "line"),
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.1) %>%
+    layout(xaxis = list(title = "Dose", type = "log"),
+           yaxis = list(title = "Viability", range = c(0, 2)),
+           hovermode = "closest") %>%
+    highlight(on = "plotly_selected", off = "plotly_deselect",
+              dynamic = FALSE, selectize = TRUE, persistent = FALSE,
+              opacityDim = 1, defaultValues = "",
+              selected = attrs_selected(opacity = 1))
+  
+  cat(htmltools::knit_print.shiny.tag(p))
+  
+  compounds_all <- highlight_key(drc_meta %>% 
+                                   dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+                                   dplyr::arrange(auc),
+                                 ~cell_id, group = comp)
+  dt <- DT::datatable(compounds_all, style="bootstrap",
+                      options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
+                                     columnDefs = list(list(visible = FALSE, targets = c(9)))),
+                      colnames = c("Compound", "Cell Line", "Culture", "Added compounds", "Added doses", "a", "EC50", "s", "b", "AUC", "IC50", "ID"),
+                      rownames = FALSE,
+                      selection = "single", filter = "top") %>%
+    DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50"), digits = 3)
+  
+  cat(htmltools::knit_print.shiny.tag(dt))
+}
+```
+
+```{r dummy table, include=F}
+dt
 ```
