@@ -1,4 +1,5 @@
 install.packages("magrittr")
+install.packages("splitstackshape")
 install.packages("data.table")
 install.packages("tidyverse")
 install.packages("ggforce")
