@@ -22,6 +22,10 @@ while test $# -gt 0; do
       shift
       combination=$1
       ;;
+    -q| --qc_path)
+      shift
+      qc_path=$1
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -60,6 +64,7 @@ args=(
   -d "${data_dir}"
   -c "${compound}"
   -m "${meta_path}"
+  -q "${qc_path}"
   -b "${combination}"
 )
 
