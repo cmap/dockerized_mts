@@ -48,9 +48,13 @@ then
     sanitized_pert_id="${cleaned_pert_id^^}"
     data_dir="${data_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
     compound="${sanitized_pert_id}"
+    SUB='|'
+    if [[ "$pert_id" == *"$SUB"* ]]; then
+      combination=1
+    fi
 fi
 
-echo "${data_dir}" "${compound}" "${meta_path}"
+echo "${data_dir}" "${compound}" "${meta_path}" "${combination}"
 
 args=(
   -d "${data_dir}"
