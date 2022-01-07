@@ -50,10 +50,12 @@ then
     plate=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
     cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
-    data_dir="${data_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
+    project_dir="${data_dir}"/"${project,,}"/"${project^^}"
+    data_dir="${project_dir}"/"${plate}"/"${sanitized_pert_id}"
     compound="${sanitized_pert_id}"
     SUB='|'
     if [[ "$pert_id" == *"$SUB"* ]]; then
+      qc_path="${project_dir}"/data/"${project^^}"_QC_TABLE.csv
       combination=1
     fi
 fi
@@ -64,9 +66,12 @@ args=(
   -d "${data_dir}"
   -c "${compound}"
   -m "${meta_path}"
-  -q "${qc_path}"
   -b "${combination}"
 )
+if [[ -f "$qc_path" ]]; then
+    args+=(-q $qc_path)
+fi
+
 
 if [[ "$sanitized_pert_id" == "DMSO" ]]
 then

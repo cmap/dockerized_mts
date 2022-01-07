@@ -10,4 +10,5 @@ docker run --rm \
 -c BRD-K05804044 \
 -m https://s3.amazonaws.com/biomarker.clue.io
 
-#/cmap/macchiato/619e422b9b8eca00119db024/projects/cps003_dmc_genentech/CPS003_DMC_GENENTECH/PMTS048/BRD-U00093966-001-01-9_BRD-U00093968-001-01-9
+#/cmap/macchiato/619e422b9b8eca00119db024/projects/cps003_dmc_genentech/CPS003_DMC_GENENTECH/data/CPS003_DMC_GENENTECH_QC_TABLE.csv
+# PMTS048/BRD-U00093966-001-01-9_BRD-U00093968-001-01-9
