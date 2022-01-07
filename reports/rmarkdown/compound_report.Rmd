@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports/CPS003_DMC_GENENTECH/PMTS048/BRD-U00093966-001-01-9
-  comp: BRD-U00093966-001-01-9
+  data_dir: ~/Desktop/test_combo_reports
+  comp: NA
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -78,11 +78,11 @@ n_days <- LFC$pert_time %>%
 LFC$pert_dose <- signif(LFC$pert_dose, 5)
 dose_factors <- LFC$pert_dose %>% unique() %>% sort()
 dose_factors <- c(dose_factors, "log2.auc", "log2.ic50")
-corr_table %<>% 
+corr_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
                                    pert_dose))
-disc_table %<>% 
+disc_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
                                    pert_dose)) %>%
@@ -90,11 +90,11 @@ disc_table %<>%
   dplyr::group_by(pert_iname, pert_dose, pert_plate, pert_time, pert_id, feature_type) %>%
   dplyr::mutate(rank = 1:n()) %>%
   dplyr::ungroup()
-model_table %<>% 
+model_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
                                    pert_dose))
-rf_table %<>% 
+rf_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
                                    pert_dose))
@@ -113,7 +113,7 @@ feature_full <- c("GE" = "Gene expression",
                   "MET" = "Metabolomics",
                   "shRNA" = "shRNA knockdown",
                   "REP" = "Repurposing compounds")
-corr_feats <- corr_table$feature_type %>% 
+corr_feats <- corr_table$feature_type %>%
   unique() %>%
   dplyr::intersect(names(feature_full)) %>%
   factor(levels = names(feature_full)) %>%
@@ -203,7 +203,7 @@ DT::datatable(LFC %>%
                 dplyr::arrange(viab),
               filter = "top", rownames = F,
               colnames = c("Cell line", "Culture", "Pool", "Dose",
-                           "Vehicle", "log2-fold change", "Viability"), 
+                           "Vehicle", "log2-fold change", "Viability"),
               options = list(dom = "tp"))
 
 ```
@@ -275,7 +275,7 @@ if (!is.null(DRC)) {
     dplyr::mutate(condition = ifelse("added_doses" %in% colnames(.),
                                      paste(varied_iname, added_compounds, added_doses),
                                      varied_iname))
-  
+
   p <- df %>%
     ggplot(aes(x = auc, y = reorder(abbreviation, auc, function(x) -mean(x, na.rm = T)),
                color = abbreviation)) +
@@ -286,7 +286,7 @@ if (!is.null(DRC)) {
 } else if (n_doses == 1) {
   df <- LFC %>%
     dplyr::inner_join(lineages, by = "ccle_name")
-  
+
   p <- df %>%
     ggplot(aes(x = LFC_cb, y = reorder(abbreviation, LFC_cb, function(x) -mean(x, na.rm = T)),
                color = abbreviation)) +
@@ -351,28 +351,28 @@ if (!is.null(DRC)) {
     dplyr::group_by(across(any_of(c("mutation", "varied_iname", "added_compounds", "added_doses")))) %>%
     dplyr::mutate(n = n()) %>%
     dplyr::ungroup()
-  
+
   top_muts <- MUT_table %>%
     dplyr::inner_join(df %>% dplyr::filter(n >= 5) %>% dplyr::distinct(mutation), by = c("feature" = "mutation")) %>%
     dplyr::filter(pert_dose == "log2.auc") %>%
     dplyr::arrange(q.value)
-  
+
   top_muts <- c(top_muts$feature[1:20])
-  
+
   df <- DRC %>%
     dplyr::left_join(mutations %>% dplyr::filter(mutation %in% top_muts), by = "ccle_name") %>%
     dplyr::mutate(condition = ifelse("added_doses" %in% colnames(.),
                                      paste(varied_iname, added_compounds, added_doses),
                                      varied_iname),
                   mutation = ifelse(is.na(mutation), "others", mutation))
-  
+
   p <- df %>%
     ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
                color = mutation)) +
     geom_boxplot(outlier.alpha = 0) + geom_jitter() +
     theme(legend.position = "none") +
     labs(x = "AUC", y = "Lineage")
-  
+
   p
 } else if (n_doses == 1) {
   df <- LFC %>%
@@ -380,24 +380,24 @@ if (!is.null(DRC)) {
     dplyr::group_by(across(any_of(c("mutation", "pert_dose", "pert_name")))) %>%
     dplyr::mutate(n = n()) %>%
     dplyr::ungroup()
-  
+
   top_muts <- MUT_table %>%
     dplyr::inner_join(df %>% dplyr::filter(n >= 5) %>% dplyr::distinct(mutation), by = c("feature" = "mutation")) %>%
     dplyr::arrange(q.value)
-  
+
   top_muts <- c(top_muts$feature[1:20])
-  
+
   df <- LFC %>%
     dplyr::left_join(mutations %>% dplyr::filter(mutation %in% top_muts), by = "ccle_name") %>%
     dplyr::mutate(mutation = ifelse(is.na(mutation), "others", mutation))
-  
+
   p <- df %>%
     ggplot(aes(x = LFC_cb, y = reorder(mutation, LFC_cb, function(x) -mean(x, na.rm = T)),
                color = mutation)) +
     geom_boxplot(outlier.alpha = 0) + geom_jitter() +
     theme(legend.position = "none") +
     labs(x = "Log-fold change", y = "Lineage")
-  
+
   p
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
@@ -417,10 +417,10 @@ for (feat in corr_feats) {
   cat(sprintf('\n\n## %s \n\n', feature_full[feat], '\n\n'))
   df <- corr_table %>%
     dplyr::filter(feature_type == feat)
-  
+
   plot_df <- df %>%
     dplyr::filter(q.val < 0.1, rank <= 500)
-  
+
   if (nrow(plot_df) > 0) {
     p <- plot_df %>%
       ggplot() + geom_point(aes(x = coef, y = -log10(q.val),
@@ -429,10 +429,10 @@ for (feat in corr_feats) {
       labs(x = "Correlation", y = "-log10(q)", color = "Dose") +
       geom_vline(aes(xintercept = 0), lty = 2, lwd =.5)
     p <- plotly::ggplotly(p)
-    
+
     cat(htmltools::knit_print.shiny.tag(p))
   }
-  
+
   dt <- DT::datatable(df %>%
                         dplyr::filter(q.val < 0.1 || rank <= 100) %>%
                         dplyr::select(feature, coef, q.val, pert_iname, pert_dose) %>%
@@ -442,7 +442,7 @@ for (feat in corr_feats) {
                       filter = "top", rownames = F, options = list(dom = "tp"),
                       colnames = c("Feature", "Correlation", "q value", "Compound", "Dose")
   )
-  
+
   cat(htmltools::knit_print.shiny.tag(dt))
 }
 ```

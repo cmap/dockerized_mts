@@ -1,9 +1,9 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports/CPS003_DMC_GENENTECH/PMTS048/BRD-U00093966-001-01-9_BRD-U00093967-001-01-9
-  comp: BRD-U00093966-001-01-9_BRD-U00093967-001-01-9
-  qc_path: ~/Desktop/test_combo_reports/CPS003_DMC_GENENTECH/data/CPS003_DMC_GENENTECH_QC_TABLE.csv
-output: 
+  data_dir: ~/Desktop/test_combo_reports
+  comp: NA
+  qc_path: ~/Desktop/test_combo_reports
+output:
   html_document:
     toc: false
     theme: paper
@@ -79,7 +79,7 @@ plate_dir <- dirname(params$data_dir)
 # read in constitutent compound data
 for (const in constituents) {
   const_path <- file.path(plate_dir, const)
-  
+
   # DRC and LFC
   const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
   const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
@@ -93,12 +93,12 @@ for (const in constituents) {
       data.table::fread(const_drc_path) %>% dplyr::mutate(ec50 = as.numeric(ec50))
     )
   }
-  
+
   # correlations and random forest
   const_corr_path <- list.files(const_path, "continuous_associations", full.names = T)
   const_model_path <- list.files(const_path, "model_table", full.names = T)
   const_rf_path <- list.files(const_path, "RF_table", full.names = T)
-  
+
   if (length(const_corr_path) == 1) {
     correlations %<>% dplyr::bind_rows(
       data.table::fread(const_corr_path) %>% dplyr::mutate(pert_dose = as.character(pert_dose))
@@ -122,13 +122,13 @@ title:  "`r paste(pert_iname, 'combination report')`"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
-# Overview 
+# Overview
 
 This is the combination report for the combination `r pert_iname`. The doses at which this combination was run, as well as the doses of each single agent, are outlined in the table below
 
 ```{r overview}
 # split to show components of compounds
-summary_tab <- LFC %>% 
+summary_tab <- LFC %>%
   dplyr::distinct(pert_iname, pert_dose, pert_idose) %>%
   dplyr::rename(Compound = pert_iname, Dose = pert_dose, "Dose with units" = pert_idose) %>%
   splitstackshape::cSplit(splitCols = c("Compound", "Dose", "Dose with units"),
@@ -173,10 +173,10 @@ for (i in 1:length(constituents)) {
     dplyr::filter(pert_id == comp) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
-  
+
   new_cols <- paste(colnames(df), i, sep = "_")
   colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
-  
+
   spread_lfc %<>% dplyr::left_join(df)
 }
 
@@ -193,7 +193,7 @@ plots <- list()
 for (i in 1:nrow(combos)) {
   synergy_plot <- highlight_key(spread_lfc %>% dplyr::inner_join(combos[i,]),
                                 ~ccle_name, group = "Synergy scores")
-  p <- plot_ly(synergy_plot) %>% 
+  p <- plot_ly(synergy_plot) %>%
     add_trace(x = ~S, y = ~-log10(q), type = "scatter", mode = "markers",
               hoverinfo = "text", text = ~ccle_name, opacity = 0.5) %>%
     layout(xaxis = list(title = "Synergy score"),
@@ -209,7 +209,7 @@ for (i in 1:nrow(combos)) {
               defaultValues = "", selected = attrs_selected(opacity = 1))
   plots[[i]] <- p
 }
-subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = T, shareY = T) %>% 
+subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = T, shareY = T) %>%
   layout(title = pert_iname)
 ```
 
@@ -226,10 +226,10 @@ for (i in 1:length(solo_comps)) {
     dplyr::filter(varied_iname == comp) %>%
     dplyr::distinct(auc, ccle_name, culture) %>%
     dplyr::rename(solo_auc = auc)
-  
+
   auc_plot <- highlight_key(combo_drc %>% dplyr::inner_join(df),
                             ~ccle_name, group = "Synergy scores")
-  p <- plot_ly(auc_plot) %>% 
+  p <- plot_ly(auc_plot) %>%
     add_trace(x = ~auc, y = ~solo_auc, color = ~as.character(added_doses), type = "scatter", mode = "markers",
               hoverinfo = "text", text = ~ccle_name,
               hovertemplate = "%{text} <br> %{xaxis.title.text}: %{x} <br> %{yaxis.title.text}: %{y} <extra></extra>",
@@ -292,7 +292,7 @@ plots <- list()
 for (i in 1:nrow(combos)) {
   volcano_combo <- highlight_key(features_ge %>% dplyr::inner_join(combos[i,]),
                                  ~feature, group = "GE correlations")
-  p <- plot_ly(volcano_combo) %>% 
+  p <- plot_ly(volcano_combo) %>%
     add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
               hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
               showlegend = T) %>%
@@ -343,7 +343,7 @@ if (is.null(dim(top_tab))) {
 
 ### Plots
 
-To highlight a gene either click on a point or select a row from the table below. Selecting a gene will highlight it in every plot in which it appears. 
+To highlight a gene either click on a point or select a row from the table below. Selecting a gene will highlight it in every plot in which it appears.
 
 ```{r crispr}
 features_xpr <- sub_correlations %>%
@@ -355,7 +355,7 @@ plots <- list()
 for (i in 1:nrow(combos)) {
   volcano_combo <- highlight_key(features_xpr %>% dplyr::inner_join(combos[i,]),
                                  ~feature, group = "XPR correlations")
-  p <- plot_ly(volcano_combo) %>% 
+  p <- plot_ly(volcano_combo) %>%
     add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
               hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
               showlegend = T) %>%
@@ -406,7 +406,7 @@ if (is.null(dim(top_tab))) {
 
 ### Plots
 
-To highlight a compound either click on a point or select a row from the table below. Selecting a compound will highlight it in every plot in which it appears. 
+To highlight a compound either click on a point or select a row from the table below. Selecting a compound will highlight it in every plot in which it appears.
 
 ```{r rep}
 features_rep <- sub_correlations %>%
@@ -418,7 +418,7 @@ plots <- list()
 for (i in 1:nrow(combos)) {
   volcano_combo <- highlight_key(features_rep %>% dplyr::inner_join(combos[i,]),
                                  ~feature, group = "REP correlations")
-  p <- plot_ly(volcano_combo) %>% 
+  p <- plot_ly(volcano_combo) %>%
     add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
               hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
               showlegend = T) %>%

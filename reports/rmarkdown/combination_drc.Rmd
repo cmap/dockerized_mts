@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports/CPS003_DMC_GENENTECH/PMTS048/BRD-U00093966-001-01-9_BRD-U00093967-001-01-9
-  comp: BRD-U00093966-001-01-9_BRD-U00093967-001-01-9
+  data_dir: ~/Desktop/test_combo_reports
+  comp: NA
 output:
   html_document:
     toc: false
@@ -85,7 +85,7 @@ conditions <- drc %>%
 drc_plots <- list()
 for (i in 1:nrow(conditions)) {
   condition <- conditions[i,]
-  
+
   d <- drc %>% dplyr::inner_join(condition)
   xx = seq(log2(min(d$min_dose)), log2(max(d$max_dose)), length.out = 40)
   res <- apply(d, 1, function(p) dr_func(p, xx))
@@ -96,7 +96,7 @@ for (i in 1:nrow(conditions)) {
     dplyr::left_join(drc)
   drc_plots[[i]] <- func_tab
 }
-drc_plots %<>% 
+drc_plots %<>%
   dplyr::bind_rows() %>%
   dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"),
                 x = 2^x)
@@ -141,12 +141,12 @@ datatable(tibble(),style="bootstrap")
 ```{r correlations, results='asis', include=T, fig.height=4}
 for (comp in varied_comps) {
   cat(sprintf('\n\n### %s \n\n', comp, '\n\n'))
-  
+
   curves_all <- highlight_key(drc_plots %>%
                                 dplyr::filter(is.finite(auc), varied_iname == comp) %>%
                                 dplyr::arrange(auc),
                               ~cell_id, group = comp)
-  p <- plot_ly() %>% 
+  p <- plot_ly() %>%
     add_trace(data = curves_all,
               x = ~x, y = ~y, color = ~ added_doses,
               type = "scatter", mode = "lines", line = list(shape = "line"),
@@ -158,10 +158,10 @@ for (comp in varied_comps) {
               dynamic = FALSE, selectize = TRUE, persistent = FALSE,
               opacityDim = 1, defaultValues = "",
               selected = attrs_selected(opacity = 1))
-  
+
   cat(htmltools::knit_print.shiny.tag(p))
-  
-  compounds_all <- highlight_key(drc_meta %>% 
+
+  compounds_all <- highlight_key(drc_meta %>%
                                    dplyr::filter(is.finite(auc), varied_iname == comp) %>%
                                    dplyr::arrange(auc),
                                  ~cell_id, group = comp)
@@ -172,7 +172,7 @@ for (comp in varied_comps) {
                       rownames = FALSE,
                       selection = "single", filter = "top") %>%
     DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50"), digits = 3)
-  
+
   cat(htmltools::knit_print.shiny.tag(dt))
 }
 ```
