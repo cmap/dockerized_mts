@@ -109,7 +109,7 @@ for (i in 1:nrow(dosed_compounds)) {
     }
     
     # get parameters
-    param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) return(NA))
+    param <- tryCatch(a$parameters, error = function(e) return(NA))
     
     # get results if fit
     if (!is.na(param)) {
