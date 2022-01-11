@@ -1,6 +1,6 @@
 ---
 params:
-  data_dir: ~/Desktop/test_reports/PMTS046/BRD-K05804044
+  data_dir: ~/Desktop/mts018_validation/MTS018_VALIDATION_COMPOUNDS/PMTS046/BRD-K05804044
   comp: BRD-K05804044
 output:
   html_document:
@@ -145,11 +145,14 @@ lfc_all <- highlight_key(lfc %>%
                          ~cell_id, group = "Dose-response")
 p <- plot_ly() %>% 
   add_trace(data = curves_all,
-            x = ~x, y = ~y, type = "scatter", mode = "lines", line = list(shape = "line"),
+            x = ~x, y = ~y, color = ~culture,
+            type = "scatter", mode = "lines", line = list(shape = "line"),
             hoverinfo = "text", text = ~ccle_name, opacity = 0.1) %>%
   add_trace(data = lfc_all,
             x = ~Dose, y = ~Viability, type = "scatter", mode = "markers",
-            hoverinfo = "text", text = ~Viability, opacity = 0.1, color = ~Replicate) %>%
+            hoverinfo = "text", text = ~ccle_name,
+            hovertemplate = "%{text} <br> %{xaxis.title.text}: %{x} <br> %{yaxis.title.text}: %{y} <extra></extra>",
+            opacity = 0.1, color = ~Replicate) %>%
   layout(xaxis = list(title = "Dose", type = "log"),
          yaxis = list(title = "Viability", range = c(0, 2)),
          hovermode = "closest") %>%
@@ -164,8 +167,8 @@ compounds_all <- highlight_key(drc_meta %>%
                                ~cell_id, group = "Dose-response")
 dt <- DT::datatable(compounds_all, style="bootstrap",
                     options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
-                                   columnDefs = list(list(visible = FALSE, targets = c(9)))),
-                    colnames = c("Compound", "Cell Line", "Culture", "Time", "a", "b", "s", "EC50", "AUC", "IC50", "ID"),
+                                   columnDefs = list(list(visible = FALSE, targets = c(11)))),
+                    colnames = c("Compound", "Cell Line", "Culture", "Time", "a", "b", "s", "EC50", "AUC", "Plate", "IC50", "ID"),
                     rownames = FALSE,
                     selection = "single", filter = "top") %>%
   DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50"), digits = 3)

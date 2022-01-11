@@ -1,8 +1,8 @@
 ---
 params:
   data_dir: ~/Desktop/test_combo_reports
-  comp: NA
-  qc_path: ~/Desktop/test_combo_reports
+  comp: ""
+  qc_path: ""
 output:
   html_document:
     toc: false

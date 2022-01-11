@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/full_folder_test
-  project_name: "foo"
+  data_dir: ~/Desktop/test_combo_reports
+  project_name: ""
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -17,6 +17,32 @@ library(DT)
 library(tidyverse)
 library(ggthemes)
 library(cowplot)
+
+# get paths to data files
+data_files <- list.files(file.path(params$data_dir, "data"))
+data_filesp <- paste0("./", data_files)
+data_files <- paste0("./", params$project_name,"/","data","/",data_files)
+names(data_files) <- stringr::word(data_filesp, 4, -2, sep = fixed("_"))
+file_text <- c(
+  "QC" = "QC metrics",
+  "LEVEL3_LMFI" = "Raw and normalized fluorescence values",
+  "LEVEL4_LFC_COMBAT" = "Viability data",
+  "LEVEL5_LFC_COMBAT" = "Replicate-collapsed viability data",
+  "DRC" = "Dose response curve data"
+)
+
+biomarker_text <- c(
+  "continuous" = "Continuous associations",
+  "discrete" = "Discrete associations",
+  "model" = "Random forest model statistics",
+  "RF" = "Random forest features"
+)
+
+# get compound info
+inst <- data.table::fread(list.files(file.path(params$data_dir, "data"), pattern = "inst_info", full.names = T)) %>%
+  dplyr::distinct(pert_iname, pert_id)
+name_map <- inst$pert_iname
+names(name_map) <- stringr::str_replace_all(inst$pert_id, pattern = fixed("|"), "_")
 
 # get paths to html files
 plates <- list.dirs(params$data_dir, recursive = F)
@@ -41,25 +67,6 @@ for (i in 1:length(plates)) {
     drc_list[[plate]] <-  paste0("./", params$project_name, "/", plate, "/", drc_files)
   }
 }
-
-# get paths to data files
-data_files <- list.files(file.path(params$data_dir, "data"))
-data_filesp <- paste0("./", data_files)
-data_files <- paste0("./", params$project_name,"/","data","/",data_files)
-names(data_files) <- stringr::word(data_filesp, 4, -2, sep = fixed("_"))
-file_text <- c(
-  "QC" = "QC metrics",
-  "LEVEL3_LMFI" = "Raw and normalized fluorescence values",
-  "LEVEL4_LFC_COMBAT" = "Viability data",
-  "LEVEL5_LFC_COMBAT" = "Replicate-collapsed viability data"
-)
-
-biomarker_text <- c(
-  "continuous" = "Continuous associations",
-  "discrete" = "Discrete associations",
-  "model" = "Random forest model statistics",
-  "RF" = "Random forest features"
-)
 
 # push NAs to bottom in tables
 options(DT.TOJSON_ARGS = list(na = "string"))
@@ -130,7 +137,13 @@ if (length(report_list) > 0) {
   for (i in 1:length(report_list)) {
     cat("\n\n", names(report_list)[[i]], "\n\n")
     for (j in 1:length(report_list[[i]])) {
-      cat("* [", stringr::word(report_list[[i]][[j]], -1, sep = "/") %>% stringr::word(., 1, -2, sep = "_"),
+      file_name <- stringr::word(report_list[[i]][[j]], -1, sep = "/") %>% stringr::word(., 1, -2, sep = "_")
+      if (stringr::word(file_name, -1, sep = "_") == "combination") {
+        comp <- paste(name_map[stringr::word(file_name, 1, -2, sep = "_")], "combination")
+      } else {
+        comp <- name_map[file_name]
+      }
+      cat("* [", comp,
           "](", report_list[[i]][[j]], ") \n")
     }
   }
@@ -148,7 +161,9 @@ if (length(drc_list) > 0) {
   for (i in 1:length(drc_list)) {
     cat("\n\n", names(drc_list)[[i]], "\n\n")
     for (j in 1:length(drc_list[[i]])) {
-      cat("* [", stringr::word(drc_list[[i]][[j]], -1, sep = "/") %>% stringr::word(., 1, -2, sep = "_"),
+      file_name <- stringr::word(drc_list[[i]][[j]], -1, sep = "/") %>% stringr::word(., 1, -2, sep = "_")
+      comp <- name_map[file_name]
+      cat("* [", comp,
           "](", drc_list[[i]][[j]], ") \n")
     }
   }

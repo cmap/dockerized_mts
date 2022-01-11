@@ -1,7 +1,7 @@
 ---
 params:
   data_dir: ~/Desktop/test_combo_reports
-  comp: NA
+  comp: ""
 output:
   html_document:
     toc: false
@@ -148,7 +148,7 @@ for (comp in varied_comps) {
                               ~cell_id, group = comp)
   p <- plot_ly() %>%
     add_trace(data = curves_all,
-              x = ~x, y = ~y, color = ~ added_doses,
+              x = ~x, y = ~y, color = ~added_doses,
               type = "scatter", mode = "lines", line = list(shape = "line"),
               hoverinfo = "text", text = ~ccle_name, opacity = 0.1) %>%
     layout(xaxis = list(title = "Dose", type = "log"),
@@ -167,7 +167,7 @@ for (comp in varied_comps) {
                                  ~cell_id, group = comp)
   dt <- DT::datatable(compounds_all, style="bootstrap",
                       options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
-                                     columnDefs = list(list(visible = FALSE, targets = c(9)))),
+                                     columnDefs = list(list(visible = FALSE, targets = c(11)))),
                       colnames = c("Compound", "Cell Line", "Culture", "Added compounds", "Added doses", "a", "EC50", "s", "b", "AUC", "IC50", "ID"),
                       rownames = FALSE,
                       selection = "single", filter = "top") %>%
