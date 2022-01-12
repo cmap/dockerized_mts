@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports
-  comp: ""
-  qc_path: ""
+  data_dir: ~/Desktop/test_combo_reports/CPS003_DMC_GENENTECH/PMTS048/BRD-U00093966-001-01-9_BRD-U00093968-001-01-9
+  comp: "BRD-U00093966-001-01-9_BRD-U00093968-001-01-9"
+  qc_path: "~/Desktop/test_combo_reports/CPS003_DMC_GENENTECH/data/CPS003_DMC_GENENTECH_QC_TABLE.csv"
 output:
   html_document:
     toc: false
@@ -138,8 +138,9 @@ summary_tab <- LFC %>%
 
 colnames(summary_tab) <- stringr::str_replace_all(colnames(summary_tab), "_", " ")
 
-DT::datatable(summary_tab,
-              options = list(dom = "tp", ordering = TRUE))
+DT::datatable(summary_tab, style = "bootstrap",
+              options = list(dom = "t", ordering = TRUE,
+                             lengthChange = FALSE, scrollY = "300px", paging = FALSE))
 ```
 
 # Sensitivity comparison {.tabset .tabset-pills}
@@ -235,11 +236,7 @@ for (i in 1:length(solo_comps)) {
               hovertemplate = "%{text} <br> %{xaxis.title.text}: %{x} <br> %{yaxis.title.text}: %{y} <extra></extra>",
               opacity = 0.5) %>%
     layout(xaxis = list(title = paste(pert_iname, "AUC")),
-           yaxis = list(title = "Constituent AUC"),
-           annotations = list(x = 0.5, y = 1,
-                              text = comp,
-                              align = "center", showarrow = F, xref="paper", yref="paper",
-                              xanchor = "center", yanchor = "top"),
+           yaxis = list(title = paste(comp, "AUC")),
            hovermode = "closest",
            showlegend = T) %>%
     highlight(on = "plotly_click", off = "plotly_doubleclick",
@@ -315,7 +312,8 @@ features_combo_dt <- highlight_key(features_combo, ~feature, group = "GE correla
 dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
                     options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
                                    scrollX = "300px", paging = FALSE),
-                    filter = "top")
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
 subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
 dt
 ```
@@ -378,7 +376,8 @@ features_combo_dt <- highlight_key(features_combo, ~feature, group = "XPR correl
 dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
                     options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
                                    scrollX = "300px", paging = FALSE),
-                    filter = "top")
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
 subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
 dt
 ```
@@ -441,7 +440,8 @@ features_combo_dt <- highlight_key(features_combo, ~feature, group = "REP correl
 dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
                     options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
                                    scrollX = "300px", paging = FALSE),
-                    filter = "top")
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
 subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
 dt
 ```
@@ -490,6 +490,17 @@ p2 <- sub_rf %>%
             hoverinfo = "text", text = ~feature) %>%
   layout(xaxis = list(type = "log", title = "Rank"),
          yaxis = list(title = "Feature importance"))
+
+df <- sub_models %>% dplyr::inner_join(sub_rf) %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore, feature, RF.imp.mean)
+
+dt <- DT::datatable(df, style="bootstrap", width="100%",
+                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Model", "R2", "Pearson Score", "Feature", "Feature Importance"))
+
 subplot(style(p1, showlegend = FALSE), p2, widths = c(0.2, 0.8),
         titleX = T, titleY = T, margin = 0.05)
+dt
 ```
