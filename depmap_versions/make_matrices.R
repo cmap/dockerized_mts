@@ -30,16 +30,17 @@ lfc_mat <- reshape2::acast(lfc_tab, ccle_name ~ pert_iname + pert_idose,
                            value.var = "LFC_cb",
                            fun.aggregate = function(x) mean(x, na.rm = TRUE))
 # write LFC
-write.csv(lfc_mat, paste0(out_dir, "LFC_MATRIX.csv"))
+write.csv(lfc_mat, paste0(out_dir, "/LFC_MATRIX.csv"))
 
 # do the same for DRC if it exists (make AUC and IC50 matrix)
 if (length(drc_path) == 1) {
   drc_tab <- data.table::fread(drc_path) %>%
     dplyr::filter(!is.na(ccle_name),
                   str_detect(ccle_name, "prism invariant", negate = T)) %>%
-    dplyr::mutate(condition = ifelse("added_compounds" %in% colnames(.),
-                                     paste(varied_iname, added_compounds, added_doses),
-                                     varied_iname))
+    dplyr::mutate(condition = varied_iname)
+  if ("added_compounds" %in% colnames(drc_tab)) {
+    drc_tab$condition <- paste(drc_tab$condition, drc_tab$added_compounds, drc_tab$added_doses, sep = "_")
+  }
   auc_mat <- reshape2::acast(drc_tab, ccle_name ~ condition,
                              value.var = "auc",
                              fun.aggregate = function(x) mean(x, na.rm = TRUE))
