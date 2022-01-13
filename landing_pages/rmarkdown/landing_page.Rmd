@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports
-  project_name: ""
+  data_dir: ~/Desktop/mts018_validation/MTS018_VALIDATION_COMPOUNDS
+  project_name: MTS018_VALIDATION_COMPOUNDS
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -22,7 +22,8 @@ library(cowplot)
 data_files <- list.files(file.path(params$data_dir, "data"))
 data_filesp <- paste0("./", data_files)
 data_files <- paste0("./", params$project_name,"/","data","/",data_files)
-names(data_files) <- stringr::word(data_filesp, 4, -2, sep = fixed("_"))
+proj_length <- length(strsplit(params$project_name, split = "_", fixed = T)[[1]])
+names(data_files) <- stringr::word(data_filesp, proj_length + 1, -2, sep = fixed("_"))
 file_text <- c(
   "QC" = "QC metrics",
   "LEVEL3_LMFI" = "Raw and normalized fluorescence values",
@@ -36,6 +37,12 @@ biomarker_text <- c(
   "discrete" = "Discrete associations",
   "model" = "Random forest model statistics",
   "RF" = "Random forest features"
+)
+
+matrix_text <- c(
+  "LFC" = "Log-fold change matrix",
+  "AUC" = "AUC matrix",
+  "IC50" = "IC50 matrix"
 )
 
 # get compound info
@@ -194,6 +201,20 @@ These are links to files containing biomarker analysis results for all compounds
 for (i in 1:length(data_files)) {
   if (names(data_files)[i] %in% names(biomarker_text)) {
     cat("* [", biomarker_text[names(data_files)[i]], "](", data_files[i], ") \n")
+  } else {
+    next
+  }
+}
+```
+
+### Matrix versions
+
+These are links to files that are matrices of data for all compounds. These files are compatible with the [DepMap data explorer tool](https://depmap.org/portal/interactive/).
+
+```{r matrices, results='asis'}
+for (i in 1:length(data_files)) {
+  if (names(data_files)[i] %in% names(matrix_text)) {
+    cat("* [", matrix_text[names(data_files)[i]], "](", data_files[i], ") \n")
   } else {
     next
   }

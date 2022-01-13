@@ -9,12 +9,14 @@ parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-p", "--project_dir", default="", help="Project directory")
 parser$add_argument("-o", "--out", default="", help="Output directory")
+parser$add_argument("-n", "--name", default="", help = "Build name. Default is none")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 
 proj_dir <- args$project_dir
 out_dir <- args$out
+build_name <- args$name
 
 # get paths to LFC and DRC
 lfc_path <- list.files(proj_dir, pattern = "LEVEL5_LFC_COMBAT", full.names = T)
@@ -30,7 +32,7 @@ lfc_mat <- reshape2::acast(lfc_tab, ccle_name ~ pert_iname + pert_idose,
                            value.var = "LFC_cb",
                            fun.aggregate = function(x) mean(x, na.rm = TRUE))
 # write LFC
-write.csv(lfc_mat, paste0(out_dir, "/LFC_MATRIX.csv"))
+write.csv(lfc_mat, paste0(out_dir, "/", build_name, "_LFC_MATRIX.csv"))
 
 # do the same for DRC if it exists (make AUC and IC50 matrix)
 if (length(drc_path) == 1) {
@@ -48,6 +50,6 @@ if (length(drc_path) == 1) {
                               value.var = "log2.ic50",
                               fun.aggregate = function(x) mean(x, na.rm = TRUE))
 
-  write.csv(auc_mat, paste0(out_dir, "/AUC_MATRIX.csv"))
-  write.csv(ic50_mat, paste0(out_dir, "/IC50_MATRIX.csv"))
+  write.csv(auc_mat, paste0(out_dir, "/", build_name, "_AUC_MATRIX.csv"))
+  write.csv(ic50_mat, paste0(out_dir, "/", build_name, "_IC50_MATRIX.csv"))
 }
