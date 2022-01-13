@@ -13,8 +13,8 @@ done
 chmod +x /make_matrices.R
 chmod +x /src/depmap_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
-echo "${project_dir_dir}" "${output_dir}"
-Rscript /make_matrices.R -p "${data_dir}" -o "${output_dir}"
+echo "${project_dir}" "${output_dir}"
+Rscript /make_matrices.R -p "${project_dir}" -o "${output_dir}"
 
 exit_code=$?
 
