@@ -1,2 +1,5 @@
 README.md
 run_batch_correction.sh
+build_docker.sh
+docker_push_tags.sh
+docker_run.sh
