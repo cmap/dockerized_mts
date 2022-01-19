@@ -9,6 +9,8 @@ output:
     toc: false
     theme: paper
     highlight: kate
+    includes:
+        after_body: depmap_scripts.html
 ---
 
 ```{r setup, include=FALSE, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
@@ -215,6 +217,7 @@ These are links to files that are matrices of data for all compounds. These file
 for (i in 1:length(data_files)) {
   if (names(data_files)[i] %in% names(matrix_text)) {
     cat("* [", matrix_text[names(data_files)[i]], "](", data_files[i], ") \n")
+    cat('<button title="view in depmap" id="', names(data_files)[i], '" name="depmap" value="toDepMap" data-filename="', data_files[i], '"><span class="glyphicon glyphicon-eye-open"></span></button>\n',sep="")
   } else {
     next
   }
