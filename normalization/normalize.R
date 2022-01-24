@@ -73,7 +73,8 @@ master_logMFI %<>%
 
 # compute control barcode median of medians for normalization
 logMFI_control_medians <- control_medians(master_logMFI %>%
-                                            dplyr::filter(is.finite(logMFI)))
+                                            dplyr::filter(is.finite(logMFI),
+                                                          logMFI != 0))
 
 # fit curve to controls and predict test conditions
 logMFI_normalized <- normalize(logMFI_control_medians, barcodes)

@@ -75,6 +75,9 @@ control_medians <- function(df) {
 normalize <- function(df, barcodes) {
   normalized <- df %>%
     dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::mutate(n = n()) %>%
+    dplyr::filter(n >= 200) %>%
+    dplyr::select(-n) %>%
     # try with k=4 and 5 (to avoid hanging), try again with linear model
     dplyr::mutate(logMFI_norm = tryCatch(
       expr = {tryCatch(
