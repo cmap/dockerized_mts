@@ -43,7 +43,7 @@ read_hdf5 <- function(filename, index = NULL) {
 # make new project_key.csv tracking what to make dose response curves for
 write_key <- function(df, out_dir, build_name) {
   df %>%
-    # dplyr::filter(str_detect(pert_iname, pattern = fixed("|"), negate = F)) %>%
+    dplyr::filter(!pert_type %in% c("trt_poscon", "ctl_vehicle")) %>%
     dplyr::select(pert_iname, pert_id, pert_plate, pert_dose, any_of("x_project_id")) %>%
     dplyr::distinct() %>%
     splitstackshape::cSplit(splitCols = "pert_dose",
