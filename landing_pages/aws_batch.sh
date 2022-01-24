@@ -18,6 +18,10 @@ while test $# -gt 0; do
       shift
       project_name=$1
       ;;
+    -l| --val_link)
+      shift
+      val_link=$1
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -50,6 +54,7 @@ args=(
   -d "${data_dir}"
   -o "${out_dir}"
   -p "${project_name}"
+  -l "${val_link}"
 )
 
 Rscript /render_reports.R "${args[@]}"

@@ -2,6 +2,7 @@
 params:
   data_dir: ~/Desktop/mts018_validation/MTS018_VALIDATION_COMPOUNDS
   project_name: MTS018_VALIDATION_COMPOUNDS
+  val_link: ~/Desktop/mts018_validation/MTS018_VALIDATION_COMPOUNDS
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -134,6 +135,13 @@ People:
 For any questions please see our [FAQs](https://github.com/broadinstitute/prism_data_processing/blob/master/info/FAQs.md) or reach out to prism@broadinstitute.org.
 
 All code used to process this data, as well as further information about the data processing and FAQs, is available on [GitHub](https://github.com/broadinstitute/prism_data_processing).
+
+```{r validation, results='asis'}
+if (stringr::str_detect(params$project_name, coll("validation", ignore_case = T), negate = T)) {
+  cat("\n\n## Validation compound data \n\n")
+  cat(paste0("Data from validation compounds run in this screen can be found [here](", params$val_link, ").\n\n"))
+}
+```
 
 ## Reports and Downloads {.tabset .tabset-pills}
 
