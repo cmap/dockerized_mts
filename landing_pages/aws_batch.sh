@@ -40,7 +40,7 @@ then
     project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     data_dir="${data_dir}"/"${project,,}"/"${project^^}"
     val_link=$(find "${out_dir}" -type d -name "*validation_compounds" -execdir basename '{}' ';')
-    val_link=./"${val_link}"/index.html
+    val_link=../"${val_link}"/index.html
     out_dir="${out_dir}"/"${project,,}"
     project_name="${project^^}"
 fi
