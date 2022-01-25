@@ -39,11 +39,13 @@ then
     fi
     project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     data_dir="${data_dir}"/"${project,,}"/"${project^^}"
+    val_link=$(find "${out_dir}" -type d -name "*validation_compounds" -execdir basename '{}' ';')
+    val_link=./"${val_link}"/index.html
     out_dir="${out_dir}"/"${project,,}"
     project_name="${project^^}"
 fi
 
-echo "${data_dir}" "${out_dir}" "${project_name}"
+echo "${data_dir}" "${out_dir}" "${project_name}" "${val_link}"
 
 if [[ ! -d $out_dir ]]
 then
