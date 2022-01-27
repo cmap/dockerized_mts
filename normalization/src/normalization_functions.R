@@ -105,3 +105,30 @@ normalize <- function(df, barcodes) {
 
   return(normalized)
 }
+
+# fit scam to control barcode profiles and normalize other data
+normalize_base <- function(df, barcodes) {
+  normalized <- df %>%
+    dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::mutate(n = n()) %>%
+    dplyr::filter(n >= 200) %>%
+    dplyr::select(-n) %>%
+    # try with k=4 and 5 (to avoid hanging), try again with linear model
+    dplyr::mutate(logMFI_norm = tryCatch(
+      expr = {scam(y ~ s(x, bs = "micv"),
+                     data = tibble(
+                       y = rLMFI[rid %in% barcodes$rid],
+                       x = logMFI[rid %in% barcodes$rid])) %>%
+            predict(newdata = tibble(x = logMFI)) %>% as.numeric()},
+        error = function(e) {
+          lm(y ~ x,
+             data = tibble(
+               y = rLMFI[rid %in% barcodes$rid],
+               x = logMFI[rid %in% barcodes$rid])) %>%
+            predict(newdata = tibble(x = logMFI)) %>% as.numeric()}
+      )) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-logMFI)
+  
+  return(normalized)
+}

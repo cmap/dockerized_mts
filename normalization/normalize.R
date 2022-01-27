@@ -90,8 +90,9 @@ if(nrow(logMFI_base) > 0) {
     dplyr::distinct(rid, rLMFI)
 
   base_normalized <- logMFI_base %>%
+    dplyr::filter(is.finite(logMFI), logMFI != 0) %>%
     dplyr::left_join(logMFI_profile) %>%
-    normalize(., barcodes)
+    normalize_base(., barcodes)
 } else {
   base_normalized <- tibble()
 }
