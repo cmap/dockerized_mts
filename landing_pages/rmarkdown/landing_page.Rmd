@@ -109,9 +109,9 @@ I.  For each plate, we first normalize the logMFI ($\log_2$ mean fluorescence in
 
 II.  Each detection well contains 10 control barcodes in increasing abundances as spike-in controls. A monotonic smooth p-spline is fit for each control barcode detection well to normalize the abundance of each barcode to the corresponding value in the plate-wise median DMSO profiles. Next, all the logMFI values in the well are transformed through the inferred spline function to correct for amplification and detection artifacts.
 
-III.  Next, the separability between negative and positive control treatments is assessed. In particular, we use the error rate of the optimum simple threshold classifier between the control samples for each cell line and plate combination. Error rate is a measure of overlap of the two control sets and is defined as $$ER = \frac{FP + FN}{n}$$ where $FP$ is false positives, $FN$ is false negatives, and $n$ is the total number of controls. A threshold is set between the distributions of positive and negative control logMFI values (with everything below the threshold said to be positive and above said to be negative) such that this value is minimized. Additionally, we also filter based on the dynamic range of each cell line. Dynamic range is defined as $$DR = \mu_{-} - \mu_{+}$$ where $\mu_{+/-}$ stand for the median of the normalized logMFI values in positive/negative control samples.
+III.  Next, the separability between negative and positive control treatments is assessed. In particular, we use the error rate of the optimum simple threshold classifier between the control samples for each cell line and plate combination. Error rate is a measure of overlap of the two control sets and is defined as $$ER = \frac{FP + FN}{n}$$ where $FP$ is false positives, $FN$ is false negatives, and $n$ is the total number of controls. A threshold is set between the distributions of positive and negative control logMFI values (with everything below the threshold said to be positive and above said to be negative) such that this value is minimized. Additionally, we filter based on the dynamic range of each cell line. Dynamic range is defined as $$DR = \mu_{-} - \mu_{+}$$ where $\mu_{+/-}$ stand for the median of the normalized logMFI values in positive/negative control samples.
 
-III.  We filter out cell lines with error rate above $0.05$ and a dynamic range less than $-log2(0.3) \approx 1.74$ from the downstream analysis. Additionally, any cell line that has less than 2 passing replicates is also omitted for the sake of reproducibility. Finally, we compute viability by normalizing with respect to the median negative control for each plate. Log-fold-changes are computed as $$\text{log-viability} = \log_2\left({x} \right) - \log_2\left({\mu_{-}} \right)$$
+III.  We filter out cell lines with error rate above $0.05$ and a dynamic range less than $-log2(0.3) \approx 1.74$ from the downstream analysis. Any cell line that has less than 2 passing replicates is also omitted for the sake of reproducibility. Finally, we compute viability by normalizing with respect to the median negative control for each plate. Log-fold-changes are computed as $$\text{log-viability} = \log_2\left({x} \right) - \log_2\left({\mu_{-}} \right)$$
 where $\log_2\left({x} \right)$ is the corrected logMFI value in the treatment and $\log_2\left(\mu_{-} \right)$ is the median corrected logMFI in the negative control wells in the same plate.
 
 IV.  Log-viability scores are corrected for batch effects coming from pools and culture conditions using the `ComBat` algorithm as described in [Johnson et al.](https://www.ncbi.nlm.nih.gov/pubmed/16632515).
@@ -138,7 +138,7 @@ All code used to process this data, as well as further information about the dat
 
 ```{r validation, results='asis'}
 if (stringr::str_detect(params$project_name, coll("validation", ignore_case = T), negate = T)) {
-  cat("\n\n## Validation compound data \n\n")
+  cat("\n\n## Validation Compound Data \n\n")
   cat(paste0("Data from validation compounds run in this screen can be found [here](", params$val_link, ").\n\n"))
 }
 ```
