@@ -1,6 +1,6 @@
 # Normalization Module
 
-This module takes in mean fluorescence intensity (MFI) values in a matrix and produces long tables with logMFI and normalized logMFI values. The module also produces a compound key which tracks the compounds in the data set.
+This module takes in mean fluorescence intensity (MFI) values in a matrix and produces long tables with logMFI and normalized logMFI values (**note:** all logs are log base 2). The module also produces a compound key which tracks the compounds in the data set.
 
 ## Normalization overview
 
