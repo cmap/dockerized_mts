@@ -1,6 +1,6 @@
 # DRC Module
 
-This module fits dose-response curves to the viability values for each cell line. It requires the output of the normalization, QC, and LFC modules.
+This module fits dose-response curves to the viability values for each cell line. It requires the output of the LFC module.
 
 ## Dose-response overview
 
