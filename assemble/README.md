@@ -45,7 +45,7 @@ docker run \
 
 While running using Docker is the preferred method, it is possible to set up a conda environment with the required versions of python and other packages.
 
-More information can be found in the merino [Github Repository](https://github.com/cmap/merino)
+More information can be found in the [merino Github Repo](https://github.com/cmap/merino)
 
 
 
