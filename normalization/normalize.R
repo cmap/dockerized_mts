@@ -63,6 +63,8 @@ master_logMFI <- log2(raw_matrix) %>%
 barcodes <- master_logMFI %>%
   dplyr::filter(pool_id == "CTLBC")
 
+if (nrow(barcodes) == 0) stop("No control barcodes detected. Unable to normalize")
+
 # filter base plates
 logMFI_base <- master_logMFI %>%
   dplyr::filter(str_detect(prism_replicate, "BASE"))
