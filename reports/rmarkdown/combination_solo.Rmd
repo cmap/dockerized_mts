@@ -179,7 +179,7 @@ DT::datatable(compounds, options = list(dom = "t", ordering = FALSE),
 
 ## Overview
 
-This section contains QC information for the cell lines included in the assay as well as log-fold change and a link to the dose response data page. For more details on how each metric displayed here is calculated please refer to the `Data Processing` section above.
+This section log-fold change data and a link to the dose response data page. For more details on how each metric displayed here is calculated please refer to the `Data Processing` section on your landing page.
 
 ## Heatmap
 
@@ -300,11 +300,11 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
     dplyr::inner_join(m) %>%
     dplyr::filter(lineage != "") %>%
     dplyr::distinct()
-  
+
   p <- df %>%
     ggplot(aes(y = auc, x = reorder(lin_sub_abbreviation, auc, function(x) mean(x, na.rm = T)),
                color = added_doses)) +
-    geom_boxplot(outlier.alpha = 0) + 
+    geom_boxplot(outlier.alpha = 0) +
     geom_hline(aes(yintercept = m), linetype = "dashed") +
     geom_jitter() +
     facet_wrap(lineage ~ ., scales = "free_x") +
@@ -338,7 +338,7 @@ MUT_table <- disc_table %>%
 
 p_table <- MUT_table %>%
   dplyr::filter(q.value < 0.1, rank <= 500) %>%
-  dplyr::inner_join(n_lines %>% 
+  dplyr::inner_join(n_lines %>%
                       dplyr::filter(n_lines >= 5),
                     by = c("feature" = "mutation"))
 
@@ -354,7 +354,7 @@ if(nrow(p_table) > 0){
 
 DT::datatable(MUT_table %>%
                 dplyr::arrange(q.value, desc(abs(effect_size))) %>%
-                dplyr::inner_join(n_lines %>% 
+                dplyr::inner_join(n_lines %>%
                       dplyr::filter(n_lines >= 5),
                     by = c("feature" = "mutation")) %>%
                 dplyr::distinct(feature, n_lines,
@@ -379,28 +379,28 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
     dplyr::mutate(n = n()) %>%
     dplyr::ungroup() %>%
     dplyr::filter(n >= 5)
-  
+
   top_muts <- MUT_table %>%
     dplyr::inner_join(df %>% dplyr::distinct(varied_iname, added_compounds, added_doses, mutation, n),
                       by = c("feature" = "mutation")) %>%
     dplyr::filter(pert_dose == "log2.auc") %>%
     dplyr::arrange(q.value)
-  
+
   top_muts <- top_muts$feature %>% unique() %>% .[1:20]
-  
+
   df %<>%
     dplyr::filter(mutation %in% top_muts) %>%
     dplyr::inner_join(m)
-  
+
   p <- df %>%
     ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
                color = added_doses)) +
-    geom_boxplot(outlier.alpha = 0) + 
+    geom_boxplot(outlier.alpha = 0) +
     geom_vline(aes(xintercept = m, color = added_doses), linetype = "dashed") +
     geom_jitter() +
     theme(legend.position = "none") +
     labs(x = "AUC", y = "Mutation")
-  
+
   p
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")

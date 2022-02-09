@@ -163,7 +163,7 @@ DT::datatable(compounds, options = list(dom = "t", ordering = FALSE),
 
 ## Overview
 
-This section contains QC information for the cell lines included in the assay as well as log-fold change and a link to the dose response data page. For more details on how each metric displayed here is calculated please refer to the `Data Processing` section above.
+This section log-fold change data and a link to the dose response data page. For more details on how each metric displayed here is calculated please refer to the `Data Processing` section on your landing page.
 
 ## Heatmap
 
@@ -274,7 +274,7 @@ DT::datatable(lin_tab %>%
 
 ## Plots by lineage
 
-AUC of each cell line is 
+AUC of each cell line is
 
 ```{r, fig.height=14}
 if (!is.null(DRC)) {
@@ -283,11 +283,11 @@ if (!is.null(DRC)) {
     dplyr::inner_join(lineages, by = "ccle_name") %>%
     dplyr::filter(lineage != "") %>%
     dplyr::distinct()
-  
+
   p <- df %>%
     ggplot(aes(y = auc, x = reorder(lin_sub_abbreviation, auc, function(x) mean(x, na.rm = T)),
                color = lin_sub_abbreviation)) +
-    geom_boxplot(outlier.alpha = 0) + 
+    geom_boxplot(outlier.alpha = 0) +
     geom_hline(yintercept = m, linetype = "dashed") +
     geom_jitter() +
     facet_wrap(lineage ~ ., scales = "free_x") +
@@ -300,11 +300,11 @@ if (!is.null(DRC)) {
     dplyr::inner_join(lineages, by = "ccle_name") %>%
     dplyr::filter(lineage != "") %>%
     dplyr::distinct()
-  
+
   p <- df %>%
     ggplot(aes(y = LFC_cb, x = reorder(lin_sub_abbreviation, LFC_cb, function(x) mean(x, na.rm = T)),
                color = lin_sub_abbreviation)) +
-    geom_boxplot(outlier.alpha = 0) + 
+    geom_boxplot(outlier.alpha = 0) +
     geom_hline(yintercept = m, linetype = "dashed") +
     geom_jitter() +
     facet_wrap(lineage ~ ., scales = "free_x") +
@@ -338,7 +338,7 @@ MUT_table <- disc_table %>%
 
 p_table <- MUT_table %>%
   dplyr::filter(q.value < 0.1, rank <= 500) %>%
-  dplyr::inner_join(n_lines %>% 
+  dplyr::inner_join(n_lines %>%
                       dplyr::filter(n_lines >= 5),
                     by = c("feature" = "mutation"))
 
@@ -354,7 +354,7 @@ if(nrow(p_table) > 0){
 
 DT::datatable(MUT_table %>%
                 dplyr::arrange(q.value, desc(abs(effect_size))) %>%
-                dplyr::inner_join(n_lines %>% 
+                dplyr::inner_join(n_lines %>%
                       dplyr::filter(n_lines >= 5),
                     by = c("feature" = "mutation")) %>%
                 dplyr::distinct(feature, n_lines,
@@ -377,27 +377,27 @@ if (!is.null(DRC)) {
     dplyr::mutate(n = n()) %>%
     dplyr::ungroup() %>%
     dplyr::filter(n >= 5)
-  
+
   top_muts <- MUT_table %>%
     dplyr::inner_join(df %>% dplyr::distinct(mutation, n),
                       by = c("feature" = "mutation")) %>%
     dplyr::filter(pert_dose == "log2.auc") %>%
     dplyr::arrange(q.value)
-  
+
   top_muts <- top_muts$feature[1:20]
-  
+
   df %<>%
     dplyr::filter(mutation %in% top_muts)
-  
+
   p <- df %>%
     ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
                color = mutation)) +
-    geom_boxplot(outlier.alpha = 0) + 
+    geom_boxplot(outlier.alpha = 0) +
     geom_vline(xintercept = m, linetype = "dashed") +
     geom_jitter() +
     theme(legend.position = "none") +
     labs(x = "AUC", y = "Mutation")
-  
+
   p
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
@@ -407,26 +407,26 @@ if (!is.null(DRC)) {
     dplyr::mutate(n = n()) %>%
     dplyr::ungroup() %>%
     dplyr::filter(n >= 5)
-  
+
   top_muts <- MUT_table %>%
     dplyr::inner_join(df %>% dplyr::distinct(mutation, n),
                       by = c("feature" = "mutation")) %>%
     dplyr::arrange(q.value)
-  
+
   top_muts <- top_muts$feature[1:20]
-  
+
   df %<>%
     dplyr::filter(mutation %in% top_muts)
-  
+
   p <- df %>%
     ggplot(aes(x = LFC_cb, y = reorder(mutation, LFC_cb, function(x) -mean(x, na.rm = T)),
                color = mutation)) +
-    geom_boxplot(outlier.alpha = 0) + 
+    geom_boxplot(outlier.alpha = 0) +
     geom_vline(xintercept = m, linetype = "dashed") +
     geom_jitter() +
     theme(legend.position = "none") +
     labs(x = "Log-fold change", y = "Mutation")
-  
+
   p
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
@@ -446,10 +446,10 @@ for (feat in corr_feats) {
   cat(sprintf('\n\n## %s \n\n', feature_full[feat], '\n\n'))
   df <- corr_table %>%
     dplyr::filter(feature_type == feat)
-  
+
   plot_df <- df %>%
     dplyr::filter(q.val < 0.1, rank <= 500)
-  
+
   if (nrow(plot_df) > 0) {
     p <- plot_df %>%
       ggplot() + geom_point(aes(x = coef, y = -log10(q.val),
@@ -458,10 +458,10 @@ for (feat in corr_feats) {
       labs(x = "Correlation", y = "-log10(q)", color = "Dose") +
       geom_vline(aes(xintercept = 0), lty = 2, lwd =.5)
     p <- plotly::ggplotly(p)
-    
+
     cat(htmltools::knit_print.shiny.tag(p))
   }
-  
+
   dt <- DT::datatable(df %>%
                         dplyr::filter(q.val < 0.1 || rank <= 100) %>%
                         dplyr::select(feature, coef, q.val, pert_iname, pert_dose) %>%
@@ -471,7 +471,7 @@ for (feat in corr_feats) {
                       filter = "top", rownames = F, options = list(dom = "tp"),
                       colnames = c("Feature", "Correlation", "q value", "Compound", "Dose")
   )
-  
+
   cat(htmltools::knit_print.shiny.tag(dt))
 }
 ```

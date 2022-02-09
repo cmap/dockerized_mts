@@ -100,7 +100,7 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 4. Dose-response parameters for the compound, available: `Compound Data > Dose-response curve data`, and dose-response curves for each treatment/cell line in `Dose-Response Curves`. **Please note:** we are sometimes unable to fit a dose response curve for some cell lines so they will not be included in this file.
 5. Biomarker and correlation analysis using omics and genetic dependency data from [depmap.org](https://depmap.org/portal/download/all/). Biomarkers are identified by selecting the genomic features that best explain the observed profile of sensitivity in the PRISM cell line panel. Univariate analysis for continuous and discrete variables at `Biomarker Data > Continuous associations` and `Discrete associations` respectively. Multivariate analysis available at `Biomarker Data > Random forest features` and with model level statistics at `Biomarker Data > Random forest model statistics`.
 
-Explanations of the columns within each file are available on [GitHub](https://github.com/broadinstitute/prism_data_processing/blob/master/info/ColumnHeaders.md)
+Explanations of the columns within each file are available on [GitHub](https://github.com/cmap/dockerized_mts/blob/master/info/ColumnHeaders.md)
 
 
 ### Data Processing
@@ -132,9 +132,9 @@ People:
 * Brienne Engel - Alliance Manager
 * Andrew Boghossian - Associate Computational Biologist II
 
-For any questions please see our [FAQs](https://github.com/broadinstitute/prism_data_processing/blob/master/info/FAQs.md) or reach out to prism@broadinstitute.org.
+For any questions please see our [FAQs](https://github.com/cmap/dockerized_mts/blob/master/info/FAQs.md) or reach out to prism@broadinstitute.org.
 
-All code used to process this data, as well as further information about the data processing and FAQs, is available on [GitHub](https://github.com/broadinstitute/prism_data_processing).
+All code used to process this data, as well as further information about the data processing and FAQs, is available on [GitHub](https://github.com/cmap/dockerized_mts).
 
 ```{r validation, results='asis'}
 if (stringr::str_detect(params$project_name, coll("validation", ignore_case = T), negate = T)) {
