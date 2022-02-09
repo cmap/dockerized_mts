@@ -70,7 +70,7 @@ def make_compound_slice(data, out, project, pert_plate, pert, outfile_prefix):
 def read_build_file(search_pattern, args):
     fstr = os.path.join(args.build_path, search_pattern)
     fmatch = glob.glob(fstr)
-    assert (len(fmatch) == 1) , "Too many files found"
+    assert (len(fmatch) == 1) , "Too many files found: {}".format(fmatch)
     return pd.read_csv(fmatch[0])
 
 def main(args):
