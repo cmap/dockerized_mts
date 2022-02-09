@@ -79,7 +79,7 @@ logMFI_control_medians <- control_medians(master_logMFI %>%
                                                           logMFI != 0))
 
 # fit curve to controls and predict test conditions
-logMFI_normalized <- normalize(logMFI_control_medians, barcodes)
+logMFI_normalized <- normalize(logMFI_control_medians, barcodes, nrow(cell_info) / 2)
 
 # if there is an early measurement
 if(nrow(logMFI_base) > 0) {
@@ -94,7 +94,7 @@ if(nrow(logMFI_base) > 0) {
   base_normalized <- logMFI_base %>%
     dplyr::filter(is.finite(logMFI), logMFI != 0) %>%
     dplyr::left_join(logMFI_profile) %>%
-    normalize_base(., barcodes)
+    normalize_base(., barcodes, nrow(cell_info) / 2)
 } else {
   base_normalized <- tibble()
 }

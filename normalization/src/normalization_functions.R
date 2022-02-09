@@ -72,11 +72,11 @@ control_medians <- function(df) {
 }
 
 # fit scam to control barcode profiles and normalize other data
-normalize <- function(df, barcodes) {
+normalize <- function(df, barcodes, threshold) {
   normalized <- df %>%
     dplyr::group_by(prism_replicate, pert_well) %>%
     dplyr::mutate(n = n()) %>%
-    dplyr::filter(n >= 200) %>%
+    dplyr::filter(n >= threshold) %>%
     dplyr::select(-n) %>%
     # try with k=4 and 5 (to avoid hanging), try again with linear model
     dplyr::mutate(logMFI_norm = tryCatch(
@@ -107,11 +107,11 @@ normalize <- function(df, barcodes) {
 }
 
 # fit scam to control barcode profiles and normalize other data
-normalize_base <- function(df, barcodes) {
+normalize_base <- function(df, barcodes, threshold) {
   normalized <- df %>%
     dplyr::group_by(prism_replicate, pert_well) %>%
     dplyr::mutate(n = n()) %>%
-    dplyr::filter(n >= 200) %>%
+    dplyr::filter(n >= threshold) %>%
     dplyr::select(-n) %>%
     # try with k=4 and 5 (to avoid hanging), try again with linear model
     dplyr::mutate(logMFI_norm = tryCatch(
