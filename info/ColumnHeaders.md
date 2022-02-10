@@ -161,8 +161,8 @@ Bolded columns are especially important while unbolded columns are primarily for
 |:-------|:------------|
 | MSE | Mean squared error of the model |
 | MSE.se | Standard error of the MSE |
-| PearsonScore | Pearson score of the model |
-| R2 | r-squared of the model |
+| **PearsonScore** | Pearson score of the model |
+| **R2** | r-squared of the model |
 | **model** | Dataset used for features |
 | **pert_dose** | Perturbation dose |
 | **pert_id** | Perturbation ID |
