@@ -68,6 +68,7 @@ then
     PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     BUILD_DIR="${BUILD_DIR}"/"${PROJECT,,}"
     PERT_PLATE=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    PROJECT=${PROJECT^^} #enforcing uppercase
 fi
 
 if [ ! -d $BUILD_DIR ]
