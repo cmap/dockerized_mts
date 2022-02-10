@@ -171,7 +171,7 @@ def main(args):
             df.to_csv(out_path, index=False)
 
 if __name__ == "__main__":
-    args = build_parser().parse_args(sys.argv[1:])\
+    args = build_parser().parse_args(sys.argv[1:])
     level = (logging.DEBUG if args.verbose else logging.INFO)
     logging.basicConfig(level=level)
     logger.info("args:  {}".format(args))
