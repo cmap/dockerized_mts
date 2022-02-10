@@ -1,0 +1,506 @@
+---
+params:
+  data_dir: ~/Desktop/test_combo_reports
+  comp: ""
+  qc_path: ""
+output:
+  html_document:
+    toc: false
+    theme: paper
+    highlight: kate
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10)
+
+# packages
+library(tidyverse)
+library(magrittr)
+library(ggthemes)
+library(plotly)
+library(crosstalk)
+library(htmltools)
+library(DT)
+library(heatmaply)
+library(viridis)
+library(splitstackshape)
+
+# theme
+theme_set(theme_bw())
+
+# push NAs to bottom in tables
+options(DT.TOJSON_ARGS = list(na = "string"))
+```
+
+```{r load data, include=FALSE}
+# file paths
+lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
+
+# read in LFC
+if (length(lfc_path) == 1) {
+  LFC <- data.table::fread(lfc_path)
+  combo_lfc <- LFC
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+# read in DRC if available
+if (length(drc_path) == 1) {
+  DRC <- data.table::fread(drc_path)
+  combo_drc <- DRC
+} else {
+  DRC <- NULL
+}
+
+# read in QC table
+qc_table <- data.table::fread(params$qc_path) %>%
+  dplyr::filter(pert_plate %in% LFC$pert_plate %>% unique())
+
+pert_iname <- toupper(dplyr::distinct(LFC, pert_iname)$pert_iname)
+
+# biomarkers
+corr_path <- list.files(params$data_dir, "continuous_associations", full.names = T)
+if (length(corr_path) == 1) {
+  correlations <- data.table::fread(corr_path) %>%
+    dplyr::filter(q.val <= 0.1, feature_type %in% c("GE", "XPR", "REP")) %>%
+    dplyr::mutate(feature = word(feature, 2, -1, sep = fixed("_")))
+}
+model_path <- list.files(params$data_dir, "model_table", full.names = T)
+if (length(model_path) == 1) model_table <- data.table::fread(model_path)
+rf_path <- list.files(params$data_dir, "RF_table", full.names = T)
+if (length(rf_path) == 1) rf_table <- data.table::fread(rf_path)
+
+# constituent compound info
+constituents <- stringr::str_split(params$comp, pattern = fixed("_"))[[1]]
+plate_dir <- dirname(params$data_dir)
+
+# read in constitutent compound data
+for (const in constituents) {
+  const_path <- file.path(plate_dir, const)
+
+  # DRC and LFC
+  const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
+  const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
+  if (length(const_lfc_path) == 1) {
+    LFC %<>% dplyr::bind_rows(
+      data.table::fread(const_lfc_path) %>% dplyr::mutate(pert_dose = as.character(pert_dose))
+    )
+  }
+  if (length(const_drc_path) == 1) {
+    DRC %<>% dplyr::bind_rows(
+      data.table::fread(const_drc_path) %>% dplyr::mutate(ec50 = as.numeric(ec50))
+    )
+  }
+
+  # correlations and random forest
+  const_corr_path <- list.files(const_path, "continuous_associations", full.names = T)
+  const_model_path <- list.files(const_path, "model_table", full.names = T)
+  const_rf_path <- list.files(const_path, "RF_table", full.names = T)
+
+  if (length(const_corr_path) == 1) {
+    correlations %<>% dplyr::bind_rows(
+      data.table::fread(const_corr_path) %>% dplyr::mutate(pert_dose = as.character(pert_dose))
+    )
+  }
+  if (length(const_model_path) == 1) {
+    model_table %<>% dplyr::bind_rows(
+      data.table::fread(const_model_path) %>% dplyr::mutate(pert_dose = as.character(pert_dose))
+    )
+  }
+  if (length(const_rf_path) == 1) {
+    rf_table %<>% dplyr::bind_rows(
+      data.table::fread(const_rf_path) %>% dplyr::mutate(pert_dose = as.character(pert_dose))
+    )
+  }
+}
+```
+
+---
+title:  "`r paste(pert_iname, 'combination report')`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+# Overview
+
+This is the combination report for the combination `r pert_iname`. The doses at which this combination was run, as well as the doses of each single agent, are outlined in the table below
+
+```{r overview}
+# split to show components of compounds
+summary_tab <- LFC %>%
+  dplyr::distinct(pert_iname, pert_dose, pert_idose) %>%
+  dplyr::rename(Compound = pert_iname, Dose = pert_dose, "Dose with units" = pert_idose) %>%
+  splitstackshape::cSplit(splitCols = c("Compound", "Dose", "Dose with units"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = T) %>%
+  dplyr::arrange(Compound_2, Compound_1, Dose_1)
+
+colnames(summary_tab) <- stringr::str_replace_all(colnames(summary_tab), "_", " ")
+
+DT::datatable(summary_tab, style = "bootstrap",
+              options = list(dom = "t", ordering = TRUE,
+                             lengthChange = FALSE, scrollY = "300px", paging = FALSE))
+```
+
+# Sensitivity comparison {.tabset .tabset-pills}
+
+## Overview
+
+This section compares the activity of combination with constituents based on log-fold change and AUC.
+
+The first plot shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Large positive values indicate synergy while large negative values indicate antagonism. Significance metrics, $q$ values, are obtained by normalizing the synergy score to the variance of the cell line abundance in DMSO, calculating a $p$ value and correcting it for multiple hypothesis testing.
+
+The second plot shows the AUC of the combination versus the AUC of each constituent for each cell line. Points that fall below the diagonal are more sensitive to the combination and points that fall above the diagonal are more sensitive to the constituent. Only points with AUC values in both conditions are shown.
+
+## Synergy plots
+
+```{r synergy scoring}
+# non-combination values
+solo_lfc <- dplyr::anti_join(LFC, combo_lfc)
+
+# split combination perts
+spread_lfc <- combo_lfc %>%
+  dplyr::inner_join(qc_table) %>%  # QC info
+  dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
+  splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = F, type.convert = T)
+
+# add columns for constituents to spread table
+for (i in 1:length(constituents)) {
+  comp <- constituents[[i]]
+  df <- solo_lfc %>%
+    dplyr::filter(pert_id == comp) %>%
+    dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
+    dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
+
+  new_cols <- paste(colnames(df), i, sep = "_")
+  colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
+
+  spread_lfc %<>% dplyr::left_join(df)
+}
+
+spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+spread_lfc %<>%
+  dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
+  dplyr::mutate(p = 2*pnorm(abs(Z), lower.tail = F)) %>%
+  dplyr::mutate(q = p.adjust(p, method = "BH")) %>%
+  dplyr::arrange(pert_dose_1)
+
+combos <- spread_lfc %>% dplyr::distinct(pert_dose)
+
+plots <- list()
+for (i in 1:nrow(combos)) {
+  synergy_plot <- highlight_key(spread_lfc %>% dplyr::inner_join(combos[i,]),
+                                ~ccle_name, group = "Synergy scores")
+  p <- plot_ly(synergy_plot) %>%
+    add_trace(x = ~S, y = ~-log10(q), type = "scatter", mode = "markers",
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.5) %>%
+    layout(xaxis = list(title = "Synergy score"),
+           yaxis = list(title = "-log10(q-value)"),
+           annotations = list(x = 0.5, y = 1,
+                              text = combos$pert_dose[[i]],
+                              align = "center", showarrow = F, xref="paper", yref="paper",
+                              xanchor = "center", yanchor = "top"),
+           hovermode = "closest",
+           showlegend = F) %>%
+    highlight(on = "plotly_click", off = "plotly_doubleclick",
+              dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+              defaultValues = "", selected = attrs_selected(opacity = 1))
+  plots[[i]] <- p
+}
+subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = T, shareY = T) %>%
+  layout(title = pert_iname)
+```
+
+## AUC plots
+
+```{r auc}
+solo_drc <- dplyr::anti_join(DRC, combo_drc)
+solo_comps <- solo_drc$varied_iname %>% unique()
+
+plots <- list()
+for (i in 1:length(solo_comps)) {
+  comp <- solo_comps[[i]]
+  df <- solo_drc %>%
+    dplyr::filter(varied_iname == comp) %>%
+    dplyr::distinct(auc, ccle_name, culture) %>%
+    dplyr::rename(solo_auc = auc)
+
+  auc_plot <- highlight_key(combo_drc %>% dplyr::inner_join(df),
+                            ~ccle_name, group = "Synergy scores")
+  p <- plot_ly(auc_plot) %>%
+    add_trace(x = ~auc, y = ~solo_auc, color = ~as.character(added_doses), type = "scatter", mode = "markers",
+              hoverinfo = "text", text = ~ccle_name,
+              hovertemplate = "%{text} <br> %{xaxis.title.text}: %{x} <br> %{yaxis.title.text}: %{y} <extra></extra>",
+              opacity = 0.5) %>%
+    layout(xaxis = list(title = paste(pert_iname, "AUC")),
+           yaxis = list(title = paste(comp, "AUC")),
+           hovermode = "closest",
+           showlegend = T) %>%
+    highlight(on = "plotly_click", off = "plotly_doubleclick",
+              dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+              defaultValues = "", selected = attrs_selected(opacity = 1))
+  plots[[i]] <- p
+}
+subplot(plots, nrows = max(1, ceiling(length(plots)/3)), shareX = T, shareY = T)
+```
+
+# Continuous associations {.tabset .tabset-pills}
+
+## Overview
+
+Results from correlation with various DepMap data sets. For simplicity only correlations with AUC or a single anchor dose are visualized. To highlight a feature either click on a point or select a row from the table below the plot. Selecting a feature will highlight it in every plot in which it appears. Only features with a $q$ value less than $0.1$ and in the top 500 features will be visualized. If no plot appears for a particular constituent or the combination then there were no features meeting threshold for that case.
+
+```{r biomarker pre, include=F}
+single_dose <- LFC %>%
+  dplyr::group_by(pert_iname) %>%
+  dplyr::summarise(n_doses = n_distinct(pert_dose), .groups = "drop") %>%
+  dplyr::filter(n_doses == 1) %>% .$pert_iname
+
+sub_correlations <- correlations %>%
+  dplyr::filter(pert_dose == "log2.auc" | pert_iname %in% single_dose,
+                is.finite(coef), is.finite(q.val),
+                q.val < 0.1, rank <= 500) %>%
+  dplyr::mutate(added_doses = ifelse(is.na(added_doses), "None", added_doses),
+                added_compounds = ifelse(is.na(added_compounds), "None", added_compounds))
+sub_models <- model_table %>%
+  dplyr::filter(pert_dose == "log2.auc" | pert_iname %in% single_dose) %>%
+  dplyr::mutate(added_doses = ifelse(is.na(added_doses), "None", added_doses),
+                added_compounds = ifelse(is.na(added_compounds), "None", added_compounds))
+sub_rf <- rf_table %>%
+  dplyr::filter(pert_dose == "log2.auc" | pert_iname %in% single_dose) %>%
+  dplyr::mutate(added_doses = ifelse(is.na(added_doses), "None", added_doses),
+                added_compounds = ifelse(is.na(added_compounds), "None", added_compounds))
+```
+
+## Gene expression {.tabset .tabset-fade}
+
+### Plots
+
+```{r gene expression}
+features_ge <- sub_correlations %>%
+  dplyr::filter(feature_type == "GE")
+
+combos <- features_ge %>% dplyr::distinct(pert_iname, added_compounds)
+
+plots <- list()
+for (i in 1:nrow(combos)) {
+  volcano_combo <- highlight_key(features_ge %>% dplyr::inner_join(combos[i,]),
+                                 ~feature, group = "GE correlations")
+  p <- plot_ly(volcano_combo) %>%
+    add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
+              hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
+              showlegend = T) %>%
+    layout(xaxis = list(title = "Correlation coefficient"),
+           yaxis = list(title = "-log10(q-value)"), hovermode = "closest",
+           annotations = list(x = 0.5, y = 1,
+                              text = paste(combos[i, "pert_iname"], "+", combos[i, "added_compounds"]),
+                              align = "center", showarrow = F, xref="paper", yref="paper",
+                              xanchor = "center", yanchor = "top")) %>%
+    highlight(on = "plotly_click", off = "plotly_doubleclick",
+              dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+              opacityDim = 1, defaultValues = "",
+              selected = attrs_selected(opacity = 1))
+  plots[[i]] <- p
+}
+features_combo <- features_ge %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+features_combo_dt <- highlight_key(features_combo, ~feature, group = "GE correlations")
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
+                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
+subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
+dt
+```
+
+### Heatmap
+
+Rank of gene expression features that appear in the top 10 of one of the conditions. `NA` value indicates a rank below 100 for that feature in that condition.
+
+```{r expression heatmap, fig.height=5}
+top_feats <- features_ge %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
+top_tab <- features_ge %>%
+  dplyr::filter(feature %in% top_feats) %>%
+  reshape2::acast(pert_iname + added_compounds + added_doses ~ feature, value.var = "rank", fun.aggregate = min)
+top_tab[top_tab > 100] <- NA
+top_tab <- top_tab[, order(apply(top_tab, 2, function(x) mean(x, na.rm = T)))]
+if (is.null(dim(top_tab))) {
+  print("Only one condition with relevant feaatures, no heatmap to display")
+} else {
+  heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
+                       key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
+}
+```
+
+## CRISPR dependency {.tabset .tabset-fade}
+
+### Plots
+
+To highlight a gene either click on a point or select a row from the table below. Selecting a gene will highlight it in every plot in which it appears.
+
+```{r crispr}
+features_xpr <- sub_correlations %>%
+  dplyr::filter(feature_type == "XPR")
+
+combos <- features_xpr %>% dplyr::distinct(pert_iname, added_compounds)
+
+plots <- list()
+for (i in 1:nrow(combos)) {
+  volcano_combo <- highlight_key(features_xpr %>% dplyr::inner_join(combos[i,]),
+                                 ~feature, group = "XPR correlations")
+  p <- plot_ly(volcano_combo) %>%
+    add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
+              hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
+              showlegend = T) %>%
+    layout(xaxis = list(title = "Correlation coefficient"),
+           yaxis = list(title = "-log10(q-value)"), hovermode = "closest",
+           annotations = list(x = 0.5, y = 1,
+                              text = paste(combos[i, "pert_iname"], "+", combos[i, "added_compounds"]),
+                              align = "center", showarrow = F, xref="paper", yref="paper",
+                              xanchor = "center", yanchor = "top")) %>%
+    highlight(on = "plotly_click", off = "plotly_doubleclick",
+              dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+              opacityDim = 1, defaultValues = "",
+              selected = attrs_selected(opacity = 1))
+  plots[[i]] <- p
+}
+features_combo <- features_xpr %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+features_combo_dt <- highlight_key(features_combo, ~feature, group = "XPR correlations")
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
+                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
+subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
+dt
+```
+
+### Heatmap
+
+Rank of CRISPR dependency features that appear in the top 10 of one of the conditions. `NA` value indicates a rank below 100 for that feature in that condition.
+
+```{r crispr heatmap, fig.height=5}
+top_feats <- features_xpr %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
+top_tab <- features_xpr %>%
+  dplyr::filter(feature %in% top_feats) %>%
+  reshape2::acast(pert_iname + added_compounds + added_doses ~ feature, value.var = "rank", fun.aggregate = min)
+top_tab[top_tab > 100] <- NA
+top_tab <- top_tab[, order(apply(top_tab, 2, function(x) mean(x, na.rm = T)))]
+if (is.null(dim(top_tab))) {
+  print("Only one condition with relevant feaatures, no heatmap to display")
+} else {
+  heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
+                       key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
+}
+```
+
+## Repurposing compounds {.tabset .tabset-fade}
+
+### Plots
+
+To highlight a compound either click on a point or select a row from the table below. Selecting a compound will highlight it in every plot in which it appears.
+
+```{r rep}
+features_rep <- sub_correlations %>%
+  dplyr::filter(feature_type == "REP")
+
+combos <- features_rep %>% dplyr::distinct(pert_iname, added_compounds)
+
+plots <- list()
+for (i in 1:nrow(combos)) {
+  volcano_combo <- highlight_key(features_rep %>% dplyr::inner_join(combos[i,]),
+                                 ~feature, group = "REP correlations")
+  p <- plot_ly(volcano_combo) %>%
+    add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
+              hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
+              showlegend = T) %>%
+    layout(xaxis = list(title = "Correlation coefficient"),
+           yaxis = list(title = "-log10(q-value)"), hovermode = "closest",
+           annotations = list(x = 0.5, y = 1,
+                              text = paste(combos[i, "pert_iname"], "+", combos[i, "added_compounds"]),
+                              align = "center", showarrow = F, xref="paper", yref="paper",
+                              xanchor = "center", yanchor = "top")) %>%
+    highlight(on = "plotly_click", off = "plotly_doubleclick",
+              dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+              opacityDim = 1, defaultValues = "",
+              selected = attrs_selected(opacity = 1))
+  plots[[i]] <- p
+}
+features_combo <- features_rep %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+features_combo_dt <- highlight_key(features_combo, ~feature, group = "REP correlations")
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
+                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
+subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
+dt
+```
+
+### Heatmap
+
+Rank of repurposing features that appear in the top 10 of one of the conditions. `NA` value indicates a rank below 100 for that feature in that condition.
+
+```{r rep heatmap, fig.height=5}
+top_feats <- features_rep %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
+top_tab <- features_rep %>%
+  dplyr::filter(feature %in% top_feats) %>%
+  reshape2::acast(pert_iname + added_compounds + added_doses ~ feature, value.var = "rank", fun.aggregate = min)
+top_tab[top_tab > 100] <- NA
+top_tab <- top_tab[, order(apply(top_tab, 2, function(x) mean(x, na.rm = T)))]
+if (is.null(dim(top_tab))) {
+  print("Only one condition with relevant feaatures, no heatmap to display")
+} else {
+  heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
+                       key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
+}
+```
+
+# Random forest models {.tabset .tabset-pills}
+
+## Overview
+
+Results from random forests fit to predict response based on multi-omics datasets. For simplicity only models predicting AUC or a single anchor dose are visualized.. For more information on how random forests are fit see a standard PRISM report.
+
+## Results
+
+These plots show the accuracy of predictive models (left) and the features used ranked by importance in each model (right).
+
+``` {r multi ccle, fig.height=8}
+p1 <- sub_models %>%
+  dplyr::mutate(condition = paste(pert_iname, added_compounds, added_doses)) %>%
+  plot_ly() %>%
+  add_trace(x = ~model, y = ~R2, color = ~condition,
+            type = "bar", hoverinfo = "text", text = ~R2) %>%
+  layout(showlegend = FALSE, xaxis = list(title = "Model"))
+p2 <- sub_rf %>%
+  dplyr::mutate(condition = paste(pert_iname, added_compounds, added_doses)) %>%
+  plot_ly() %>%
+  add_trace(x = ~rank, y = ~RF.imp.mean, color = ~condition, symbol = ~model,
+            type = "scatter", mode = "markers",
+            hoverinfo = "text", text = ~feature) %>%
+  layout(xaxis = list(type = "log", title = "Rank"),
+         yaxis = list(title = "Feature importance"))
+
+df <- sub_models %>% dplyr::inner_join(sub_rf) %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore, feature, RF.imp.mean)
+
+dt <- DT::datatable(df, style="bootstrap", width="100%",
+                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Model", "R2", "Pearson Score", "Feature", "Feature Importance"))
+
+subplot(style(p1, showlegend = FALSE), p2, widths = c(0.2, 0.8),
+        titleX = T, titleY = T, margin = 0.05)
+dt
+```

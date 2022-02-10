@@ -5,58 +5,67 @@
 suppressMessages(source("./src/qc_functions.R"))
 
 #---- Read arguments ----
-script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 2) {
-  stop("Please supply path to data and output directory",
-       call. = FALSE)
-}
-base_dir <- script_args[1]  # input directory
-out_dir <- script_args[2]  # output directory
+# initialize parser
+parser <- ArgumentParser()
+# specify our desired options
+parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
+parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
+parser$add_argument("-n", "--name", default="", help = "Build name. Default is none")
+
+# get command line options, if help option encountered print help and exit
+args <- parser$parse_args()
+
+base_dir <- args$base_dir
+out_dir <- args$out
+build_name <- args$name
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
-path_data <- paste0(base_dir, "/logMFI_NORMALIZED.csv")
+path_data <- paste0(base_dir, "/logMFI.csv")
 
 #---- Load the data ----
 print("Loading data")
 
-# read in normalized logMFI data
-logMFI_normalized <- data.table::fread(path_data)
+logMFI_files <- list.files(base_dir, pattern = "LEVEL3_LMFI", full.names = T)
+if (length(logMFI_files) == 1) {
+  logMFI_normalized <- data.table::fread(logMFI_files[[1]])
+} else {
+  stop(paste("There are", length(logMFI_files), "level 3 tables in this directory. Please ensure there is one and try again."),
+       call. = FALSE)
+}
 
 #---- Calculate QC metrics ----
 print("Calculating SSMDs")
 
 # calculate SSMD and NNMD (allow for no QC)
-SSMD_TABLE <- calc_ssmd(logMFI_normalized %>% dplyr::filter(pool_id != "CTLBC"))
-if (any(is.na(SSMD_TABLE$ssmd))) {
+qc_table <- calc_ssmd(logMFI_normalized %>% dplyr::filter(pool_id != "CTLBC"))
+if (any(is.na(qc_table$ssmd))) {
   message("Unable to calculate some QC metrics: control condition(s) may be missing")
 }
 
 # if there are positive controls
-if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
+if ("trt_poscon_md" %in% colnames(qc_table)) {
 
   # calculate error rate of normalized table (based on threshold classifier)
   print("Calculating error rates")
   error_table <- calc_er(logMFI_normalized)
 
   # join with SSMD table
-  SSMD_TABLE %<>%
-    dplyr::left_join(error_table, by = c("prism_replicate", "ccle_name", "rid", "culture")) %>%
-    dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1,
-                                                 sep = stringr::fixed("_")),
-                  dr = ctl_vehicle_md - trt_poscon_md,
+  qc_table %<>%
+    dplyr::left_join(error_table, by = c("prism_replicate", "pert_plate", "ccle_name", "rid", "culture")) %>%
+    dplyr::mutate(dr = ctl_vehicle_md - trt_poscon_md,
                   pass = error_rate <= 0.05 & dr > -log2(0.3)) %>%
-    dplyr::group_by(rid, ccle_name, culture, compound_plate) %>%
+    dplyr::group_by(rid, ccle_name, culture, pert_plate) %>%
     dplyr::mutate(pass = pass & sum(pass, na.rm = T) / n_distinct(prism_replicate) > 0.5) %>%
     dplyr::ungroup()
 
 } else {
   # add empty columns (so reports don't break)
-  SSMD_TABLE %<>% dplyr::mutate(trt_poscon_md = NA,
+  qc_table %<>% dplyr::mutate(trt_poscon_md = NA,
                                 trt_poscon_mad = NA,
                                 error_rate = NA,
-                                compound_plate = stringr::word(prism_replicate, 1,
+                                pert_plate = stringr::word(prism_replicate, 1,
                                                                sep = stringr::fixed("_")),
                                 dr = NA,
                                 pass = NA)
@@ -64,4 +73,4 @@ if ("trt_poscon_md" %in% colnames(SSMD_TABLE)) {
 
 #---- Write data ----
 # Write QC table
-readr::write_csv(SSMD_TABLE, paste0(out_dir, "/SSMD_TABLE.csv"))
+readr::write_csv(qc_table, paste0(out_dir, "/", build_name, "_QC_TABLE.csv"))

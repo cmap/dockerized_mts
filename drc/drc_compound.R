@@ -4,199 +4,163 @@
 suppressMessages(source("./src/drc_functions.R"))
 
 #---- Read arguments ----
-script_args <- commandArgs(trailingOnly = TRUE)
-if (length(script_args) != 7) {
-  stop("Please supply necessary arguments",
-       call. = FALSE)
+
+parser <- ArgumentParser()
+# specify our desired options
+parser$add_argument("-i", "--input_dir", default="", help="Input directory with one level 4 LFC file")
+parser$add_argument("-o", "--out", default="", help="Output directory")
+
+# get command line options, if help option encountered print help and exit
+args <- parser$parse_args()
+
+lfc_dir <- args$input_dir
+out_dir <- args$out
+
+# find level 4 file and return error if none or more than one
+lfc_files <- list.files(lfc_dir,pattern=("LEVEL4_LFC_.*\\.csv$"), full.names=T)
+if (length(lfc_files) != 1) {
+    stop(paste("There are", length(lfc_files), "LFC files in the supplied directory. Please try again with 1."),
+    call. = FALSE)
+} else {
+  lfc_file <- lfc_files[[1]]
 }
-base_dir <- script_args[1]
-out_dir <- script_args[2]
-project_name <- script_args[3]
-compound <- script_args[4]
-plate <- script_args[5]
-n_plates <- as.numeric(script_args[6])
-calc_gr <- as.numeric(script_args[7])
-
-safe_name <- stringr::str_replace_all(project_name, "[[:punct:]\\s]+", "_")
-write_name <- stringr::str_replace_all(compound, "[[:punct:]\\s]+", "-")
-
-if (n_plates > 1) {
-  write_name <- paste(write_name, plate, sep = stringr::fixed("_"))
-}
-
-project_dir <- paste(out_dir, safe_name, sep = fixed("/"))
-comp_dir <- paste(project_dir, write_name, sep = fixed("/"))
-if (!dir.exists(comp_dir)) {dir.create(comp_dir, recursive = T)}
 
 #---- Load the data ----
 print("Loading data and pre-processing")
-LFC_TABLE <- data.table::fread(paste0(base_dir, "/LFC_TABLE.csv")) %>%
-  dplyr::filter(pert_name == compound,
-                project_id == project_name)
-if (plate != "NA") {
-  LFC_TABLE %<>% dplyr::filter(compound_plate == plate)
+LFC_TABLE <- data.table::fread(lfc_file)
+if ("LFC_cb" %in% colnames(LFC_TABLE)) {
+  LFC_column <- "LFC_cb"
+} else {
+  LFC_column <- "LFC"
 }
 
-# write LFC and LFC collapsed table into compound directory
-readr::write_csv(LFC_TABLE, paste0(comp_dir, "/LFC_TABLE.csv"))
-data.table::fread(paste0(base_dir, "/LFC_COLLAPSED_TABLE.csv")) %>%
-  dplyr::filter(pert_name == compound, project_id == project_name) %>%
-  {if (plate != "NA") dplyr::filter(., compound_plate == plate) else .} %>%
-  readr::write_csv(., paste0(comp_dir, "/LFC_COLLAPSED_TABLE.csv"))
+#---- Pre-processing ----
+# table with each compound cell line combo and number of doses
+compound_table <- LFC_TABLE %>%
+  dplyr::select(pert_iname, pert_id, pert_dose) %>%
+  dplyr::distinct() %>%
+  splitstackshape::cSplit(splitCols = c("pert_dose", "pert_iname", "pert_id"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = T) %>%
+  dplyr::group_by(across(-c(colnames(.)[str_detect(colnames(.), pattern = "pert_dose")]))) %>%
+  summarise_all(function(x) n_distinct(x, na.rm = T)) %>%
+  dplyr::ungroup()
 
-if (calc_gr) {
-  GR_TABLE <- data.table::fread(paste0(base_dir, "/GR_TABLE.csv")) %>%
-    dplyr::filter(pert_name == compound, project_id == project_name)
+# check which compounds were run at 4 or more doses (to fit curves)
+dosed_compounds <- compound_table %>%
+  tidyr::pivot_longer(cols = contains("pert_iname"), names_to = c("foo", "bar", "index"), names_sep = "_", values_to = "pert_iname")
+dosed_compounds$n_doses <- dosed_compounds[1, paste0("pert_dose_", dosed_compounds$index)] %>% t() %>% as.numeric()
+dosed_compounds$pert_id <- dosed_compounds[1, paste0("pert_id_", dosed_compounds$index)] %>% t() %>% as.character() 
+dosed_compounds %<>% 
+  dplyr::select(pert_iname, pert_id, n_doses, index) %>%
+  dplyr::filter(n_doses >= 4)
+
+# if none exit
+if (nrow(dosed_compounds) < 1) {
+  message("Not enough dose points to fit curves for compound(s) in table")
+  quit(save = "no")
 }
+
+# distinct cell line/dose combinations
+DRC_TABLE_cb <- LFC_TABLE %>%
+  dplyr::distinct(pert_iname, pert_time, pert_dose, pert_iname, pert_id, ccle_name, culture, pool_id, pert_plate) %>%
+  splitstackshape::cSplit(splitCols = c("pert_iname", "pert_id", "pert_dose"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = T)
+# widened version for joining
+LFC_TABLE.split <- LFC_TABLE %>%
+  splitstackshape::cSplit(splitCols = c("pert_iname", "pert_id", "pert_dose"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = F)
+
 
 #---- Compute dose-response parameters ----
-# table with each compound cell line combo and number of doses
-DRC_TABLE_cb <- LFC_TABLE %>%
-  dplyr::filter(pert_type == "trt_cp") %>%
-  dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time, compound_plate) %>%
-  dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
-  dplyr::filter(n > 3)  # only fit curves with 4+ doses
+DRC <- list()  # stores dose response results
 
-if (nrow(DRC_TABLE_cb > 0)) {
-  print("Fitting dose-response curves")
-  DRC_TABLE_cb %<>% dplyr::mutate(ix = 1:n())
-  DRC_cb <- list()  # empty tibble to track results
+# for each compound run at 4+ doses
+for (i in 1:nrow(dosed_compounds)) {
+  comp <- dosed_compounds[i, ]
+  dose_var <- paste0("pert_dose_", comp$index)  # index of compound
 
-  # loop through compound cell line combos fitting curves
-  for (jx in 1:nrow(DRC_TABLE_cb)) {
-    d = DRC_TABLE_cb %>%
-      dplyr::filter(ix == jx) %>%
-      dplyr::left_join(LFC_TABLE, by = c("ccle_name", "culture", "pert_mfc_id",
-                                         "pert_name", "pert_time"))
-
+  # find all cell line drug combos for that compound with 4+ doses
+  df <- DRC_TABLE_cb %>%
+    dplyr::group_by(across(!contains(comp$index))) %>%
+    dplyr::summarise(n = n(), .groups = "drop") %>%
+    dplyr::filter(n >= 4)
+  sub_DRC <- list()  # stores dose response results
+  
+  # for each cell line
+  for (j in 1:nrow(df)) {
+    
+    # get LFC data
+    d <- df[j, ] %>% dplyr::inner_join(LFC_TABLE.split)
+    
     # fit curve
-    a = tryCatch(dr4pl(dose = d$pert_dose, response = 2^d$LFC.cb,
-                       method.init = "logistic", trend = "decreasing"),
-                 error = function(e) return(NA))
+    a <- tryCatch(dr4pl(dose = d[[dose_var]], response = 2^d[[LFC_column]],
+                        method.init = "logistic", trend = "decreasing",
+                        lowerl = c(-Inf, -Inf, -Inf, 0)),
+                  error = function(e) {print(e); return(NA)})
+    
+    # if it fits and doesn't converge grab robust fit
+    if (!is.na(a)) {
+      if (!a$convergence) {
+        a <- a$dr4pl.robust 
+      }
+    }
+    
     # get parameters
-    param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) return(NA))
+    param <- tryCatch(a$parameters, error = function(e) return(NA))
+    
+    # get results if fit
     if (!is.na(param)) {
-      d %<>%
-        dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
-      d %<>%
-        dplyr::mutate(e = (2^LFC.cb - pred)^2)  # prediction residuals
-
+      d$pred <- dr4pl::MeanResponse(a$parameters, d[[dose_var]])  # predictions
+      d$e <-  (2^d[[LFC_column]] - d$pred)^2  # prediction residuals
+      
       mse <- mean(d$e)
-      R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$LFC.cb)))
-
-      x <- tibble(ix = jx,
-                  min_dose = min(d$pert_dose),
-                  max_dose = max(d$pert_dose),
+      R2 <- 1 - (sum(d$e)/(nrow(d) * var(d[[LFC_column]])))
+      
+      # tibble of curve parameters
+      x <- tibble(min_dose = min(d[[dose_var]]),
+                  max_dose = max(d[[dose_var]]),
                   upper_limit = param[1],
                   ec50 = param[2],
                   slope = -param[3],
                   lower_limit = param[4],
                   convergence = a$convergence) %>%
-        dplyr::mutate(auc = compute_auc(lower_limit, upper_limit,
-                                        ec50, slope,
-                                        min(d$pert_dose), max(d$pert_dose)),
+        dplyr::mutate(auc = compute_auc(lower_limit, upper_limit, ec50, slope,
+                                        min_dose, max_dose),
                       log2.ic50 = compute_log_ic50(lower_limit, upper_limit,
                                                    ec50, slope,
-                                                   min(d$pert_dose), max(d$pert_dose)),
-                      mse = mse, R2 = R2)
-      DRC_cb[[jx]] <- x
-    }
-  }
-
-  if (length(DRC_cb) > 0) {
-    DRC_TABLE_cb <- DRC_cb %>%
-      dplyr::bind_rows() %>%
-      dplyr::filter(convergence) %>%
-      dplyr::left_join(DRC_TABLE_cb, by = c("ix")) %>%
-      dplyr::select(-ix, -convergence, -n)
-  } else {
-    print("Unable to fit any dose-response curves in LFC space")
-    DRC_TABLE_cb <- tibble()
-  }
-} else {
-  DRC_TABLE_cb <- tibble()
-}
-
-# GROWTH RATE DOSE-RESPONSE
-if (calc_gr) {
-  print("Fitting growth dose-response curves")
-  DRC_TABLE_growth <- GR_TABLE %>%
-    dplyr::distinct(ccle_name, culture, pert_mfc_id, pert_name, pert_dose, pert_time, compound_plate) %>%
-    dplyr::count(ccle_name, culture, pert_mfc_id, pert_name, pert_time) %>%
-    dplyr::filter(n > 3)
-
-  if (nrow(DRC_TABLE_growth > 0)) {
-    DRC_TABLE_growth %<>% dplyr::mutate(ix = 1:n())
-    DRC_gr <- list()
-
-    for (jx in 1:nrow(DRC_TABLE_growth)) {
-      d = DRC_TABLE_growth %>%
-        dplyr::filter(ix == jx) %>%
-        dplyr::left_join(GR_TABLE, by = c("ccle_name", "culture", "pert_mfc_id",
-                                          "pert_name", "pert_time"))
-
-      a = tryCatch(dr4pl(dose = d$pert_dose, response = d$GR,
-                         method.init = "logistic", trend = "decreasing"),
-                   error = function(e) return(NA))
-      param <- tryCatch(summary(a)$coefficients$Estimate, error = function(e) return(NA))
-      if (!is.na(param)) {
-        d %<>%
-          dplyr::mutate(pred = dr4pl::MeanResponse(pert_dose, param))
-        d %<>%
-          dplyr::mutate(e = (GR - pred)^2)  # prediction residuals
-
-        mse <- mean(d$e)
-        R2 <- 1 - (sum(d$e)/(nrow(d) * var(d$GR)))
-
-        x <- tibble(ix = jx,
-                    min_dose = min(d$pert_dose),
-                    max_dose = max(d$pert_dose),
-                    upper_limit = param[1],
-                    ec50 = param[2],
-                    slope = -param[3],
-                    lower_limit = param[4],
-                    convergence = a$convergence) %>%
-          dplyr::mutate(aoc = compute_aoc(lower_limit,
-                                          upper_limit,
-                                          ec50,
-                                          slope,
-                                          min(d$pert_dose),
-                                          max(d$pert_dose)),
-                        log2.gr50 = compute_log_gr50(lower_limit,
-                                                     upper_limit,
-                                                     ec50,
-                                                     slope,
-                                                     min(d$pert_dose),
-                                                     max(d$pert_dose)),
-                        mse = mse,
-                        R2 = R2)
-        DRC_gr[[jx]] <- x
+                                                   min_dose, max_dose),
+                      mse = mse,
+                      R2 = R2,
+                      varied_iname = comp$pert_iname,
+                      varied_id = comp$pert_id,
+                      ccle_name = df[j,]$ccle_name,
+                      culture = df[j,]$culture,
+                      pert_time = df[j,]$pert_time,
+                      pert_plate = df[j,]$pert_plate)
+      
+      # if this was a combination track other compounds added
+      if (any(str_detect(colnames(df), "pert_id_"))) {
+        added_comp_table <- df[j, ] %>%
+          tidyr::unite(col = added_compounds, starts_with("pert_iname_"), sep = "|") %>%
+          tidyr::unite(col = added_doses, starts_with("pert_dose_"), sep = "|") %>%
+          tidyr::unite(col = added_ids, starts_with("pert_id_"), sep = "|") %>%
+          dplyr::select(-n)
+        x %<>% dplyr::left_join(added_comp_table)
       }
-    }
-
-    if (length(DRC_gr) > 0) {
-      DRC_TABLE_growth <- DRC_gr %>%
-        dplyr::bind_rows() %>%
-        dplyr::filter(convergence) %>%
-        dplyr::left_join(DRC_TABLE_growth, by = c("ix")) %>%
-        dplyr::select(-ix, -convergence, -n)
+      sub_DRC[[j]] <- x
     } else {
-      print("Unable to fit any dose-response curves in GR space")
-      DRC_TABLE_growth <- tibble()
+      sub_DRC[[j]] <- tibble()
     }
-  } else {
-    DRC_TABLE_growth <- tibble()
   }
+  sub_DRC %<>% dplyr::bind_rows()  # combine results
+  DRC[[i]] <- sub_DRC
 }
+DRC %<>% dplyr::bind_rows()  # combine results
 
 #---- Write to .csv ----
-if(nrow(DRC_TABLE_cb) > 0)  {
-  readr::write_csv(DRC_TABLE_cb, paste0(comp_dir, "/DRC_TABLE.csv"))
-}
-
-# GR data if it exists
-if(calc_gr) {
-  if (nrow(DRC_TABLE_growth)) {
-    readr::write_csv(DRC_TABLE_growth, paste0(comp_dir, "/DRC_TABLE_GR.csv"))
-  }
+if(nrow(DRC) > 0)  {
+  readr::write_csv(DRC, paste0(out_dir, "/DRC_TABLE.csv"))
 }

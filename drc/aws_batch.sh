@@ -1,29 +1,47 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # read in flagged arguments
-while getopts ":i:o:g:" arg; do
+while getopts ":i:o:f:" arg; do
   case $arg in
     i) # specify input folder
       data_dir=${OPTARG};;
     o) # specifcy output folder
       output_dir=${OPTARG};;
-    g) # specify assay/build (PR300 or PR500)
-      calc_gr=${OPTARG}
+    f)
+      projects=${OPTARG};;
   esac
 done
 
-IFS=',' read -r -a a_projects <<< "${projects}"
-batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-chmod +x /drc_compound.R
-chmod +x /src/drc_functions.R
-pert_name=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_name')
-project=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].project_id')
-plate=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].compound_plate')
-mult=$(echo "${projects}" | jq -r --argjson index ${batch_index} '.[$index].multiple_plates')
-echo "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "${plate}" "${calc_gr}"
-Rscript /drc_compound.R "${data_dir}" "${output_dir}" "${project}" "${pert_name}" "${plate}" "${mult}" "${calc_gr}"
+out="${output_dir}"
+data="${data_dir}"
+echo "${data}" "${out}"
+
+batch_index=0
+
+
+if [[ ! -z $projects ]]
+then
+    if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]
+    then
+      batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    fi
+    pert_id=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+    project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    plate=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
+    sanitized_pert_id="${cleaned_pert_id^^}"
+    data="${data_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
+    out="${output_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
+fi
+
+echo "${data}" "${out}"
+if [[ "$pert_id" == "DMSO" ]]
+then
+  echo "Skipping DMSO"
+else
+  Rscript /drc_compound.R -i "${data}" -o "${out}"
+fi
 
 exit_code=$?
-
 echo "$exit_code"
 exit $exit_code

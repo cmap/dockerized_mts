@@ -1,0 +1,5 @@
+build_docker.sh
+docker_push_tags.sh
+enter_stack.sh
+run_stack*.sh
+Dockerfile

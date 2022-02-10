@@ -1,0 +1,2 @@
+This module is for internal use only. It is used to extract from continous_associations.csv, biomarker file per compound per project.
+Then it creates different files by extracting the top 10 biomakers from the first set of files

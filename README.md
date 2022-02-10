@@ -1,28 +1,24 @@
-# dockerized_mts
+<p align="center">
+  <img src="reports/rmarkdown/misc/prism_logo_tagline_side.png" height="80"/>
+  <img src="reports/rmarkdown/misc/BroadInstLogoforDigitalRGB.png" height="80"/>
+</p>
 
-Dockerized version of the PRISM MTS pipeline. For use with Merino pipeline output or [clue.io](clue.io) datasets.
+# MTS Pipeline (with Docker images)
 
-To get the associated docker image run:
-```{bash}
-docker pull cmap/clue-mts
-```
+Production version of the [PRISM](https://www.theprismlab.org/) MTS pipeline. For use with Luminex output or [clue.io](clue.io) datasets.
 
-Example command to run the container (see `docker_wrapper.sh`):
-```{bash}
-bash docker_wrapper.sh -i <INPUT_DIR> -o <OUTPUT_DIR> -p <PROJECT_NAME> -a <ASSAY>
-```
+Each module is organized into its own sub-directory with associated Docker images on [Docker Hub](https://hub.docker.com/orgs/prismcmap/repositories). `README` files for each module are contained within their respective directories.
 
+## Pre-requisites
 
-Example command to run the container  in AWS  (see `docker_run.sh`):
-```{bash}
-Modiify the inputs in the file
-```
+### Docker
 
-Requires the following files in the input data folder:
-- PR300 and PR500 Level 2 data (.gctx format)
-- PR300 and PR500 cell_info (long table)
-- PR300 and PR500 inst_info (long table)
-- project_key (long table mapping compounds to projects)
+In order to run the Docker images (no R installation or local scripts required), install Docker following the instructions [here](https://docs.docker.com/get-docker/).
 
-All files other than the Level 2 data can be in any format readable by `data.table::fread`
+### R and RStudio (optional)
 
+To run individual scripts or make modifications install [R](https://www.r-project.org/). [RStudio](https://www.rstudio.com/products/rstudio/), an IDE for R, is not required but is recommended for running and viewing R code.
+
+## A note about running locally
+
+The MTS pipeline is run on AWS and therefore most modules are designed with AWS in mind. Some modules are also specifically for handling and moving around files on AWS. Therefore, while the Docker images are useful tools, it may be easier in some cases to run the R scripts individually when running locally.

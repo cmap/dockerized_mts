@@ -9,6 +9,7 @@ library(stats)
 library(reshape2)
 library(sva)
 library(PRROC)
+library(argparse)
 
 #---- QC calculations ----
 # calculate SSMD and NNMD
@@ -16,14 +17,14 @@ calc_ssmd <- function(df) {
   SSMD_table <- df %>%
     # look at controls
     dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon")) %>%
-    dplyr::distinct(ccle_name, rid, pert_type, prism_replicate, LMFI, profile_id,
-                    pert_time, pool_id, culture) %>%
+    dplyr::distinct(ccle_name, rid, pert_type, prism_replicate, logMFI_norm, profile_id,
+                    pert_time, pool_id, culture, pert_plate) %>%
     # group common controls
     dplyr::group_by(pert_type, prism_replicate, pert_time, ccle_name, rid,
-                    pool_id, culture) %>%
+                    pool_id, culture, pert_plate) %>%
     # take median and mad of results
-    dplyr::summarise(med = median(LMFI, na.rm = TRUE),
-                     mad = mad(LMFI, na.rm = TRUE), .groups = "drop") %>%
+    dplyr::summarise(med = median(logMFI_norm, na.rm = TRUE),
+                     mad = mad(logMFI_norm, na.rm = TRUE), .groups = "drop") %>%
     # add to table
     dplyr::mutate(pert_type_md = paste0(pert_type, '_md'),
                   pert_type_mad = paste0(pert_type, '_mad')) %>%
@@ -33,7 +34,7 @@ calc_ssmd <- function(df) {
     dplyr::ungroup() %>%
     dplyr::select(-pert_type) %>%
     # give each control all values (median and mad for vehicle and poscon)
-    dplyr::group_by(prism_replicate, ccle_name, pert_time, rid, pool_id, culture) %>%
+    dplyr::group_by(prism_replicate, ccle_name, pert_time, rid, pool_id, culture, pert_plate) %>%
     dplyr::summarise_all(sum) %>%
     # calculate SSMD and NNMD
     dplyr::mutate(ssmd = tryCatch(expr = {
@@ -55,14 +56,14 @@ calc_ssmd <- function(df) {
 calc_er <- function(df) {
   er_table <- df %>%
     dplyr::filter(pert_type %in% c("ctl_vehicle", "trt_poscon"),
-                  is.finite(LMFI),
+                  is.finite(logMFI_norm),
                   pool_id != "CTLBC") %>%
-    dplyr::group_by(rid, ccle_name, culture, prism_replicate) %>%
+    dplyr::group_by(rid, ccle_name, culture, prism_replicate, pert_plate) %>%
     dplyr::summarise(error_rate =
-                       min(PRROC::roc.curve(scores.class0 = LMFI,
+                       min(PRROC::roc.curve(scores.class0 = logMFI_norm,
                                             weights.class0 = pert_type == "ctl_vehicle",
                                             curve = TRUE)$curve[,1] + 1 -
-                             PRROC::roc.curve(scores.class0 = LMFI,
+                             PRROC::roc.curve(scores.class0 = logMFI_norm,
                                               weights.class0 = pert_type == "ctl_vehicle",
                                               curve = TRUE )$curve[,2])/2,
                      .groups = "drop")

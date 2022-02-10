@@ -18,6 +18,7 @@
 /*.Rcheck/
 
 # RStudio files
+**.Rproj
 .Rproj.user/
 
 # produced vignettes
@@ -40,4 +41,17 @@ vignettes/*.pdf
 
 # pkgdown site
 docs/
-.idea/*
+.idea/
+.ipynb_checkpoints/
+foo.json
+foo.sh
+enter_container.sh
+stack/enter_stack.sh
+stack/run*.sh
+extract-biomarkers/docker_run_*.sh
+
+# report files
+reports/rmarkdown/*.html
+landing_pages/rmarkdown/*.html
+node_modules
+__pycache__/

@@ -1,35 +1,44 @@
 #!/usr/bin/env bash
+print_help () {
+  source activate merino
+  cd /cmap/merino/
+  python setup.py develop
+  python /cmap/merino/merino/assemble/assemble.py --help
+}
 
-while [[ $# > 1 ]]
-do
 
-key="$1"
-
-case $key in
-    -config_root)
-    CONFIG_ROOT="$2"
-    shift # past argument
-    ;;
-    -project_code)
-    PROJECT_CODE="$2"
-    shift # past argument
-    ;;
-    -replicate_map)
-    REPLICATE_MAP="$2"
-    shift # past argument
-    ;;
-    -assay_type)
-    ASSAY_TYPE="$2"
-    shift # past argument
-    ;;
+while test $# -gt 0; do
+  case "$1" in
+    -h|--help)
+      print_help
+      exit_code=$?
+      exit $exit_code
+      ;;
+    -config_root|---config_root)
+      shift
+      CONFIG_ROOT="$1"
+      ;;
+    -project_code|--project_code)
+      shift
+      PROJECT_CODE="$1"
+      ;;
+    -replicate_map|--replicate_map)
+      shift # past argument
+      REPLICATE_MAP="$1"
+      ;;
+    -assay_type|--assay_type)
+      shift # past argument
+      ASSAY_TYPE="$1"
+      ;;
     --default)
-    DEFAULT=YES
-    ;;
+      DEFAULT=YES
+      ;;
     *)
-            # unknown option
-    ;;
-esac
-shift # past argument or value
+      printf "Unknown parameter: %s \n" "$1"
+      shift
+      ;;
+  esac
+  shift # past argument or value
 done
 
 echo CONFIG_ROOT = "${CONFIG_ROOT}"
@@ -64,24 +73,10 @@ cd /cmap/merino/
 
 python setup.py develop
 
-if [ "${plate_token[1]}" = "DP78" ];
-then
-    DP7_PLATE="${plate_token[0]}_DP7_${plate_token[2]}_${plate_token[3]}_${plate_token[4]}"
-    DP8_PLATE="${plate_token[0]}_DP8_${plate_token[2]}_${plate_token[3]}_${plate_token[4]}"
-
-    DP7_CSV_PATH="${CONFIG_ROOT}${PROJECT_CODE}/lxb/${DP7_PLATE}/${DP7_PLATE}.csv"
-    DP8_CSV_PATH="${CONFIG_ROOT}${PROJECT_CODE}/lxb/${DP8_PLATE}/${DP8_PLATE}.csv"
-    DAVEPOOL_ID_CSV_FILEPATH_PAIRS="DP7 ${DP7_CSV_PATH} DP8 ${DP8_CSV_PATH}"
-    echo "DAVEPOOL_ID_CSV_FILEPATH_PAIRS ${DAVEPOOL_ID_CSV_FILEPATH_PAIRS}"
-
-    python /cmap/merino/merino/assemble/assemble.py -assay_type "DP78" -pmp ${PLATE_MAP_PATH} -dp_csv ${DAVEPOOL_ID_CSV_FILEPATH_PAIRS} -out ${OUTFILE}
-    exit_code=$?
-else
-    CSV_FILEPATH="${CONFIG_ROOT}${PROJECT_CODE}/lxb/${PLATE}/${PLATE}.jcsv"
-    echo CSV_FILEPATH = "${CSV_FILEPATH}"
-    python /cmap/merino/merino/assemble/assemble.py -pmp ${PLATE_MAP_PATH} -csv ${CSV_FILEPATH} -out ${OUTFILE} -assay_type ${ASSAY_TYPE}
-    exit_code=$?
-fi
+CSV_FILEPATH="${CONFIG_ROOT}${PROJECT_CODE}/lxb/${PLATE}/${PLATE}.jcsv"
+echo CSV_FILEPATH = "${CSV_FILEPATH}"
+python /cmap/merino/merino/assemble/assemble.py -pmp ${PLATE_MAP_PATH} -csv ${CSV_FILEPATH} -out ${OUTFILE} -assay_type ${ASSAY_TYPE}
+exit_code=$?
 
 # Deactivate conda environment
 source deactivate

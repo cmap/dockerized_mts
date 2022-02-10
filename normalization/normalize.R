@@ -3,23 +3,15 @@
 
 # import necessary libraries and functions
 suppressMessages(source("./src/normalization_functions.R"))
-suppressMessages(library(argparse))
 
 #---- Read arguments ----
-# script_args <- commandArgs(trailingOnly = TRUE)
-# if (length(script_args) != 3) {
-#   stop("Please supply path to data, output directory, and assay",
-#        call. = FALSE)
-# }
-# base_dir <- script_args[1]  # input directory
-# out_dir <- script_args[2]  # output directory
-# assay <- script_args[3]  # assay string (e.g. PR500)
 
 parser <- ArgumentParser()
-# specify our desired options 
+# specify our desired options
 parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
 parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
+parser$add_argument("-n", "--name", default="", help="Build name. Default is none")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
@@ -27,6 +19,7 @@ args <- parser$parse_args()
 base_dir <- args$base_dir
 out_dir <- args$out
 assay <- args$assay
+build_name <- args$name
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
@@ -49,6 +42,7 @@ cell_info <- data.table::fread(path_cell_info) %>%
   dplyr::mutate(pool_id = ifelse(pool_id == "" | pool_id == -666,
                                  "CTLBC", pool_id))
 
+<<<<<<< HEAD
 # make long version of platemap
 inst_info <- data.table::fread(path_inst_info) %>%
   dplyr::filter(!str_detect(prism_replicate, "BASE"), !is_well_failure) %>%
@@ -62,27 +56,24 @@ inst_info$pert_type[which(str_detect(inst_info$pert_type, "poscon.es"))] <-
   "trt_cp"
 inst_info$pert_type[which(inst_info$pert_type == "trt_cpd")] <-
   "trt_cp"
+=======
+# read in inst_info
+inst_info <- data.table::fread(path_inst_info)
+>>>>>>> dev
 
+# split out base plate
 base_day <- data.table::fread(path_inst_info) %>%
-  dplyr::filter(str_detect(prism_replicate, "BASE"), !is_well_failure)
+  dplyr::filter(str_detect(prism_replicate, "BASE"))
 
-if (nrow(base_day) > 0) {
-  base_day %<>% dplyr::rename(pert_name = "pert_iname")
-  if (!("pert_mfc_id") %in% colnames(base_day)){
-    base_day %<>% dplyr::mutate(pert_mfc_id = pert_id)
-  }
-  base_day %<>% dplyr::select(intersect(colnames(.), colnames(inst_info)))
-  inst_info %<>% dplyr::bind_rows(base_day)
-}
-
-# ensure unique profile IDs (this may cause problems for combo-perturbations)
+# ensure unique profile IDs
 raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 
 # melt matrix into data tables and join with inst and cell info
 master_logMFI <- log2(raw_matrix) %>%
   reshape2::melt(varnames = c("rid", "profile_id"), value.name = "logMFI") %>%
-  dplyr::filter(!is.na(logMFI)) %>%
+  dplyr::filter(is.finite(logMFI)) %>%
   dplyr::inner_join(cell_info) %>%
+<<<<<<< HEAD
   dplyr::inner_join(inst_info) %>%
   dplyr::select(profile_id, rid, ccle_name, pool_id, culture, prism_replicate, pert_time,
                 pert_type, pert_dose, pert_idose, pert_mfc_id, pert_name, pert_well,
@@ -141,10 +132,15 @@ compounds_logMFI %<>%
   dplyr::select(-n)
 
 master_logMFI <- dplyr::bind_rows(compounds_logMFI, controls_logMFI)
+=======
+  dplyr::inner_join(inst_info)
+>>>>>>> dev
 
 # create barcode tables
 barcodes <- master_logMFI %>%
   dplyr::filter(pool_id == "CTLBC")
+
+if (nrow(barcodes) == 0) stop("No control barcodes detected. Unable to normalize")
 
 # filter base plates
 logMFI_base <- master_logMFI %>%
@@ -156,10 +152,11 @@ master_logMFI %<>%
 
 # compute control barcode median of medians for normalization
 logMFI_control_medians <- control_medians(master_logMFI %>%
-                                            dplyr::filter(is.finite(logMFI)))
+                                            dplyr::filter(is.finite(logMFI),
+                                                          logMFI != 0))
 
 # fit curve to controls and predict test conditions
-logMFI_normalized <- normalize(logMFI_control_medians, barcodes)
+logMFI_normalized <- normalize(logMFI_control_medians, barcodes, nrow(cell_info) / 2)
 
 # if there is an early measurement
 if(nrow(logMFI_base) > 0) {
@@ -172,25 +169,22 @@ if(nrow(logMFI_base) > 0) {
     dplyr::distinct(rid, rLMFI)
 
   base_normalized <- logMFI_base %>%
+    dplyr::filter(is.finite(logMFI), logMFI != 0) %>%
     dplyr::left_join(logMFI_profile) %>%
-    normalize(., barcodes)
+    normalize_base(., barcodes, nrow(cell_info) / 2)
 } else {
   base_normalized <- tibble()
 }
 
 # join with other info (LMFI is normalized, logMFI is not)
 logMFI_normalized %<>%
-  dplyr::left_join(master_logMFI) %>%
-  dplyr::select(-logMFI)
+  dplyr::left_join(master_logMFI)
 
 #---- Write data ----
-master_logMFI %>%
-  dplyr::bind_rows(logMFI_base) %>%
-  readr::write_csv(., paste0(out_dir, "/logMFI.csv"))
 logMFI_normalized %>%
   dplyr::bind_rows(base_normalized) %>%
   dplyr::select(-rLMFI) %>%
-  readr::write_csv(., paste0(out_dir, "/logMFI_NORMALIZED.csv"))
+  readr::write_csv(., paste0(out_dir, "/", build_name, "_LEVEL3_LMFI.csv"))
 
-# project key
-write_key(master_logMFI, out_dir)
+# compound key
+write_key(logMFI_normalized, out_dir, build_name)
