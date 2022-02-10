@@ -1,3 +1,7 @@
+"""
+Convert compound CSVs to GCT format
+"""
+
 import os
 import re
 import sys
@@ -24,17 +28,21 @@ DEFAULT_ROW_METADATA_HEADERS = ['rid', 'ccle_name', 'pool_id', 'culture']
 logger = logging.getLogger('pivot_splits')
 
 def build_parser():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--splits_dir', '-d', help='Output folder of split module', required=True)
-    parser.add_argument('--project', '-pr', help='Project name')
-    parser.add_argument('--pert_plate', '-pp', help='Pert plate')
-    parser.add_argument('--pert', '-p', help='Pert ID')
-    parser.add_argument('--search_pattern', '-s',
-        help='Search pattern within build_path/project/pert_plate/pert',
+    parser = argparse.ArgumentParser(description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False)
+
+    required_args = parser.add_argument_group('required arguments')
+    required_args.add_argument('--splits_dir', '-d', help='Output folder of split module', required=True)
+    required_args.add_argument('--project', '-pr', help='Project name', required=True)
+    required_args.add_argument('--pert_plate', '-pp', help='Pert plate', required=True)
+    required_args.add_argument('--pert', '-p', help='Pert ID', required=True)
+    required_args.add_argument('--search_pattern', '-s',
+        help='Search pattern within build_path/project/pert_plate/pert \n (default: %(default)s)',
         default='*LEVEL4*.csv')
 
-    optional = parser.add_argument_group('options')
-    optional.add_argument('--data_header', '-dhd', help='Columns required for data', default='LFC')
+    optional = parser.add_argument_group('optional arguments')
+    optional.add_argument('--data_header', '-dhd', help='Columns required for data (default: %(default)s)', default='LFC')
     optional.add_argument('--cid_header', '-chd', help='Columns for column metadata. (Default: %(default)s)', default = 'profile_id')
     optional.add_argument('--rid_header', '-rhd', help='Columns for row metadata. (Default: %(default)s)', default = 'rid')
     optional.add_argument('--col_metadata_headers', '-cmh',
@@ -48,15 +56,15 @@ def build_parser():
     write_gct_opt = optional.add_mutually_exclusive_group()
     write_gct_opt.add_argument('--write_gctx', help='Use HDF5 based GCTX format',
             action='store_false', default=False)
-    write_gct_opt.add_argument('--write_gct', help='Use text based GCT format',
+    write_gct_opt.add_argument('--write_gct', help='Use text based GCT format (default)',
             action='store_true', dest='write_gctx', default=True)
     append_dims_grp = optional.add_mutually_exclusive_group()
     append_dims_grp.add_argument('--append_dims', help='Add dimensions to filename (default: true)',
             action='store_true', default=True)
     append_dims_grp.add_argument('--no-append-dims', help='',
             action='store_false', dest='append_dims')
-    parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
-
+    optional.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
+    optional.add_argument("-h", "--help", action="help", help="show this help message and exit")
     return parser
 
 def concat_unique_values(s, sep='|'):
