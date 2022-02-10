@@ -97,7 +97,9 @@ def main(args):
         os.makedirs(out)
 
     build_paths = args.build_paths.split(',')
+    print("After args.build_paths.split()")
     nbuilds = len(build_paths)
+    print("Number of builds: {}".format(nbuilds))
 
     if args.only_stack_keys:
         only_keys = args.only_stack_keys.split(',')
@@ -129,7 +131,7 @@ def main(args):
             combined_data['feature_id'] = combined_data.apply(lambda row: '{}:{}'.format(row['culture'], row['ccle_name']), axis=1)
             if key == 'LEVEL5_LFC':
                 if not 'sig_id' in combined_data.columns:
-                    logger.info('Sig ids not found, creating from sig_id_cols param')
+                    logger.info('Sig ids not found in file, creating from sig_id_cols param')
                     combined_data = make_sig_id(combined_data, id_cols=args.sig_id_cols)
                 prof_key = 'sig_id'
             else:
@@ -169,10 +171,8 @@ def main(args):
             df.to_csv(out_path, index=False)
 
 if __name__ == "__main__":
-    args = build_parser().parse_args(sys.argv[1:])
-
+    args = build_parser().parse_args(sys.argv[1:])\
     level = (logging.DEBUG if args.verbose else logging.INFO)
     logging.basicConfig(level=level)
     logger.info("args:  {}".format(args))
-
     main(args)
