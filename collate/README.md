@@ -5,9 +5,9 @@
 Collates assemble output, module takes in a project directory and searches for the following patterns:
 
   `{PROJECT_DIR}/\*/assemble/\*/*_LEVEL2_MFI_*.gctx`
-  
+
   `{PROJECT_DIR}/\*/assemble/\*/*_LEVEL2_COUNT_*.gctx`
-  
+
 
 The file structure :
  ```
@@ -19,7 +19,7 @@ The file structure :
                 *_LEVEL2_COUNT_*.gctx
       {PLATE_DIR}/
  ```     
- 
+
 
 ## Docker image
 
@@ -33,7 +33,7 @@ To get a specific version replace `latest` with the version desired.
 
 ## Execution
 
-The entrypoint for the Docker is `aws_batch.sh` which is a wrapper around `drc_compound.R` for more information using R run
+The entrypoint for the Docker is `collate_bash.sh` which is a wrapper around `collate.py` for more information using python run
 
 ```
 $ python collate.py --help
@@ -60,7 +60,7 @@ optional arguments:
 
 ### Example usage with Docker
 
-Docker is the recommended method for running the collate module as it uses a deprecated version of python (Python 2.7). 
+*Docker is the recommended method for running the collate module as it uses a deprecated version of python (Python 2.7).*
 Docker execution requires mounting directories with the `-v` option in order to obtain results.
 
 
@@ -69,7 +69,7 @@ docker run \
   -it \
   -v ~/{PROJECT_DIR}:/data/ \
   prismcmap/collate:latest \
-  -pd /data/ -bd /data/build -cn {COHORT_NAME} 
+  -pd /data/ -bd /data/build -cn {COHORT_NAME}
 ```
 
 
@@ -78,6 +78,5 @@ docker run \
 Running python requires an environment set up to use merino. See merino repo here: https://github.com/cmap/merino
 
 ```
-python collate.py -pd {PROJECT_DIR} -bd {PROJECT_DIR}/build -cn {COHORT_NAME} 
+python collate.py -pd {PROJECT_DIR} -bd {PROJECT_DIR}/build -cn {COHORT_NAME}
 ```
-
