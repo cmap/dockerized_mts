@@ -48,7 +48,11 @@ if (length(qc_files) == 1) {
 print("Calculating log-fold changes")
 LFC_TABLE <- logMFI_normalized
 # if QC able to be applied
-if (!all(is.na(qc_table$pass))) {
+if (all(is.na(qc_table$pass))) {
+  warning("NA pass values: including all lines, consider checking controls.")
+} else if (!any(qc_table$pass)) {
+  warning("All failures: including all lines, consider checking controls.")
+} else {
   LFC_TABLE %<>%
     # join with SSMD (to filter bad lines)
     dplyr::inner_join(qc_table %>%
@@ -56,8 +60,6 @@ if (!all(is.na(qc_table$pass))) {
                       by = c("prism_replicate", "ccle_name", "culture", "pert_plate")) %>%
     dplyr::filter(pass) %>%
     dplyr::select(-pass)
-} else {
-  print("Problem with QC metrics: including all lines")
 }
 LFC_TABLE <- calculate_lfc(LFC_TABLE)
 
