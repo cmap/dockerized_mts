@@ -12,8 +12,8 @@ Bolded columns are especially important while unbolded columns are primarily for
 | **ccle_name** | Cell line name |
 | **pool_id** | Cell line pool |
 | **culture** | Cell line culture (e.g. PR500) |
-| mfc_plate_id | |
-| mfc_plate_name | |
+| mfc_plate_id | Plate ID (deprecated) |
+| mfc_plate_name | Plate name |
 | pert_dose | Perturbation dose (numeric) |
 | pert_dose_unit | Perturbation dose units |
 | **pert_id** | Perturbation Broad ID |
@@ -22,7 +22,7 @@ Bolded columns are especially important while unbolded columns are primarily for
 | pert_itime | Assay length with units |
 | pert_mfc_desc | Perturbation description|
 | pert_mfc_id | Broad perturbation ID with batch suffix |
-| pert_mfc_plate | |
+| pert_mfc_plate | Plate barcode |
 | **pert_plate** | Sample compound plate |
 | **pert_time** | Assay length |
 | pert_time_unit | Assay length units |
@@ -31,14 +31,14 @@ Bolded columns are especially important while unbolded columns are primarily for
 | **pert_well** | Sample well |
 | x_group_by | Grouping variable for samples across replicates |
 | x_partner | Collaborator name |
-| x_pert_plate | |
+| x_pert_plate | pert_plate + x_replicate |
 | **x_project_id** | Project name (e.g. Validation Compounds) |
-| x_replicate | |
-| x_source_well | |
+| x_replicate | Plate replicate |
+| x_source_well | Sample source plate well |
 | is_well_failure | QC indicator (failures removed after LEVEL2)
 | **logMFI_norm** | logMFI normalized to control barcodes |
 | **logMFI** | log<sub>2 </sub> median fluorescence intensity |
-| feature_id | |
+| feature_id | Unique feature ID |
 | **LFC** | log<sub>2</sub> fold-change relative to control vehicle (this is median collapsed across replicates in LEVEL5) |
 | **LFC_cb** | ComBat corrected LFC (this is median collapsed across replicates in LEVEL5) |
 
