@@ -1,3 +1,7 @@
+"""
+Converts long-form CSV files into more storage efficient GCTx format
+"""
+
 import os
 import re
 import sys
