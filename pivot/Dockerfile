@@ -3,8 +3,8 @@ MAINTAINER Anup Jonchhe <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
-COPY ./csv2gctx.py /clue/bin/pivot.py
-COPY ./csv2gctx.sh /clue/bin/pivot
+COPY ./pivot.py /clue/bin/pivot.py
+COPY ./pivot_bash.sh /clue/bin/pivot
 
 RUN ["chmod","-R", "+x", "/clue/bin"]
 
