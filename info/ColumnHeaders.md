@@ -1,136 +1,174 @@
 # Column Headers
 
-## Data
+Bolded columns are especially important while unbolded columns are primarily for internal use or unused. Italicized columns will only appear for combination perturbations.
 
-### logMFI and logMFI\_NORMALIZED
-- **pert\_mfc\_id:** the Broad ID for the compound
-- **profile\_id:** a concatenation of replicate and well
-- **rid:** a unique identifier for this cell line
-- **ccle\_name:** the name of the cell line
-- **pool\_id:** the PRISM pool the cell line is in
-- **culture:** the PRISM cell set the cell line is in
-- **prism\_replicate:** the replicate this data point was obtained from
-- **pert\_type:** perturbation type, denotes whether this was a positive control, negative control, or treatment condition
-- **pert\_dose:** the numeric dose of this condition (µM)
-- **pert\_idose:** a string version of pert_dose
-- **pert\_name:** the name of the compound
-- **pert\_well:** the plate well the cell line was in
-- **pert\_time:** the length of the assay (in hours)
-- **logMFI:** the log2 mean-fluorescent intensity (Luminex readout)
-- **LMFI:** normalized logMFI
+### LEVEL2 through LEVEL5
 
-### LFC\_TABLE
-- **pert\_mfc\_id:** the Broad ID for the compound
-- **pert\_name:** the name of the compound
-- **prism\_replicate:** the replicate this data point was obtained from
-- **culture:** the PRISM cell set the cell line is in
-- **rid:** a unique identifier for this cell line
-- **LFC:** the log-fold change of this condition versus DMSO
-- **pert\_type:** perturbation type, denotes whether this was a positive control, negative control, or treatment condition
-- **ccle\_name:** the name of the cell line
-- **pert\_dose:** the numeric dose of this condition (µM)
-- **pert\_well:** the plate well the cell line was in
-- **pert\_time:** the length of the assay (in hours)
-- **pool\_id:** the PRISM pool the cell line is in
-- **profile\_id:** a concatenation of replicate and well
-- **pert\_idose:** a string version of pert_dose
-- **compound\_plate:** the plate of the sample
-- **LFC.cb:** the COMBAT corrected log-fold change (this is used for the dose-response curves, see the report for more information)
+| Column | Description |
+|:-------|:------------|
+| prism_replicate | Sample plate replicate |
+| rid | Cell line ID |
+| profile_id | Concatenation of replicate and well |
+| **ccle_name** | Cell line name |
+| **pool_id** | Cell line pool |
+| **culture** | Cell line culture (e.g. PR500) |
+| mfc_plate_id | |
+| mfc_plate_name | |
+| pert_dose | Perturbation dose (numeric) |
+| pert_dose_unit | Perturbation dose units |
+| **pert_id** | Perturbation Broad ID |
+| pert_idose | Perturbation dose with units |
+| **pert_iname** | Perturbation name (e.g. AZ-628) |
+| pert_itime | Assay length with units |
+| pert_mfc_desc | Perturbation description|
+| pert_mfc_id | Broad perturbation ID with batch suffix |
+| pert_mfc_plate | |
+| **pert_plate** | Sample compound plate |
+| **pert_time** | Assay length |
+| pert_time_unit | Assay length units |
+| pert_type | Perturbation type (e.g. negative control) |
+| **pert_vehicle** | Perturbation vehicle (e.g. DMSO) |
+| **pert_well** | Sample well |
+| x_group_by | Grouping variable for samples across replicates |
+| x_partner | Collaborator name |
+| x_pert_plate | |
+| **x_project_id** | Project name (e.g. Validation Compounds) |
+| x_replicate | |
+| x_source_well | |
+| is_well_failure | QC indicator (failures removed after LEVEL2)
+| **logMFI_norm** | logMFI normalized to control barcodes |
+| **logMFI** | log<sub>2 </sub> median fluorescence intensity |
+| feature_id | |
+| **LFC** | log<sub>2</sub> fold-change relative to control vehicle (this is median collapsed across replicates in LEVEL5) |
+| **LFC_cb** | ComBat corrected LFC (this is median collapsed across replicates in LEVEL5) |
 
-### LFC\_COLLAPSED\_TABLE
-- **ccle\_name:** the name of the cell line
-- **culture:** the PRISM cell set the cell line is in
-- **pert\_name:** the name of the compound
-- **pert\_mfc\_id:** the Broad ID for the compound
-- **pert\_dose:** the numeric dose of this condition (µM)
-- **pert\_idose:** a string version of pert_dose
-- **compound\_plate:** the plate of the sample
-- **pert\_time:** the length of the assay (in hours)
-- **LFC:** the log-fold change of this condition versus DMSO
-- **LFC.cb:** the COMBAT corrected log-fold change (this is used for the dose-response curves, see the report for more information)
+### QC\_TABLE
+
+| Column | Description |
+|:-------|:------------|
+| **prism_replicate** | Sample plate replicate |
+| **ccle_name** | Cell line name |
+| **pert_time** | Assay length |
+| rid | Cell line ID |
+| **pool_id** | Cell line pool |
+| **culture** | Cell line culture |
+| **pert_plate** | Sample compound plate |
+| ctl_vehicle_md | Control vehicle median logMFI |
+| trt_poscon_md | Positive control median logMFI |
+| ctl_vehicle_mad | Control vehicle MAD logMFI |
+| trt_poscon_mad | Positive control MAD logMFI |
+| ssmd | Strictly-standardized mean difference between positive and negative controls |
+| nnmd | Null-normalized mean difference between positive and negative controls |
+| **error_rate** | Error rate between positive and negative controls |
+| **dr** | Dynamic range (difference in control medians) |
+| **pass** | Boolean indicating whether cell line passed QC |
 
 ### DRC\_TABLE
-- **min\_dose, max\_dose:** the minimum and maximum doses at which a compound was tested
-- **upper\_limit, lower\_limit:** the asymptotic maximum and minimum of the curve
-- **ec50:** the dose at which the curve reaches the value between its upper and lower limit
-- **slope:** the slope of the curve at the EC50
-- **auc:** area under the curve
-- **log2.ic50:** log2 of the IC50 value (the point at which the cell line reaches 50% viability)
-- **mse:** the mean-squared error of the curve
-- **R2:** the R-squared of the curve
-- **ccle\_name:** the name of the cell line
-- **culture:** the PRISM cell set the cell line is in
-- **pert\_mfc\_id:** the Broad ID for the compound
-- **pert\_name:** the name of the compound
-- **pert\_time:** the length of the assay (in hours)
 
-
-## Results
-
-### SSMD\_TABLE
-- **prism\_replicate:** the replicate this data point was obtained from
-- **ccle\_name:** the name of the cell line
-- **pool\_id:** the PRISM pool the cell line is in
-- **culture:** the PRISM cell set the cell line is in
-- **ctl\_vehicle\_md:** median logMFI value for negative controls
-- **trt\_poscon\_md:** median logMFI value for positive controls
-- **ctl\_vehicle\_mad:** median absolute deviation of negative controls
-- **trt\_poscon\_mad:** median absolute deviation of positive controls
-- **ssmd:** strictly-standardizedmean difference of positive and negative controls
-- **nnmd:** null-normalized mean difference of positive and negative controls
-- **rid:** a unique identifier for this cell line
-- **error\_rate:** the error rate of a perfect threshold classifier distinguishing positive and negative controls
-- **pass:** whether this cell line passed QC or not
-- **pert\_time:** the length of the assay (in hours)
-- **compound\_plate:** the plate of the sample
-- **n.rep:** number of passing replicates for this cell line
-
-### continuous\_associations
-- **feature:** the feature that was correlated
-- **PosteriorMean:** the adaptive shrinkage moderated effect size estimates
-- **PosteriorSD:** the standard deviation of the PosteriorMean
-- **qvalue:** the false-discovery rate of the PosteriorMean
-- **coef:** the correlation coefficient between the feature and the response variable
-- **q.val:** the false-discovery rate of the coef
-- **rank:** the rank of the strength of this correlation
-- **pert\_mfc\_id:** the Broad ID for the compound
-- **pert\_name:** the name of the compound
-- **dose:** the response variable (either log-fold change at a particular dose or AUC or IC50)
-- **feature\_type:** the type of feature
-- **pert\_time:** the length of the assay (in hours)
+| Column | Description |
+|:-------|:------------|
+| **min_dose** | Minimum dose of perturbation |
+| **max_dose** | Maximum dose of perturbation |
+| **upper_limit** | Upper limit of the curve |
+| **ec50** | Inflection point or relative IC50 of the  curve |
+| **slope** | Slope of the dose-response curve |
+| **lower_limit** | Lower limit of the curve |
+| convergence | Did the fit converge? |
+| **auc** | Area under the curve |
+| **log2.ic50** | log<sub>2</sub> of the absolute IC50 of the curve|
+| mse | Mean-squared error of the curve fit |
+| R2 | r-squared of the curve fit |
+| **varied_iname** | Perturbation name for the test perturbation |
+| **varied_id** | Broad ID for the test perturbation |
+| **ccle_name** | Cell line name |
+| **culture** | Cell line culture |
+| pert_time | Assay length |
+| pert_plate | Compound plate |
+| *added_compounds* | Perturbation name(s) for anchor compound(s) |
+| *added_doses* | Perturbation dose(s) for anchor compound(s) |
+| *added_ids* | Perturbation ID(s) for anchor compound(s) |
 
 ### discrete\_associations
-- **feature:** the feature that was correlated
-- **effect\_size:** the difference in mean response of cell lines with this feature versus all others
-- **t:** the t-test result
-- **p:** the p-value of the t-test
-- **q:** the false-discovery rate corrected p-value
-- **pert\_mfc\_id:** the Broad ID for the compound
-- **pert\_name:** the name of the compound
-- **dose:** the response variable (either log-fold change at a particular dose or AUC or IC50)
-- **feature\_type:** the type of feature
-- **pert\_time:** the length of the assay (in hours)
 
-### Model\_table
-- **MSE:** the mean-squared error of the model
-- **MSE.se:** the standard error of the mean-squared error
-- **R2:** the R-squared of the model
-- **PearsonScore:** the Pearson score of the model
-- **type:** the type of model fit
-- **pert\_mfc\_id:** the Broad ID for the compound
-- **pert\_name:** the name of the compound
-- **pert\_idose:** the response variable (either log-fold change at a particular dose or AUC or IC50)
-- **model:** the dataset used for the model
-- **pert\_time:** the length of the assay (in hours)
+| Column | Description |
+|:-------|:------------|
+| **effect_size** | Difference in means between groups |
+| **feature** | Feature defining groups |
+| **feature_type** | Type of feature |
+| p.value | p-value |
+| **pert_dose** | Perturbation dose |
+| **pert_id** | Perturbation ID |
+| **pert_iname** | Perturbation name |
+| pert_plate | Compound plate |
+| pert_time | Assay length |
+| **q.value** | q-value (corrected p-value) |
+| t_stat | t statistic |
+| *added_compounds* | Perturbation name(s) for anchor compound(s) |
+| *added_doses* | Perturbation dose(s) for anchor compound(s) |
+| *added_ids* | Perturbation ID(s) for anchor compound(s) |
+
+### continuous\_associations
+
+| Column | Description |
+|:-------|:------------|
+| NegativeProb | Posterior probability that beta is negative |
+| PositiveProb | Posterior probability that beta is positive |
+| PosteriorMean | Adaptive shrinkage moderated effect size estimate |
+| PosteriorSD | Standard deviation of the PosteriorMean
+| betahat | Effect size estimate |
+| **coef** | Correlation coefficient |
+| feature | Correlated feature |
+| feature_type | Type of correlated feature
+| lfdr |  Local FDR value |
+| lfsr | Local FSR value |
+| p.val | p-value for correlation coefficient |
+| **pert_dose** | Perturbation dose |
+| **pert_id** | Perturbation ID |
+| **pert_iname** | Perturbation name |
+| pert_plate | Compound plate |
+| pert_time | Assay length |
+| **q.val** | q-value for correlation coefficient |
+| qvalue | q-value for beta |
+| rank | Feature rank |
+| sebetahat | Beta standard error |
+| svalue | s-value |
+| *added_compounds* | Perturbation name(s) for anchor compound(s) |
+| *added_doses* | Perturbation dose(s) for anchor compound(s) |
+| *added_ids* | Perturbation ID(s) for anchor compound(s) |
 
 ### RF\_table
-- **feature:** the omic feature being considered
-- **RF.imp.mean:** the mean importance of that feature across cross-validation steps
-- **RF.imp.sd:** the standard deviation of the importance
-- **RF.imp.stability:** the fraction of models using that feature
-- **pert\_mfc_id:** the Broad ID for the compound
-- **pert\_name:** the name of the compound
-- **pert\_idose:** the response variable (either log-fold change at a particular dose or AUC or IC50)
-rank
-- **model:** the dataset used for the model
-- **pert\_time:** the length of the assay (in hours)
+
+| Column | Description |
+|:-------|:------------|
+| **RF.imp.mean** | Mean feature importance |
+| RF.imp.sd | Feature importance standard deviation |
+| RF.imp.stability | Fraction of trees using the feature |
+| **feature** | Feature name |
+| **model** | Dataset used for features |
+| **pert_dose** | Perturbation dose |
+| **pert_id** | Perturbation ID |
+| **pert_iname** | Perturbation name |
+| pert_plate | Compound plate |
+| pert_time | Assay length |
+| rank | Feature rank |
+| *added_compounds* | Perturbation name(s) for anchor compound(s) |
+| *added_doses* | Perturbation dose(s) for anchor compound(s) |
+| *added_ids* | Perturbation ID(s) for anchor compound(s) |
+
+### model\_table
+
+| Column | Description |
+|:-------|:------------|
+| MSE | Mean squared error of the model |
+| MSE.se | Standard error of the MSE |
+| PearsonScore | Pearson score of the model |
+| R2 | r-squared of the model |
+| **model** | Dataset used for features |
+| **pert_dose** | Perturbation dose |
+| **pert_id** | Perturbation ID |
+| **pert_iname** | Perturbation name |
+| pert_plate | Compound plate |
+| pert_time | Assay length |
+| *added_compounds* | Perturbation name(s) for anchor compound(s) |
+| *added_doses* | Perturbation dose(s) for anchor compound(s) |
+| *added_ids* | Perturbation ID(s) for anchor compound(s) |
