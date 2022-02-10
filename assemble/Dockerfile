@@ -17,6 +17,6 @@ COPY ./prism_metadata.py /clue/bin/assemble/prism_metadata.py
 RUN ["chmod","-R", "+x", "/clue/bin"]
 WORKDIR /
 
-ENV PATH /clue/bin:$PATH
+ENV PATH /clue/bin/assemble/:$PATH
 RUN ["chmod","-R", "+x", "/clue/bin"]
 ENTRYPOINT ["batch_assemble"]

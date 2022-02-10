@@ -1,3 +1,7 @@
+"""
+Distributes files to make build for each project
+"""
+
 import os
 import shutil
 import re
@@ -103,6 +107,7 @@ def slice_and_write_project(data, data_level, project, outpath, args):
     if not os.path.exists(proj_dir):
         os.makedirs(proj_dir)
 
+    # Add sig_ids if not present
     if ("LEVEL5" in data_level) & ('sig_id' not in data.columns):
         logger.debug("Generating sig_ids from sig_id_cols arg: {}".format(args.sig_id_cols))
         data = make_sig_id(data, args.sig_id_cols)

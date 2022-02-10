@@ -1,35 +1,44 @@
 #!/usr/bin/env bash
+print_help () {
+  source activate merino
+  cd /cmap/merino/
+  python setup.py develop
+  python /cmap/merino/merino/assemble/assemble.py --help
+}
 
-while [[ $# > 1 ]]
-do
 
-key="$1"
-
-case $key in
-    -config_root)
-    CONFIG_ROOT="$2"
-    shift # past argument
-    ;;
-    -project_code)
-    PROJECT_CODE="$2"
-    shift # past argument
-    ;;
-    -replicate_map)
-    REPLICATE_MAP="$2"
-    shift # past argument
-    ;;
-    -assay_type)
-    ASSAY_TYPE="$2"
-    shift # past argument
-    ;;
+while test $# -gt 0; do
+  case "$1" in
+    -h|--help)
+      print_help
+      exit_code=$?
+      exit $exit_code
+      ;;
+    -config_root|---config_root)
+      shift
+      CONFIG_ROOT="$1"
+      ;;
+    -project_code|--project_code)
+      shift
+      PROJECT_CODE="$1"
+      ;;
+    -replicate_map|--replicate_map)
+      shift # past argument
+      REPLICATE_MAP="$1"
+      ;;
+    -assay_type|--assay_type)
+      shift # past argument
+      ASSAY_TYPE="$1"
+      ;;
     --default)
-    DEFAULT=YES
-    ;;
+      DEFAULT=YES
+      ;;
     *)
-            # unknown option
-    ;;
-esac
-shift # past argument or value
+      printf "Unknown parameter: %s \n" "$1"
+      shift
+      ;;
+  esac
+  shift # past argument or value
 done
 
 echo CONFIG_ROOT = "${CONFIG_ROOT}"
