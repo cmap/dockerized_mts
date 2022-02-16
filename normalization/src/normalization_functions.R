@@ -4,11 +4,13 @@
 library(tidyverse)
 library(magrittr)
 library(data.table)
+library(argparse)
 library(readr)
 library(scam)
 library(stats)
 library(hdf5r)
 library(reshape2)
+library(splitstackshape)
 
 #---- Reading ----
 # HDF5 file reader
@@ -36,81 +38,21 @@ read_hdf5 <- function(filename, index = NULL) {
 }
 
 
-#---- Reformatting ----
-# function to rename columns (get rid of 2, for make_long_map)
-rename_col <- function(cols) {
-  if (str_detect(cols, "2")) {
-    return(paste(word(cols, 1, sep = "_"), word(cols, 3, -1, sep = "_"),  sep = "_"))
-  } else {
-    return(cols)
-  }
-}
+#---- Compound tracking ----
 
-# convert a wide platemap to log form
-make_long_map <- function(df) {
-  pert1 <- df %>%
-    dplyr::select(!contains("2"))
-  pert2 <- df %>%
-    dplyr::select(contains("2"), pert_well, pert_time,
-                  prism_replicate, is_well_failure, profile_id, x_project_id)
-
-  colnames(pert2) <- sapply(colnames(pert2), FUN = function(x) rename_col(x))
-
-  if (ncol(pert2) > 6) {
-    new_map <- dplyr::bind_rows(pert1, pert2)
-  } else {
-    pert1  %<>%
-      dplyr::filter(pert_iname != "Untrt") %>%
-      dplyr::mutate(pert_type = ifelse(pert_iname %in% c("PBS", "DMSO"), "ctl_vehicle", pert_type)) %>%
-      dplyr::rename(pert_name = pert_iname, project_id = x_project_id)
-
-    if (!("pert_mfc_id") %in% colnames(pert1)){
-      pert1 %<>% dplyr::mutate(pert_mfc_id = pert_id)
-    }
-
-    return(pert1)
-  }
-
-  new_map %<>%
-    dplyr::filter(!(pert_iname %in% c("Untrt", ""))) %>%
-    dplyr::select(intersect(colnames(.), colnames(pert2))) %>%
-    dplyr::mutate(pert_type = ifelse(pert_iname %in% c("PBS", "DMSO"), "ctl_vehicle", pert_type))
-
-  if (!("pert_mfc_id") %in% colnames(new_map)){
-    new_map %<>% dplyr::mutate(pert_mfc_id = pert_id)
-  }
-
-  overview <- new_map %>%
-    dplyr::group_by(pert_well, prism_replicate, profile_id, x_project_id) %>%
-    dplyr::summarise(pert_types = paste(unique(pert_type), collapse = fixed("+")),
-                     pert_names = paste(unique(pert_iname), collapse = fixed("+")),
-                     n = n(), .groups = "drop") %>%
-    dplyr::ungroup() %>%
-    dplyr::right_join(new_map, by = c("pert_well", "prism_replicate", "profile_id", "x_project_id")) %>%
-    dplyr::filter(!(pert_type == "ctl_vehicle" & str_detect(pert_types, "trt")))  %>%
-    dplyr::mutate(pert_iname = ifelse(pert_types == "ctl_vehicle", pert_names, pert_iname),
-                  pert_vehicle = ifelse(pert_types == "ctl_vehicle", pert_names, pert_vehicle),
-                  pert_id = ifelse(pert_types == "ctl_vehicle", pert_names, pert_id),
-                  pert_mfc_id = ifelse(pert_types == "ctl_vehicle", pert_names, pert_mfc_id)) %>%
-    dplyr::select(-pert_types, -pert_names, -n) %>%
-    dplyr::distinct() %>%
-    dplyr::rename(pert_name = pert_iname, project_id = x_project_id)
-
-  return(overview)
-}
-
-# make project_key.csv
-write_key <- function(df, out_dir) {
+# make new project_key.csv tracking what to make dose response curves for
+write_key <- function(df, out_dir, build_name) {
   df %>%
-    dplyr::filter(project_id != "controls") %>%
-    dplyr::distinct(pert_name, pert_mfc_id, project_id, prism_replicate) %>%
-    dplyr::mutate(compound_plate = stringr::word(prism_replicate, 1, sep = fixed("_"))) %>%
-    dplyr::distinct(pert_name, pert_mfc_id, project_id, compound_plate) %>%
-    dplyr::group_by(pert_name, pert_mfc_id, project_id) %>%
-    dplyr::mutate(n_plates = n()) %>%
-    dplyr::ungroup() %>%
+    dplyr::filter(!pert_type %in% c("trt_poscon", "ctl_vehicle")) %>%
+    dplyr::select(pert_iname, pert_id, pert_plate, pert_dose, any_of("x_project_id")) %>%
     dplyr::distinct() %>%
-    readr::write_csv(., paste0(out_dir, "/project_key.csv"))
+    splitstackshape::cSplit(splitCols = "pert_dose",
+                            sep = "|", fixed = T,
+                            direction = "wide", drop = T) %>%
+    dplyr::group_by(across(-c(colnames(.)[str_detect(colnames(.), pattern = "pert_dose")]))) %>%
+    summarise_all(function(x) n_distinct(x, na.rm = T)) %>%
+    dplyr::ungroup() %>%
+    readr::write_csv(., paste0(out_dir, "/", build_name, "_compound_key.csv"))
 }
 
 
@@ -130,11 +72,14 @@ control_medians <- function(df) {
 }
 
 # fit scam to control barcode profiles and normalize other data
-normalize <- function(df, barcodes) {
+normalize <- function(df, barcodes, threshold) {
   normalized <- df %>%
     dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::mutate(n = n()) %>%
+    dplyr::filter(n >= threshold) %>%
+    dplyr::select(-n) %>%
     # try with k=4 and 5 (to avoid hanging), try again with linear model
-    dplyr::mutate(LMFI = tryCatch(
+    dplyr::mutate(logMFI_norm = tryCatch(
       expr = {tryCatch(
         expr = {scam(y ~ s(x, bs = "micv", k = 4),
                      data = tibble(
@@ -153,8 +98,35 @@ normalize <- function(df, barcodes) {
            data = tibble(
              y = rLMFI[rid %in% barcodes$rid],
              x = logMFI[rid %in% barcodes$rid])) %>%
-          predict(newdata = tibble(x = logMFI) %>% as.numeric())
+          predict(newdata = tibble(x = logMFI)) %>% as.numeric()
       })) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-logMFI)
+
+  return(normalized)
+}
+
+# fit scam to control barcode profiles and normalize other data
+normalize_base <- function(df, barcodes, threshold) {
+  normalized <- df %>%
+    dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::mutate(n = n()) %>%
+    dplyr::filter(n >= threshold) %>%
+    dplyr::select(-n) %>%
+    # try with k=4 and 5 (to avoid hanging), try again with linear model
+    dplyr::mutate(logMFI_norm = tryCatch(
+      expr = {scam(y ~ s(x, bs = "micv"),
+                     data = tibble(
+                       y = rLMFI[rid %in% barcodes$rid],
+                       x = logMFI[rid %in% barcodes$rid])) %>%
+            predict(newdata = tibble(x = logMFI)) %>% as.numeric()},
+        error = function(e) {
+          lm(y ~ x,
+             data = tibble(
+               y = rLMFI[rid %in% barcodes$rid],
+               x = logMFI[rid %in% barcodes$rid])) %>%
+            predict(newdata = tibble(x = logMFI)) %>% as.numeric()}
+      )) %>%
     dplyr::ungroup() %>%
     dplyr::select(-logMFI)
 

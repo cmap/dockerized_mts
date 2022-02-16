@@ -1,0 +1,14 @@
+{
+  "name": "convert-projectkeys-csv-to-json",
+  "version": "1.0.0",
+  "description": "This module converts compound keys from csv format to json so that downstream modules can read the JSON file from the file system. This will help get around the 8192 character limit for the container overrides portion of AWS Batch Jobs, since we do not have to pass the full compound keys as environment variables to each module",
+  "main": "projectKeys.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "underscore": "^1.13.1"
+  }
+}

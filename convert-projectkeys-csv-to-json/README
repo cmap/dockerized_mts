@@ -1,0 +1,5 @@
+This module converts compound keys from csv format to json so that
+downstream modules can read the JSON file from the file system.
+This will help get around the 8192 character limit for the container overrides
+portion of AWS Batch Jobs, since we do not have to pass the full
+compound keys as environment variables to each module

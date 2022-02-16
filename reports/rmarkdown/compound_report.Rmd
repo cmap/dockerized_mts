@@ -1,0 +1,565 @@
+---
+params:
+  data_dir: ~/Desktop/mts018_validation/MTS018_VALIDATION_COMPOUNDS/PMTS046/BRD-K05804044
+  comp: BRD-K05804044
+  meta_folder: https://s3.amazonaws.com/biomarker.clue.io
+output:
+  html_document:
+    toc: false
+    theme: paper
+    highlight: kate
+---
+
+
+```{r load packages, echo=F, message=F, warning=F, include=F}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.width = 10)
+
+# load libraries
+library(magrittr)
+library(data.table)
+library(tidyverse)
+library(ggforce)
+library(ggthemes)
+library(heatmaply)
+
+# push NAs to bottom in tables
+options(DT.TOJSON_ARGS = list(na = "string"))
+```
+
+
+```{r preprocessing, include=F}
+# file paths
+lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
+
+# read in LFC
+if (length(lfc_path) == 1) {
+  LFC <- data.table::fread(lfc_path)
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+# read in DRC if available
+if (length(drc_path) == 1) {
+  DRC <- data.table::fread(drc_path)
+} else {
+  DRC <- NULL
+}
+
+# read in biomarker tables
+corr_table <- data.table::fread(file.path(params$data_dir, "continuous_associations.csv")) %>%
+  dplyr::mutate(feature = word(feature, 2, -1, sep = "_"))
+disc_table <- data.table::fread(file.path(params$data_dir, "discrete_associations.csv")) %>%
+  dplyr::mutate(feature = word(feature, 2, -1, sep = "_"))
+model_table <- data.table::fread(file.path(params$data_dir, "model_table.csv"))
+rf_table <- data.table::fread(file.path(params$data_dir, "RF_table.csv")) %>%
+  dplyr::left_join(model_table)
+
+if (all(is.na(corr_table$pert_time)) || all(corr_table$pert_time == "")) {
+  corr_table %<>% dplyr::mutate(pert_time = "120H")
+  disc_table %<>% dplyr::mutate(pert_time = "120H")
+  model_table %<>% dplyr::mutate(pert_time = "120H")
+  rf_table %<>% dplyr::mutate(pert_time = "120H")
+}
+
+# some general metadata
+n_doses <- nrow(dplyr::distinct(LFC, pert_dose))
+timepoints <- LFC$pert_time %>% unique()
+plot_height <- 12 * length(timepoints)  # some plots larger if more timepoints
+pert_iname <- toupper(dplyr::distinct(LFC, pert_iname)$pert_iname)
+n_lines <- LFC %>% dplyr::distinct(ccle_name, culture) %>% nrow()
+n_days <- LFC$pert_time %>%
+  unique() %>%
+  substr(1, nchar(.) -1) %>%
+  as.numeric() / 24
+
+# factorize dosing scheme
+LFC$pert_dose <- signif(LFC$pert_dose, 5)
+dose_factors <- LFC$pert_dose %>% unique() %>% sort()
+dose_factors <- c(dose_factors, "log2.auc", "log2.ic50")
+corr_table %<>%
+  dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                   signif(as.numeric(pert_dose), 5),
+                                   pert_dose))
+disc_table %<>%
+  dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                   signif(as.numeric(pert_dose), 5),
+                                   pert_dose)) %>%
+  dplyr::arrange(q.value, effect_size) %>%
+  dplyr::group_by(pert_iname, pert_dose, pert_plate, pert_time, pert_id, feature_type) %>%
+  dplyr::mutate(rank = 1:n()) %>%
+  dplyr::ungroup()
+model_table %<>%
+  dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                   signif(as.numeric(pert_dose), 5),
+                                   pert_dose))
+rf_table %<>%
+  dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                   signif(as.numeric(pert_dose), 5),
+                                   pert_dose))
+corr_table$pert_dose <- factor(corr_table$pert_dose, levels = dose_factors)
+disc_table$pert_dose <- factor(disc_table$pert_dose, levels = dose_factors)
+model_table$pert_dose <- factor(model_table$pert_dose, levels = dose_factors)
+rf_table$pert_dose <- factor(rf_table$pert_dose, levels = dose_factors)
+
+# feature types to loop through
+feature_full <- c("GE" = "Gene expression",
+                  "GE_noLIN" = "Gene expression (lineage corrected)",
+                  "XPR" = "CRISPR knock-out",
+                  "miRNA" = "Micro RNA",
+                  "PROT" = "Proteomics",
+                  "CNA" = "Copy number",
+                  "MET" = "Metabolomics",
+                  "shRNA" = "shRNA knockdown",
+                  "REP" = "Repurposing compounds")
+corr_feats <- corr_table$feature_type %>%
+  unique() %>%
+  dplyr::intersect(names(feature_full)) %>%
+  factor(levels = names(feature_full)) %>%
+  sort()
+
+# compound dosing scheme
+compounds <- LFC %>%
+  dplyr::distinct(pert_iname, pert_id, pert_dose, pert_idose, pert_plate) %>%
+  dplyr::arrange(pert_dose)
+
+# lineage and mutation table
+lineages <- data.table::fread(file.path(params$meta_folder, "lineages.csv")) %>%
+  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name))
+mutations <- data.table::fread(file.path(params$meta_folder, "mutations.csv")) %>%
+  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name))
+
+# aesthetics
+theme_set(theme_bw())
+pal <- colorRampPalette(c(wsj_pal()(2)[1], "#FFFFFF", wsj_pal()(2)[2]))(256)
+```
+
+
+---
+title: "`r paste(pert_iname, 'compound report')`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+<a href="https://www.broadinstitute.org/"><img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/></a>
+<a href="https://www.theprismlab.org/"><img src="misc/prism_logo_tagline_side.png" width=300px align="right"/></a>
+<br><br><br>
+
+[Back](../../../index.html)
+
+To navigate through the report please click on the blue tabs under each heading.
+
+# Experimental Details
+
+This compound was screened in the PRISM assay at `r n_doses`-point dose (3-fold dilution) with a `r n_days` day treatment with `r n_lines` cancer cell lines passing QC. Two PRISM cell line collections were used in the assay: PR500 (including only adherent cell lines), and PR300+ (including adherent and suspension cell lines). Three benchmark compounds – included in the MTS Validation set – were also tested at dose to ensure high data quality. All compounds were run in triplicate, and each plate contained positive (Bortezomib, 20uM) and negative (DMSO) controls.
+
+```{r compound}
+DT::datatable(compounds, options = list(dom = "t", ordering = FALSE),
+              colnames = c("Compound name", "Compound ID", "Dose", "Dose with units", "Plate"),
+              rownames = FALSE)
+```
+
+# Data {.tabset .tabset-fade .tabset-pills}
+
+## Overview
+
+This section log-fold change data and a link to the dose response data page. For more details on how each metric displayed here is calculated please refer to the `Data Processing` section on your landing page.
+
+## Heatmap
+
+The viability values for each of the screened doses are shown in the heatmap below. Please hover over the heatmap to see the fold-change viability values relative to the negative control (DMSO). Blue indicates more killing (sensitivity), while red indicates less.
+
+
+```{r heatmap, fig.height = 36}
+# plots cell line x drug (by dose) heatmap where color = response (LFC)
+LFC_matrix <- LFC
+LFC_matrix %<>%
+  reshape2::acast(ccle_name + culture ~ pert_dose, 4,
+                  value.var = "LFC_cb", fun.aggregate = mean)
+
+LFC_matrix <- LFC_matrix[order(rowMeans(LFC_matrix)), , drop = F]
+
+# makes scale consistent across reports
+heatmaply::heatmaply(pmin(2^LFC_matrix, 1), Colv = F, Rowv = F,
+                     colors = rev(pal), show_dendrogram = F,
+                     fontsize_row = 6, fontsize_column = 10,
+                     colorbar_yanchor = "top", colorbar_len = 0.1,
+                     colorbar_ypos = 1, colorbar_xpos = 1,
+                     plot_method = "plotly", limits = c(0, 1),
+                     label_names = c("Cell line", "Dose", "Viability"),
+                     key.title = "Viability")
+```
+
+## Viability table
+
+The $\log_2$ fold-change and viability values for each cell line at each dose are presented in the table below. Please note the same table is also available in `Compound Data > Replicate collapsed viability data`.
+
+```{r viab table, echo=F, message=F, warning=F}
+DT::datatable(LFC %>%
+                dplyr::distinct(ccle_name, culture, pool_id, pert_dose,
+                                pert_vehicle, LFC_cb) %>%
+                dplyr::mutate(viab = signif(2^LFC_cb, 3),
+                              LFC_cb = signif(LFC_cb, 3)) %>%
+                dplyr::arrange(viab),
+              filter = "top", rownames = F,
+              colnames = c("Cell line", "Culture", "Pool", "Dose",
+                           "Vehicle", "log2-fold change", "Viability"),
+              options = list(dom = "tp"))
+
+```
+
+## Dose response parameters
+
+For dose response parameters and curves see the [dose-response page](`r paste0("./", params$comp, "_drc.html")`) for this compound.
+
+# Lineage enrichment {.tabset .tabset-pills}
+
+## Overview
+
+Each cell line is represented by its AUC and plotted by lineage (primary disease and sub-type) to visualize lineage-based sensitivity patterns. In particular we calculated **effect size, the difference between that lineage and all others**, and p-values based on a t-test. Because t-tests are done **at each dose and for logAUC and logIC50** (in order to allow for analysis of relationships at particular doses and overall), the same feature may appear multiple times in the table. The dose or curve-level statistic used for correlation is noted in the "Dose" column. For each lineage, the q-values (a corrected significance value accounting for false discovery rate) are computed from p-values using the [Benjamini Hochberg algorithm](https://www.jstor.org/stable/2346101).
+
+## Volcano plot
+
+Lineage effects are visualized below on an interactive volcano plot.  Please hover the mouse over the points in order to see the gene/feature IDs. Large negative effect size corresponds to increased sensitivity.
+
+```{r}
+plot_lineages <- lineages %>%
+  dplyr::select(ccle_name, lineage, lin_abbreviation) %>%
+  dplyr::bind_rows(lineages %>%
+                     dplyr::select(ccle_name, lineage_subtype, lin_sub_abbreviation) %>%
+                     dplyr::rename(lineage = lineage_subtype,
+                                   lin_abbreviation = lin_sub_abbreviation)) %>%
+  dplyr::distinct(ccle_name, lineage, lin_abbreviation)
+
+n_lines <- LFC %>%
+  dplyr::distinct(ccle_name, culture) %>%
+  dplyr::inner_join(plot_lineages) %>%
+  dplyr::group_by(lineage, lin_abbreviation) %>%
+  dplyr::summarise(n_lines = n(), .groups = "drop")
+
+LIN_table <- disc_table %>%
+  dplyr::filter(feature_type == "LIN")
+
+lin_tab <- plot_lineages %>%
+  dplyr::distinct(lineage, lin_abbreviation) %>%
+  dplyr::inner_join(LIN_table,
+                    by = c("lineage" = "feature")) %>%
+  dplyr::inner_join(n_lines) %>%
+  dplyr::filter(n_lines >= 5)
+
+p_table <- lin_tab %>%
+  distinct(lineage, effect_size, q.value, pert_iname, pert_dose) %>%
+  dplyr::filter(q.value < 0.1)
+
+if(nrow(p_table) > 0){
+  p <- p_table %>%
+    ggplot() + geom_point(aes(x = effect_size, y =  -log10(q.value),
+                              color = pert_dose, name = lineage)) +
+    geom_vline(aes(xintercept = 0), lty = 2, lwd =.5) +
+    labs(x = "Effect Size", color = "Dose")
+  plotly::ggplotly(p)
+}
+
+DT::datatable(lin_tab %>%
+                dplyr::inner_join(n_lines) %>%
+                dplyr::filter(n_lines >= 5) %>%
+                dplyr::distinct(lineage, lin_abbreviation, n_lines,
+                                effect_size, q.value, pert_iname, pert_dose) %>%
+                dplyr::arrange(q.value) %>%
+                dplyr::mutate(effect_size = signif(effect_size, 3),
+                              q.value = signif(q.value, 3)),
+              filter = "top", rownames = F, options = list(dom = "tp"),
+              colnames = c("Lineage", "Abbreviation", "Effect size", "q value", "Compound", "Dose", "# lines"))
+```
+
+## Plots by lineage
+
+AUC of each cell line is
+
+```{r, fig.height=14}
+if (!is.null(DRC)) {
+  m <- mean(DRC$auc)
+  df <- DRC %>%
+    dplyr::inner_join(lineages, by = "ccle_name") %>%
+    dplyr::filter(lineage != "") %>%
+    dplyr::distinct()
+
+  p <- df %>%
+    ggplot(aes(y = auc, x = reorder(lin_sub_abbreviation, auc, function(x) mean(x, na.rm = T)),
+               color = lin_sub_abbreviation)) +
+    geom_boxplot(outlier.alpha = 0) +
+    geom_hline(yintercept = m, linetype = "dashed") +
+    geom_jitter() +
+    facet_wrap(lineage ~ ., scales = "free_x") +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
+    labs(x = "AUC", y = "Lineage")
+  p
+} else if (n_doses == 1) {
+  m <- mean(LFC$LFC_cb)
+  df <- LFC %>%
+    dplyr::inner_join(lineages, by = "ccle_name") %>%
+    dplyr::filter(lineage != "") %>%
+    dplyr::distinct()
+
+  p <- df %>%
+    ggplot(aes(y = LFC_cb, x = reorder(lin_sub_abbreviation, LFC_cb, function(x) mean(x, na.rm = T)),
+               color = lin_sub_abbreviation)) +
+    geom_boxplot(outlier.alpha = 0) +
+    geom_hline(yintercept = m, linetype = "dashed") +
+    geom_jitter() +
+    facet_wrap(lineage ~ ., scales = "free_x") +
+    theme(legend.position = "none") +
+    labs(x = "Log-fold change", y = "Lineage")
+  p
+} else {
+  print("Unable to show plots by lineage for AUC or a single dose.")
+}
+```
+
+# Mutation effect{.tabset .tabset-fade .tabset-pills}
+
+## Overview
+
+Cell lines are grouped by mutation status to compute mutation-based sensitivity patterns. **In the tables and plots "hs" denotes a hotspot mutation, "dam" denotes a damaging mutation, and "other" denotes other missense mutations (for more information see [DepMap mutation information](https://forum.depmap.org/t/what-is-the-variant-annotation-column-and-how-is-function-of-mutations-annotated/105)**. In particular we calculated **effect size, the difference between a mutation status and all others**, and p-values based on a t-test.  Because t-tests are done **at each dose and for logAUC and logIC50** (in order to allow for analysis of relationships at particular doses and overall), the same feature may appear multiple times in the table. The dose or curve-level statistic used for correlation is noted in the "Dose" column. For each mutation, q-values (a corrected significance value accounting for false discovery rate) are computed from p-values using the Benjamini-Hochberg algorithm.
+
+## Volcano plot
+
+Mutation effects are visualized below on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. **Only the top 500 mutations with a q value less than 0.1 at each dose are visualized**. Large negative effect size corresponds to increased sensitivity. Distributions of AUC values within each mutation are visualized on the next tab, sorted by significance.
+
+```{r, echo=F, message=F, warning=F}
+n_lines <- LFC %>%
+  dplyr::distinct(ccle_name, culture) %>%
+  dplyr::inner_join(mutations) %>%
+  dplyr::group_by(mutation) %>%
+  dplyr::summarise(n_lines = n(), .groups = "drop")
+
+MUT_table <- disc_table %>%
+  dplyr::filter(feature_type == "MUT")
+
+p_table <- MUT_table %>%
+  dplyr::filter(q.value < 0.1, rank <= 500) %>%
+  dplyr::inner_join(n_lines %>%
+                      dplyr::filter(n_lines >= 5),
+                    by = c("feature" = "mutation"))
+
+if(nrow(p_table) > 0){
+  p <- p_table %>%
+    ggplot() + geom_point(aes(x = effect_size, y =  -log10(q.value),
+                              color = pert_dose, name = feature)) +
+    ylim(0, NA) +
+    labs(x = "Effect Size", color = "Dose") +
+    geom_vline(aes(xintercept = 0), lty = 2, lwd =.5)
+  plotly::ggplotly(p)
+}
+
+DT::datatable(MUT_table %>%
+                dplyr::arrange(q.value, desc(abs(effect_size))) %>%
+                dplyr::inner_join(n_lines %>%
+                      dplyr::filter(n_lines >= 5),
+                    by = c("feature" = "mutation")) %>%
+                dplyr::distinct(feature, n_lines,
+                                effect_size, q.value, pert_iname, pert_dose) %>%
+                dplyr::mutate(effect_size = signif(effect_size, 3),
+                              q.value = signif(q.value, 3)),
+              filter = "top", rownames = F, options = list(dom = "tp"),
+              colnames = c("Mutation", "Effect size", "q value", "Compound", "Dose", "# lines")
+)
+```
+
+## Plots by mutation
+
+```{r, fig.height=10}
+if (!is.null(DRC)) {
+  m <- mean(DRC$auc)
+  df <- DRC %>%
+    dplyr::inner_join(mutations, by = "ccle_name") %>%
+    dplyr::group_by(across(any_of(c("mutation", "varied_iname", "added_compounds", "added_doses")))) %>%
+    dplyr::mutate(n = n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(n >= 5)
+
+  top_muts <- MUT_table %>%
+    dplyr::inner_join(df %>% dplyr::distinct(mutation, n),
+                      by = c("feature" = "mutation")) %>%
+    dplyr::filter(pert_dose == "log2.auc") %>%
+    dplyr::arrange(q.value)
+
+  top_muts <- top_muts$feature[1:20]
+
+  df %<>%
+    dplyr::filter(mutation %in% top_muts)
+
+  p <- df %>%
+    ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
+               color = mutation)) +
+    geom_boxplot(outlier.alpha = 0) +
+    geom_vline(xintercept = m, linetype = "dashed") +
+    geom_jitter() +
+    theme(legend.position = "none") +
+    labs(x = "AUC", y = "Mutation")
+
+  p
+} else if (n_doses == 1) {
+  m <- mean(LFC$LFC_cb)
+  df <- LFC %>%
+    dplyr::inner_join(mutations, by = "ccle_name") %>%
+    dplyr::group_by(across(any_of(c("mutation", "pert_dose", "pert_name")))) %>%
+    dplyr::mutate(n = n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(n >= 5)
+
+  top_muts <- MUT_table %>%
+    dplyr::inner_join(df %>% dplyr::distinct(mutation, n),
+                      by = c("feature" = "mutation")) %>%
+    dplyr::arrange(q.value)
+
+  top_muts <- top_muts$feature[1:20]
+
+  df %<>%
+    dplyr::filter(mutation %in% top_muts)
+
+  p <- df %>%
+    ggplot(aes(x = LFC_cb, y = reorder(mutation, LFC_cb, function(x) -mean(x, na.rm = T)),
+               color = mutation)) +
+    geom_boxplot(outlier.alpha = 0) +
+    geom_vline(xintercept = m, linetype = "dashed") +
+    geom_jitter() +
+    theme(legend.position = "none") +
+    labs(x = "Log-fold change", y = "Mutation")
+
+  p
+} else {
+  print("Unable to show plots by lineage for AUC or a single dose.")
+}
+```
+
+# Correlation analysis{.tabset .tabset-fade .tabset-pills}
+
+## Info
+
+In this section, we explore the univariate associations between the PRISM sensitivity profiles and the genomic features or genetic dependencies. In particular, we compute the Pearson correlations and associated p-values.
+
+On each of the following tabs, the correlations and p-values for log-viability values at each dose, AUC scores and logIC50 values are shown. **Only the top 500 features with a q value less than 0.1 at each dose are visualized**. Because correlations are done **at each dose and for AUC and logIC50** (in order to allow for analysis of relationships at particular doses and overall), the same feature may appear multiple times in the table. The dose or curve-level statistic used for correlation is noted in the "Dose" column. For each dataset, the q-values are computed from p-values using the Benjamini-Hochberg algorithm. Associations with q-values above 0.1 are filtered out. Also, the significant genes/features are illustrated on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. Data interpretation overviews are included above each plot.
+
+```{r correlations, results='asis', include=T, fig.height=10}
+for (feat in corr_feats) {
+  cat(sprintf('\n\n## %s \n\n', feature_full[feat], '\n\n'))
+  df <- corr_table %>%
+    dplyr::filter(feature_type == feat)
+
+  plot_df <- df %>%
+    dplyr::filter(q.val < 0.1, rank <= 500)
+
+  if (nrow(plot_df) > 0) {
+    p <- plot_df %>%
+      ggplot() + geom_point(aes(x = coef, y = -log10(q.val),
+                                name = feature, color = pert_dose)) +
+      ylim(0, NA) +
+      labs(x = "Correlation", y = "-log10(q)", color = "Dose") +
+      geom_vline(aes(xintercept = 0), lty = 2, lwd =.5)
+    p <- plotly::ggplotly(p)
+
+    cat(htmltools::knit_print.shiny.tag(p))
+  }
+
+  dt <- DT::datatable(df %>%
+                        dplyr::filter(q.val < 0.1 || rank <= 100) %>%
+                        dplyr::select(feature, coef, q.val, pert_iname, pert_dose) %>%
+                        dplyr::arrange(q.val) %>%
+                        dplyr::mutate(coef = signif(coef, 3),
+                                      q.val = signif(q.val, 3)),
+                      filter = "top", rownames = F, options = list(dom = "tp"),
+                      colnames = c("Feature", "Correlation", "q value", "Compound", "Dose")
+  )
+
+  cat(htmltools::knit_print.shiny.tag(dt))
+}
+```
+
+# Multivariate biomarker analysis{.tabset .tabset-fade .tabset-pills}
+
+## Info
+
+Next, for each logViability at a dose, AUC, and logIC50 we train and fit multivariate models using the molecular characterizations and genetic dependencies of the PRISM cell lines. The resulting importance of various features can be used to suggest potential biomarkers of compound response or to inform potential hypotheses for mechanisms of action. As with the continuous analyses, features may appear in the table or on the plot multiple times for different "doses" (note that dose can also refer to AUC or logIC50).
+
+In particular, we trained random forest models using:
+i. CCLE features (copy number alterations, RNA expression, mutation status and lineage annotation)
+ii. CCLE features + reverse phase protein array data (RPPA) + CRISPR + miRNA + metabolomics (MET).
+
+For each model, we reported the cross-validated R-squared values and Pearson scores (the correlation between the model predictions and PRISM profiles) as the model performances. These performances are summarized in the model table below and describe how accurate the model is.
+
+For each feature of each model, the feature importances are computed after normalizing (the sum of the importances is set to 1 in each model) and tabulated along with the accuracy measures.
+
+In each tab of the results section, we plot the R-squared value and the importance of the most important feature of each model. The models with R-squares above 0.2 are considered valid models, and the ones above 0.3 strong models.
+
+Please note that the feature importances are not directional quantities. For the directionality of the genomic features, refer to the univariate correlation analysis.
+
+```{r, echo=F, message=F, warning=F}
+DT::datatable(model_table %>%
+                dplyr::select(pert_iname, pert_dose, model, R2, PearsonScore) %>%
+                dplyr::mutate_at(vars(R2, PearsonScore),
+                                 funs(signif(., 3))) %>%
+                dplyr::arrange(desc(R2)),
+              filter = "top", rownames = F,
+              colnames = c("Compound", "Dose", "Model", "R-squared", "Pearson Score"))
+```
+
+## Results {.tabset .tabset-fade}
+
+### CCLE model (LIN + GE + MUT + CNA)
+
+Variable importance versus model accuracy ($R^2$). High variable importance and high accuracy for a given feature suggests that it is important for predicting sensitivity (at the given dose modeled). Variable importance is directionless for Random Forest models but can be inferred based on univariate analysis results.
+
+```{r, echo=F, message=F, warning=F, fig.height=4}
+df <- rf_table %>%
+  dplyr::filter(model == "ccle") %>%
+  dplyr::select(-model)
+
+p <- df %>%
+  dplyr::filter(rank == 1) %>%
+  dplyr::select(feature, R2, PearsonScore, RF.imp.mean, pert_iname, pert_dose) %>%
+  ggplot(aes(x = R2, y = RF.imp.mean, label = feature, color = pert_dose)) +
+  geom_point() +
+  labs(x = "Model R2", y = "Variable Importance", color = "Dose") +
+  xlim(c(0, NA)) + ylim(c(0, NA))
+
+plotly::ggplotly(p)
+
+DT::datatable(df %>%
+                dplyr::select(feature, R2, rank, RF.imp.mean, RF.imp.stability, RF.imp.sd, pert_iname, pert_dose) %>%
+                dplyr::mutate_at(vars(RF.imp.mean, RF.imp.sd, RF.imp.stability, R2),
+                                 funs(signif(., 3))) %>%
+                dplyr::arrange(rank),
+              filter = "top", rownames = F, options = list(dom = "tp"),
+              colnames = c("Feature", "r-squared", "Rank", "Feature importance", "Feature stability",
+                           "Feature importance SD", "Compound", "Dose"))
+```
+
+### Complete model (LIN + GE + MUT + CNA + CRISPR + RPPA + miRNA + MET)
+
+Variable importance versus model accuracy ($R^2$). High variable importance and high accuracy for a given feature suggests that it is important for predicting sensitivity (at the given dose modeled). Variable importance is directionless for Random Forest models but can be inferred based on univariate analysis results.
+
+```{r, echo=F, message=F, warning=F, fig.height=4}
+df <- rf_table %>%
+  dplyr::filter(model == "all") %>%
+  dplyr::select(-model)
+
+p <- df %>%
+  dplyr::filter(rank == 1) %>%
+  dplyr::select(feature, R2, PearsonScore, RF.imp.mean, pert_iname, pert_dose) %>%
+  ggplot(aes(x = R2, y = RF.imp.mean, label = feature, color = pert_dose)) +
+  geom_point() +
+  labs(x = "Model R2", y = "Variable Importance", color = "Dose") +
+  xlim(c(0, NA)) + ylim(c(0, NA))
+
+plotly::ggplotly(p)
+
+DT::datatable(df %>%
+                dplyr::select(feature, R2, rank, RF.imp.mean, RF.imp.stability, RF.imp.sd, pert_iname, pert_dose) %>%
+                dplyr::mutate_at(vars(RF.imp.mean, RF.imp.sd, RF.imp.stability, R2),
+                                 funs(signif(., 3))) %>%
+                dplyr::arrange(rank),
+              filter = "top", rownames = F, options = list(dom = "tp"),
+              colnames = c("Feature", "r-squared", "Rank", "Feature importance", "Feature stability",
+                           "Feature importance SD", "Compound", "Dose"))
+```
