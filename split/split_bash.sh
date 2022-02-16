@@ -60,6 +60,7 @@ done
 batch_index=0
 if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
   batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+
 fi
 
 if [[ ! -z $projects ]]
@@ -81,7 +82,8 @@ args=(
   -o "$BUILD_DIR"
 )
 
-if [[ ! -z $VERBOSE ]]
+#add verbose for logging on AWS
+if [[ ! -z $VERBOSE || ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]
 then
   args+=(-v)
 fi
