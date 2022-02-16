@@ -97,7 +97,38 @@ const features = async function(projectKeys,fileName){
             projects.push(clonedProject);
         }
     }
-    return await writeOutput(outPath,projects);
+
+    const sortedProjectKeys = _.sortBy(projects, function(proj){
+        switch (proj.feature){
+            case 'lin':
+                return 1
+            case 'mut':
+                return 1
+            case 'ge':
+                return 1
+            case 'xpr':
+                return 1
+            case 'cna':
+                return 1
+            case 'met':
+                return 1
+            case 'mirna':
+                return 1
+            case 'rep':
+                return 1
+            case 'prot':
+                return 1
+            case 'shrna':
+                return 1
+            case 'x-all':
+                return 2
+            case 'x-ccle':
+                return 2
+        }
+    });
+
+
+    return await writeOutput(outPath,sortedProjectKeys);
 }
 /**
  *
