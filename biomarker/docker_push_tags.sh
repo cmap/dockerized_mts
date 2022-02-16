@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-docker push cmap/biomarker-module:v0.0.1
-docker push cmap/biomarker-module:dev
+docker push prismcmap/biomarker-module:v0.1.0
+docker push prismcmap/biomarker-module:latest
