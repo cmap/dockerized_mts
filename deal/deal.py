@@ -157,7 +157,9 @@ def main(args):
         if key == 'inst_info':
             inst = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0], sep='\t')
             inst.loc[inst['x_project_id'] == project].to_csv(
-                os.path.join(proj_dir,'{}_{}.txt'.format(project, key))
+                os.path.join(proj_dir,'{}_{}.txt'.format(project, key)),
+                index=False,
+                sep='\t'
             )
         elif key ==  'cell_info':
             shutil.copy(
