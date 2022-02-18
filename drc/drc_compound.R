@@ -87,6 +87,13 @@ for (i in 1:nrow(dosed_compounds)) {
     dplyr::group_by(across(!contains(comp$index))) %>%
     dplyr::summarise(n = n(), .groups = "drop") %>%
     dplyr::filter(n >= 4)
+  
+  # skip if no cell lines with 4+ doses
+  if (nrow(df) < 1) {
+    DRC[[i]] <- tibble()
+    next
+  }
+  
   sub_DRC <- list()  # stores dose response results
   
   # for each cell line
