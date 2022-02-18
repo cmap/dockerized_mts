@@ -97,8 +97,10 @@ for (i in 1:nrow(dosed_compounds)) {
     
     # fit curve
     a <- tryCatch(dr4pl(dose = d[[dose_var]], response = 2^d[[LFC_column]],
-                        method.init = "logistic", trend = "decreasing",
-                        lowerl = c(-Inf, -Inf, -Inf, 0)),
+                        init.parm = dr4pl::dr4pl_theta(theta_1 = 1, theta_4 = 0.3),
+                        method.init = "logistic",
+                        lowerl = c(0.99, -Inf, -Inf, 0),
+                        upperl = c(1.01, Inf, Inf, 1.01)),
                   error = function(e) {print(e); return(NA)})
     
     # if it fits and doesn't converge grab robust fit

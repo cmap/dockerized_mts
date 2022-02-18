@@ -190,7 +190,7 @@ The viability values for each of the screened doses are shown in the heatmap bel
 # plots cell line x drug (by dose) heatmap where color = response (LFC)
 LFC_matrix <- LFC
 LFC_matrix %<>%
-  reshape2::acast(ccle_name + culture ~ pert_dose, 4,
+  reshape2::acast(ccle_name + culture ~ pert_dose,
                   value.var = "LFC_cb", fun.aggregate = mean)
 
 LFC_matrix <- LFC_matrix[order(rowMeans(LFC_matrix)), , drop = F]
