@@ -89,6 +89,7 @@ if [[ "$pert_id" == "DMSO" ]]
 then
     echo "Skipping DMSO"
 else
+    echo Rscript /biomarkers.R "${args[@]}"
     Rscript /biomarkers.R "${args[@]}"
 fi
 
