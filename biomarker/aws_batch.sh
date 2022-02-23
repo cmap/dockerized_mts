@@ -21,7 +21,7 @@ while test $# -gt 0; do
       ;;
     -s | --project_key_start_index)
       shift
-      $PROJECT_KEY_START_INDEX=$1
+      PROJECT_KEY_START_INDEX=$1
       ;;
     -d| --biomarker_dir)
       shift
@@ -52,7 +52,10 @@ batch_index=0
 if [[ ! -z $projects ]]
 then
     if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+        echo "PROJECT_KEY_START_INDEX:" $PROJECT_KEY_START_INDEX
+        echo "AWS_BATCH_JOB_ARRAY_INDEX:" $AWS_BATCH_JOB_ARRAY_INDEX
         batch_index=$(($PROJECT_KEY_START_INDEX + ${AWS_BATCH_JOB_ARRAY_INDEX}))
+        echo "BATCH INDEX:" $batch_index
     fi
     pert_id=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
