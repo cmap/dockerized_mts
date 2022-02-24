@@ -48,7 +48,8 @@ if (length(lfc_path) == 1) {
 
 # read in DRC if available
 if (length(drc_path) == 1) {
-  DRC <- data.table::fread(drc_path)
+  DRC <- data.table::fread(drc_path) %>%
+    dplyr::mutate(ec50 = as.numeric(ec50))
   combo_drc <- DRC
 } else {
   DRC <- NULL
