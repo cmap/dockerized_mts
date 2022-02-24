@@ -80,6 +80,10 @@ plate_dir <- dirname(params$data_dir)
 # read in constitutent compound data
 for (const in constituents) {
   const_path <- file.path(plate_dir, const)
+  if (!dir.exists(const_path)) {
+    warning("No data directory for anchor or test compounds. Unable to generate combination report.")
+    quit(save = "no")
+  }
   
   # DRC and LFC
   const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
