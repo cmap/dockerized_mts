@@ -72,6 +72,16 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
   # LFC and LFC.cb values will be medians across replicates
   dplyr::summarise(LFC = median(LFC, na.rm = T), .groups = "drop")
 
+LFC_COLLAPSED_TABLE %<>%
+    dplyr::mutate(sig_id = paste(pert_plate, culture, pert_id, pert_idose, pert_time, sep = fixed("_")))
+
+dims_full = paste(dplyr::distinct(LFC_TABLE, profile_id) %>% nrow(),
+                  dplyr::distinct(LFC_TABLE, ccle_name) %>% nrow(),
+                  sep = "x")
+dims_coll = paste(dplyr::distinct(LFC_COLLAPSED_TABLE, sig_id) %>% nrow(),
+                  dplyr::distinct(LFC_COLLAPSED_TABLE, ccle_name) %>% nrow(),
+                  sep = "x")
+
 #---- Write results ----
-readr::write_csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC.csv"))
-readr::write_csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC.csv"))
+readr::write_csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC_COMBAT_n", dims_full, ".csv"))
+readr::write_csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC_COMBAT_n", dims_coll, ".csv"))

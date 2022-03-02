@@ -1,0 +1,14 @@
+<script>
+    const signDepMapURL = function (filename) {
+        const win_url = window.location.href.replace("index.html","");
+        const sanitized_file_name = win_url+ filename.replace("./","")
+        const u = "https://clue.io/depmap?url=" + encodeURIComponent(sanitized_file_name);
+        window.open(u, "clue");
+    }
+    $(document).ready(function () {
+        $("button").click(function () {
+            const filename = $(this).data("filename");
+            signDepMapURL(filename);
+        });
+    });
+</script>
