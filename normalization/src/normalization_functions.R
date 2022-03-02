@@ -11,6 +11,7 @@ library(stats)
 library(hdf5r)
 library(reshape2)
 library(splitstackshape)
+library(R.utils)
 
 #---- Reading ----
 # HDF5 file reader
@@ -67,7 +68,7 @@ control_medians <- function(df) {
     dplyr::mutate(mmLMFI = logMFI - mLMFI + median(mLMFI)) %>%  # normalized value for rep (to median well)
     dplyr::summarise(rLMFI = median(mmLMFI), .groups = "drop") %>%  # median normalized value across reps
     dplyr::left_join(df)
-
+  
   return(ref)
 }
 
@@ -81,28 +82,36 @@ normalize <- function(df, barcodes, threshold) {
     # try with k=4 and 5 (to avoid hanging), try again with linear model
     dplyr::mutate(logMFI_norm = tryCatch(
       expr = {tryCatch(
-        expr = {scam(y ~ s(x, bs = "micv", k = 4),
-                     data = tibble(
-                       y = rLMFI[rid %in% barcodes$rid],
-                       x = logMFI[rid %in% barcodes$rid])) %>%
-            predict(newdata = tibble(x = logMFI)) %>% as.numeric()},
-        error = function(e) {
-          scam(y ~ s(x, bs = "micv", k = 5),
-               data = tibble(
-                 y = rLMFI[rid %in% barcodes$rid],
-                 x = logMFI[rid %in% barcodes$rid])) %>%
-            predict(newdata = tibble(x = logMFI) %>% as.numeric())
-        })},
-      error = function(e) {
-        lm(y ~ x,
-           data = tibble(
-             y = rLMFI[rid %in% barcodes$rid],
-             x = logMFI[rid %in% barcodes$rid])) %>%
-          predict(newdata = tibble(x = logMFI)) %>% as.numeric()
-      })) %>%
+        expr = {
+          R.utils::withTimeout(
+            expr = {
+              scam(y ~ s(x, bs = "micv", k = 4),
+                   data = tibble(
+                     y = rLMFI[rid %in% barcodes$rid],
+                     x = logMFI[rid %in% barcodes$rid])) %>%
+                predict(newdata = tibble(x = logMFI)) %>% as.numeric()
+            }, timeout = 2, onTimeout = "error"
+          )
+        }, error = function(e) {
+          R.utils::withTimeout(
+            expr = {
+              scam(y ~ s(x, bs = "micv", k = 5),
+                   data = tibble(
+                     y = rLMFI[rid %in% barcodes$rid],
+                     x = logMFI[rid %in% barcodes$rid])) %>%
+                predict(newdata = tibble(x = logMFI) %>% as.numeric())
+            }, timeout = 2, onTimeout = "error"
+          )
+        })}, error = function(e) {
+          lm(y ~ x,
+             data = tibble(
+               y = rLMFI[rid %in% barcodes$rid],
+               x = logMFI[rid %in% barcodes$rid])) %>%
+            predict(newdata = tibble(x = logMFI)) %>% as.numeric()
+        })) %>%
     dplyr::ungroup() %>%
     dplyr::select(-logMFI)
-
+  
   return(normalized)
 }
 
@@ -116,19 +125,19 @@ normalize_base <- function(df, barcodes, threshold) {
     # try with k=4 and 5 (to avoid hanging), try again with linear model
     dplyr::mutate(logMFI_norm = tryCatch(
       expr = {scam(y ~ s(x, bs = "micv"),
-                     data = tibble(
-                       y = rLMFI[rid %in% barcodes$rid],
-                       x = logMFI[rid %in% barcodes$rid])) %>%
-            predict(newdata = tibble(x = logMFI)) %>% as.numeric()},
-        error = function(e) {
-          lm(y ~ x,
-             data = tibble(
-               y = rLMFI[rid %in% barcodes$rid],
-               x = logMFI[rid %in% barcodes$rid])) %>%
-            predict(newdata = tibble(x = logMFI)) %>% as.numeric()}
-      )) %>%
+                   data = tibble(
+                     y = rLMFI[rid %in% barcodes$rid],
+                     x = logMFI[rid %in% barcodes$rid])) %>%
+          predict(newdata = tibble(x = logMFI)) %>% as.numeric()},
+      error = function(e) {
+        lm(y ~ x,
+           data = tibble(
+             y = rLMFI[rid %in% barcodes$rid],
+             x = logMFI[rid %in% barcodes$rid])) %>%
+          predict(newdata = tibble(x = logMFI)) %>% as.numeric()}
+    )) %>%
     dplyr::ungroup() %>%
     dplyr::select(-logMFI)
-
+  
   return(normalized)
 }
