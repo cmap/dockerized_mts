@@ -12,7 +12,7 @@ REQUIRED_FIELDS = {
   'pert_type',
   'x_project_id',
   'pert_vehicle',
-  'pert_well'
+  'pert_well',
 }
 
 def validate(map_src,verbose=False,isFile=True):

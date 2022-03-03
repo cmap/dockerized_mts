@@ -6,7 +6,6 @@ print_help () {
   python /cmap/merino/merino/assemble/assemble.py --help
 }
 
-
 while test $# -gt 0; do
   case "$1" in
     -h|--help)

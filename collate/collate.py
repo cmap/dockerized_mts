@@ -13,6 +13,7 @@ import merino.build_summary.ssmd_analysis as ssmd
 import merino.misc_tools.cut_to_l2 as cut_to_l2
 import merino.setup_logger as setup_logger
 import pandas as pd
+from .utils import *
 
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
 
@@ -126,6 +127,9 @@ def mk_inst_info(inst_data, args=None):
         del inst_info[x]
 
     inst_info.set_index('profile_id', inplace=True)
+
+    logger.info("Converting pert_dose, pert_idose as strings")
+    inst_info = stringify_inst_doses(inst_info)
 
     inst_info.to_csv(os.path.join(args.build_dir, args.cohort_name + '_inst_info.txt'), sep='\t')
 

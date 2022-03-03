@@ -5,6 +5,9 @@ import cmapPy.pandasGEXpress.GCToo as GCToo
 import prism_metadata
 import pandas
 import cmapPy.pandasGEXpress.write_gct as write_gct
+import numpy as np
+from math import floor, log10
+
 
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
 
@@ -185,6 +188,71 @@ def build_gctoo_data_df(cell_id_data_map, data_df_column_ids):
 
     return data_df
 
+"""
+stringify method to write floats as numerical non-scientific notation
+"""
+def float_to_str(f):
+    float_string = repr(f)
+    if 'e' in float_string:  # detect scientific notation
+        digits, exp = float_string.split('e')
+        digits = digits.replace('.', '').replace('-', '')
+        exp = int(exp)
+        zero_padding = '0' * (abs(int(exp)) - 1)  # minus 1 for decimal point in the sci notation
+        sign = '-' if f < 0 else ''
+        if exp > 0:
+            float_string = '{}{}{}.0'.format(sign, digits, zero_padding)
+        else:
+            float_string = '{}0.{}{}'.format(sign, zero_padding, digits)
+    return float_string
+
+
+"""
+rounds to significant figures
+"""
+def _round_sig(x, sig=4):
+    return round(x, sig - int(floor(log10(abs(x)))) - 1)
+
+
+"""
+prints string as decimal value not scientific notation
+"""
+def _format_floats(fl, sig=4):
+    if type(fl) == str:
+        fl = float(fl)
+    if np.isnan(fl):
+        return fl
+    else:
+        return np.format_float_positional(_round_sig(fl, sig=sig), precision=6, trim='-')
+
+
+def process_pert_doses(el):
+    if type(el) == str:
+        #         print(el)
+        return '|'.join(map(_format_floats, map(float, el.split('|'))))
+    else:
+        return _format_floats(el)
+
+def process_pert_idoses(el):
+    if type(el) == str:
+        #         print(el)
+        idoses = el.split('|')
+        idoses = [i.split(" ") for i in idoses]
+        return "|".join(["{} {}".format(_format_floats(idose[0]), idose[1]) for idose in idoses])
+    else:
+        return _format_floats(el)
+
+def stringify_inst_doses(inst):
+    # cast pert_dose field to str
+    inst['pert_dose'] = inst['pert_dose'].apply(
+        lambda el: process_pert_doses(el)
+    )
+    if 'pert_idose' in inst.columns:
+        inst['pert_idose'] = inst['pert_idose'].apply(
+            lambda el: process_pert_idoses(el)
+        )
+
+    inst['pert_dose'] = inst['pert_dose'].astype(str)
+    return inst
 
 def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects, prism_cell_list):
 
@@ -197,12 +265,19 @@ def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects,
     # Create full outfile, build the gct, and write it out!
     median_outfile = os.path.join(outfile, "assemble", prism_replicate_name, prism_replicate_name + "_MEDIAN.gct")
     median_gctoo = build_gctoo(prism_replicate_name, all_perturbagens, all_median_data_by_cell)
+
+    # enforce doses as strings
+    inst = stringify_inst_doses(median_gctoo.col_metadata_df)
+    median_gctoo.col_metadata_df = inst
+
     write_gct.write(median_gctoo, median_outfile, data_null=_NaN, filler_null=_null)
 
+    # Write Inst info file
     instinfo_outfile = os.path.join(outfile, "assemble", prism_replicate_name, prism_replicate_name + "_inst_info.txt")
-    median_gctoo.col_metadata_df.to_csv(instinfo_outfile, sep='\t')
+    inst.to_csv(instinfo_outfile, sep='\t')
     logger.info("Instinfo has been written to {}".format(instinfo_outfile))
 
     count_outfile = os.path.join(outfile, "assemble", prism_replicate_name, prism_replicate_name + "_COUNT.gct")
     count_gctoo = build_gctoo(prism_replicate_name, all_perturbagens, all_count_data_by_cell)
+    count_gctoo.col_metadata_df = stringify_inst_doses(inst)
     write_gct.write(count_gctoo, count_outfile, data_null=_NaN, filler_null=_null)

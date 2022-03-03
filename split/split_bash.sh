@@ -101,6 +101,7 @@ if [[ "$PERT" == "DMSO" ]]
 then
    echo "Skipping DMSO"
 else
+  echo python /clue/bin/split.py "${args[@]}"
   python /clue/bin/split.py "${args[@]}"
 fi
 

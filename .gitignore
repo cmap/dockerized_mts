@@ -1,3 +1,6 @@
+#Python compiled
+*.pyc
+
 # History files
 .Rhistory
 .Rapp.history
@@ -55,3 +58,6 @@ reports/rmarkdown/*.html
 landing_pages/rmarkdown/*.html
 node_modules
 __pycache__/
+
+#debug notebooks
+*.ipynb
