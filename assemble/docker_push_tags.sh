@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-docker push prismcmap/merino:v0.1.1
-docker push prismcmap/merino:latest
+docker push prismcmap/assemble:v0.0.1
+docker push prismcmap/assemble:latest
