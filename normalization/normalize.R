@@ -35,7 +35,7 @@ raw_matrix <- read_hdf5(path_data)
 rownames(raw_matrix) <- paste0(rownames(raw_matrix), "_", assay)
 
 # read in cell line info
-cell_info <- data.table::fread(path_cell_info) %>%
+cell_info <- data.table::fread(path_cell_info, colClasses = "character") %>%
   dplyr::distinct(rid, ccle_name, pool_id) %>%
   dplyr::mutate(culture = assay) %>%
   dplyr::mutate(rid = paste0(rid, "_", assay)) %>%
@@ -43,7 +43,7 @@ cell_info <- data.table::fread(path_cell_info) %>%
                                  "CTLBC", pool_id))
 
 # read in inst_info
-inst_info <- data.table::fread(path_inst_info)
+inst_info <- data.table::fread(path_inst_info, colClasses = "character")
 
 # split out base plate
 base_day <- data.table::fread(path_inst_info) %>%

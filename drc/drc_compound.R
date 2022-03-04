@@ -66,12 +66,12 @@ DRC_TABLE_cb <- LFC_TABLE %>%
   dplyr::distinct(pert_iname, pert_time, pert_dose, pert_iname, pert_id, ccle_name, culture, pool_id, pert_plate) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_id", "pert_dose"),
                           sep = "|", fixed = T,
-                          direction = "wide", drop = T)
+                          direction = "wide", drop = T, type.convert = T)
 # widened version for joining
 LFC_TABLE.split <- LFC_TABLE %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_id", "pert_dose"),
                           sep = "|", fixed = T,
-                          direction = "wide", drop = F)
+                          direction = "wide", drop = F, type.convert = T)
 
 
 #---- Compute dose-response parameters ----
