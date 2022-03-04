@@ -125,7 +125,8 @@ def slice_and_write_project(data, data_level, project, outpath, args):
             'search_pattern']))) == 1, "Incorrect number of inst_info files found"
         inst = pd.read_csv(
             glob.glob(os.path.join(args.build_path, build_contents_dict['inst_info']['search_pattern']))[0],
-            sep='\t'
+            sep='\t',
+            dtype={'pert_dose': 'str', 'pert_idose': 'str'}
         )
 
         proj_inst = inst.loc[
@@ -165,7 +166,10 @@ def main(args):
         dl_dict = build_contents_dict[key]
         proj_dir = os.path.join(outpath, project, 'data')
         if key == 'inst_info':
-            inst = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0], sep='\t')
+            inst = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0],
+                               sep='\t',
+                               dtype={'pert_dose': 'str', 'pert_idose': 'str'}
+                               )
             inst.loc[inst['x_project_id'] == project].to_csv(
                 os.path.join(proj_dir, '{}_{}.txt'.format(project, key)),
                 index=False,
@@ -179,12 +183,15 @@ def main(args):
         elif key == 'QC_TABLE':
             inst = pd.read_csv(
                 glob.glob(os.path.join(build_path, build_contents_dict['inst_info']['search_pattern']))[0],
-                sep='\t'
+                sep='\t',
+                dtype={'pert_dose': 'str', 'pert_idose': 'str'},
             )
             proj_inst = inst.loc[inst['x_project_id'] == project]
             preps = proj_inst.prism_replicate.unique()
 
-            qc = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0])
+            qc = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0],
+                             dtype={'pert_dose': 'str', 'pert_idose': 'str'}
+                             )
             qc.loc[qc['prism_replicate'].isin(preps)].to_csv(os.path.join(proj_dir, '{}_{}.csv'.format(project, key)))
         else:
             data = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0])
@@ -196,10 +203,12 @@ def main(args):
 
         inst = pd.read_csv(
             glob.glob(os.path.join(build_path, build_contents_dict['inst_info']['search_pattern']))[0],
-            sep='\t', dtype={'pert_dose': 'str', 'pert_idose': 'str'},
+            sep='\t',
+            dtype={'pert_dose': 'str', 'pert_idose': 'str'},
         )
         qc = pd.read_csv(
             glob.glob(os.path.join(build_path, build_contents_dict['QC_TABLE']['search_pattern']))[0],
+            dtype={'pert_dose': 'str', 'pert_idose': 'str'}
         )
         for project in inst['x_project_id'].unique():
             if pd.isna(project):
@@ -235,7 +244,10 @@ def main(args):
                 'search_pattern']))) == 1, "Incorrect number of files for data level: {}".format(data_level)
 
             print(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0])
-            data = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0])
+            data = pd.read_csv(
+                glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0],
+                dtype={'pert_dose': 'str', 'pert_idose': 'str'}
+            )
             for project in inst['x_project_id'].unique():
                 if pd.isna(project):
                     continue

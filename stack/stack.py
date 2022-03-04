@@ -136,7 +136,11 @@ def main(args):
             combined_data.to_csv(out_path, index=False)
         elif build_contents_dict[key]['type'] == 'csv_data':
             print('Merging the following files:\n\t{}'.format('\n\t'.join(fps)))
-            combined_data = pd.concat([pd.read_csv(fp) for fp in fps]).reset_index(drop=True)
+            combined_data = pd.concat(
+                [pd.read_csv(fp,
+                             dtype={'pert_dose': 'str', 'pert_idose': 'str'}
+                             ) for fp in fps
+                ]).reset_index(drop=True)
             combined_data['feature_id'] = combined_data.apply(
                 lambda row: '{}:{}'.format(row['culture'], row['ccle_name']), axis=1)
             if key == 'LEVEL5_LFC':
@@ -169,7 +173,10 @@ def main(args):
 
         elif build_contents_dict[key]['type'] == 'report':
             print('Merging the following files:\n\t{}'.format('\n\t'.join(fps)))
-            combined_data = pd.concat([pd.read_csv(fp) for fp in fps]).reset_index(drop=True)
+            combined_data = pd.concat([pd.read_csv(
+                fp,
+                dtype={'pert_dose': 'str', 'pert_idose': 'str'}
+            ) for fp in fps]).reset_index(drop=True)
 
             out_path = os.path.join(out, '{}_{}.csv'.format(build_name, key))
             print("Writing file to: \n\t{}".format(out_path))
@@ -177,7 +184,9 @@ def main(args):
 
         elif build_contents_dict[key]['type'] == 'key':
             print('Merging the following files:\n\t{}'.format('\n\t'.join(fps)))
-            key_list = [pd.read_csv(fp) for fp in fps]
+            key_list = [pd.read_csv(fp,
+                                    dtype={'pert_dose': 'str', 'pert_idose': 'str'}
+                                    ) for fp in fps]
             df = key_list.pop()
             for other_df in key_list:
                 df = df.merge(other_df, how='outer', on=list(other_df.columns))  # this avoids duplicate rows
