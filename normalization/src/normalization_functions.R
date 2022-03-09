@@ -49,7 +49,8 @@ write_key <- function(df, out_dir, build_name) {
     dplyr::distinct() %>%
     splitstackshape::cSplit(splitCols = "pert_dose",
                             sep = "|", fixed = T,
-                            direction = "wide", drop = T) %>%
+                            direction = "wide", drop = T,
+                            type.convert = F) %>%
     dplyr::group_by(across(-c(colnames(.)[str_detect(colnames(.), pattern = "pert_dose")]))) %>%
     summarise_all(function(x) n_distinct(x, na.rm = T)) %>%
     dplyr::ungroup() %>%
