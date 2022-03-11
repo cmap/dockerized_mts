@@ -90,12 +90,14 @@ for (const in constituents) {
   const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
   if (length(const_lfc_path) == 1) {
     LFC %<>% dplyr::bind_rows(
-      data.table::fread(const_lfc_path) %>% dplyr::mutate(pert_dose = as.character(pert_dose))
+      data.table::fread(const_lfc_path) %>% 
+        dplyr::mutate(pert_dose = as.character(pert_dose))
     )
   }
   if (length(const_drc_path) == 1) {
     DRC %<>% dplyr::bind_rows(
-      data.table::fread(const_drc_path) %>% dplyr::mutate(ec50 = as.numeric(ec50))
+      data.table::fread(const_drc_path) %>% 
+        dplyr::mutate(ec50 = as.numeric(ec50))
     )
   }
   
@@ -106,17 +108,22 @@ for (const in constituents) {
   
   if (length(const_corr_path) == 1) {
     correlations %<>% dplyr::bind_rows(
-      data.table::fread(const_corr_path) %>% dplyr::mutate(pert_dose = as.character(pert_dose))
+      data.table::fread(const_corr_path) %>% 
+        dplyr::mutate(pert_dose = as.character(pert_dose)) %>%
+        dplyr::mutate(feature = word(feature, 2, -1, sep = fixed("_")))
     )
   }
   if (length(const_model_path) == 1) {
     model_table %<>% dplyr::bind_rows(
-      data.table::fread(const_model_path) %>% dplyr::mutate(pert_dose = as.character(pert_dose))
+      data.table::fread(const_model_path) %>% 
+        dplyr::mutate(pert_dose = as.character(pert_dose))
     )
   }
   if (length(const_rf_path) == 1) {
     rf_table %<>% dplyr::bind_rows(
-      data.table::fread(const_rf_path) %>% dplyr::mutate(pert_dose = as.character(pert_dose))
+      data.table::fread(const_rf_path) %>% 
+        dplyr::mutate(pert_dose = as.character(pert_dose)) %>%
+        dplyr::mutate(feature = word(feature, 2, -1, sep = fixed("_")))
     )
   }
 }
