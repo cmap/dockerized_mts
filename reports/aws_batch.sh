@@ -77,6 +77,7 @@ if [[ "$sanitized_pert_id" == "DMSO" ]]
 then
   echo "Skipping DMSO"
 else
+  echo Rscript /render_reports "${args[@]}"
   Rscript /render_reports.R "${args[@]}"
 fi
 

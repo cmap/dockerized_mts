@@ -61,7 +61,10 @@ def float_to_str(f):
 rounds to significant figures
 """
 def _round_sig(x, sig=4):
-    return round(x, sig - int(floor(log10(abs(x)))) - 1)
+    if x == 0:
+        return 0
+    else:
+        return round(x, sig - int(floor(log10(abs(x)))) - 1)
 
 
 """
