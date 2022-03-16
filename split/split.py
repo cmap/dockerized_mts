@@ -58,7 +58,7 @@ def make_compound_slice(data, out, project, pert_plate, pert, outfile_prefix):
 
     assert len(pert_data) > 0, "No matches found, using pert_ids?"
 
-    pert_clean = re.sub('[^0-9a-zA-Z\-\_]+', '', pert.replace('|', '_')) #filenames should not contain '|'
+    pert_clean = re.sub('[^0-9a-zA-Z\-\_\.]+', '', pert.replace('|', '_')) #filenames should not contain '|'
     pert_outdir = os.path.join(out, project,pert_plate, pert_clean.upper())
 
     write_csv_with_dim(
