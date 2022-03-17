@@ -98,9 +98,14 @@ def csv2gctoo(df, rid_header, cid_header, data_header, col_metadata_headers, row
     gct_obj = GCToo(data_df = data_df, col_metadata_df = col_metadata_df, row_metadata_df = row_metadata_df)
     return gct_obj
 
+
+def clean_pert(pert_name):
+    return re.sub('[^0-9a-zA-Z\-\_\.]+', '', pert_name)
+
+
 def main(args):
     pert = args.pert
-    pert_clean = re.sub('[^0-9a-zA-Z\-\_]+', '', pert.replace('|', '_')) #filenames should not contain '|'
+    pert_clean = clean_pert(pert.replace('|', '_')).upper() #filenames should not contain '|'
 
     pert_directory = os.path.join(args.splits_dir, args.project, args.pert_plate, pert_clean)
     fstr = os.path.join(pert_directory, '*LEVEL4*.csv')
