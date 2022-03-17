@@ -131,6 +131,7 @@ else
         then
           args+=(-s $SIG_ID_COLS)
         fi
+        echo python /clue/bin/stack.py "${args[@]}"
         python /clue/bin/stack.py "${args[@]}"
     else
         echo "Done"

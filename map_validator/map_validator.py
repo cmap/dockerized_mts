@@ -13,6 +13,7 @@ REQUIRED_FIELDS = {
   'x_project_id',
   'pert_vehicle',
   'pert_well',
+  'pert_dose_unit'
 }
 
 def validate(map_src,verbose=False,isFile=True):
