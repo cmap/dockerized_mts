@@ -21,6 +21,26 @@ const uniqueProjects= function(projectKeys){
         return projectKey.x_project_id;
     });
 }
+
+const uniquePertPlates = function (projectKeys) {
+    return _.uniq(projectKeys, function (projectKey) {
+        return projectKey.pert_plate;
+    });
+}
+const uniqueProjectKeysWithPertPlates = async function(projectKeys,fileName){
+    const outPath = fileName.replace(".json","_uniq_pert_plates.json");
+    const uniqueProjects = uniqueProjects(projectKeys);
+    const uniquePertPlates = uniquePertPlates(projectKeys);
+    const projects = [];
+    for(const project of uniqueProjects){
+        const clonedProject = Object.assign({}, project);
+        for(const pert_plate of uniquePertPlates){
+            clonedProject["pert_plate"] = pert_plate.pert_plate;
+            projects.push(clonedProject);
+        }
+    }
+    return await writeOutput(outPath,projects);
+}
 /**
  *
  * @param projectKeys
@@ -200,6 +220,7 @@ const doAll = async function(projectKeyPath){
     promises.push(levels(projectKeys,projectKeyPath));
     promises.push(features(projectKeys,projectKeyPath));
     promises.push(searchProjectPatterns(projectKeys,projectKeyPath));
+    promises.push(uniqueProjectKeysWithPertPlates(projectKeys,projectKeyPath));
 
     const p = await Promise.all(promises);
     return "done";
