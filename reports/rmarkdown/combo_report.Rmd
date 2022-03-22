@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports
-  comp: ""
-  qc_path: ""
+  data_dir: ~/Desktop/validation_combos/BRD-K32107296_BRD-K92041145
+  comp: "BRD-K32107296_BRD-K92041145"
+  qc_path: "~/Desktop/validation_combos/MTS016_VALIDATION_COMPOUND_COMBINATIONS_QC_TABLE.csv"
 output:
   html_document:
     toc: false
@@ -173,7 +173,10 @@ solo_lfc <- dplyr::anti_join(LFC, combo_lfc)
 
 # split combination perts
 spread_lfc <- combo_lfc %>%
-  dplyr::inner_join(qc_table) %>%  # QC info
+  dplyr::inner_join(qc_table %>%
+                      dplyr::group_by(ccle_name, culture) %>%
+                      dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad),
+                                       .groups = "drop")) %>%  # QC info
   dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
                           sep = "|", fixed = T,
