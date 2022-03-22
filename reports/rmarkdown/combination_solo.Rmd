@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports
-  comp: ""
+  data_dir: ~/Desktop/test_combo
+  comp: "BRD-K32107296|BRD-K92041145"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -309,7 +309,7 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
     geom_jitter() +
     facet_wrap(lineage ~ ., scales = "free_x") +
     theme(axis.text.x = element_text(angle = 45)) +
-    labs(x = "AUC", y = "Lineage", color = "Added doses")
+    labs(y = "AUC", x = "Lineage", color = "Added doses")
   p
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
@@ -383,7 +383,7 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
   top_muts <- MUT_table %>%
     dplyr::inner_join(df %>% dplyr::distinct(varied_iname, added_compounds, added_doses, mutation, n),
                       by = c("feature" = "mutation")) %>%
-    dplyr::filter(pert_dose == "log2.auc") %>%
+    dplyr::filter(str_detect(pert_dose, "log2.auc")) %>%
     dplyr::arrange(q.value)
 
   top_muts <- top_muts$feature %>% unique() %>% .[1:20]
