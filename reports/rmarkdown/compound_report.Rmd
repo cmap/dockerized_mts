@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/PLD_CONTROL
-  comp: PLD CONTROL
+  data_dir: ""
+  comp: ""
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -102,6 +102,11 @@ corr_table$pert_dose <- factor(corr_table$pert_dose, levels = dose_factors)
 disc_table$pert_dose <- factor(disc_table$pert_dose, levels = dose_factors)
 model_table$pert_dose <- factor(model_table$pert_dose, levels = dose_factors)
 rf_table$pert_dose <- factor(rf_table$pert_dose, levels = dose_factors)
+
+if (is.na(corr_table$pert_dose %>% unique())) corr_table$pert_dose <- "NA"
+if (is.na(disc_table$pert_dose %>% unique())) disc_table$pert_dose <- "NA"
+if (is.na(model_table$pert_dose %>% unique())) model_table$pert_dose <- "NA"
+if (is.na(rf_table$pert_dose %>% unique())) rf_table$pert_dose <- "NA"
 
 # feature types to loop through
 feature_full <- c("GE" = "Gene expression",
