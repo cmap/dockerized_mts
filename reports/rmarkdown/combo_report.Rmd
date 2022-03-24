@@ -85,7 +85,7 @@ for (const in constituents) {
     warning("No data directory for anchor or test compounds. Unable to generate combination report.")
     quit(save = "no")
   }
-
+  
   # DRC and LFC
   const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
   const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
@@ -101,12 +101,12 @@ for (const in constituents) {
         dplyr::mutate(ec50 = as.numeric(ec50))
     )
   }
-
+  
   # correlations and random forest
   const_corr_path <- list.files(const_path, "continuous_associations", full.names = T)
   const_model_path <- list.files(const_path, "model_table", full.names = T)
   const_rf_path <- list.files(const_path, "RF_table", full.names = T)
-
+  
   if (length(const_corr_path) == 1) {
     correlations %<>% dplyr::bind_rows(
       data.table::fread(const_corr_path) %>%
@@ -190,10 +190,10 @@ for (i in 1:length(constituents)) {
     dplyr::filter(pert_id == comp) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
-
+  
   new_cols <- paste(colnames(df), i, sep = "_")
   colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
-
+  
   spread_lfc %<>% dplyr::left_join(df)
 }
 
@@ -243,7 +243,7 @@ for (i in 1:length(solo_comps)) {
     dplyr::filter(varied_iname == comp) %>%
     dplyr::distinct(auc, ccle_name, culture) %>%
     dplyr::rename(solo_auc = auc)
-
+  
   auc_plot <- highlight_key(combo_drc %>% dplyr::inner_join(df),
                             ~ccle_name, group = "Synergy scores")
   p <- plot_ly(auc_plot) %>%
@@ -324,18 +324,18 @@ if (nrow(combos) < 1) {
                 selected = attrs_selected(opacity = 1))
     plots[[i]] <- p
   }
-  features_combo <- features_ge %>%
-    dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
-    dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
-  features_combo_dt <- highlight_key(features_combo, ~feature, group = "GE correlations")
-  dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
-                      options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
-                                     scrollX = "300px", paging = FALSE),
-                      filter = "top",
-                      colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
   subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
-  dt
 }
+features_combo <- features_ge %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+features_combo_dt <- highlight_key(features_combo, ~feature, group = "GE correlations")
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
+                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
+dt
 ```
 
 ### Heatmap
@@ -392,18 +392,18 @@ if (nrow(combos) < 1) {
                 selected = attrs_selected(opacity = 1))
     plots[[i]] <- p
   }
-  features_combo <- features_xpr %>%
-    dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
-    dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
-  features_combo_dt <- highlight_key(features_combo, ~feature, group = "XPR correlations")
-  dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
-                      options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
-                                     scrollX = "300px", paging = FALSE),
-                      filter = "top",
-                      colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
   subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
-  dt
 }
+features_combo <- features_xpr %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+features_combo_dt <- highlight_key(features_combo, ~feature, group = "XPR correlations")
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
+                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
+dt
 ```
 
 ### Heatmap
@@ -436,26 +436,30 @@ features_rep <- sub_correlations %>%
   dplyr::filter(feature_type == "REP")
 
 combos <- features_rep %>% dplyr::distinct(pert_iname, added_compounds)
-
 plots <- list()
-for (i in 1:nrow(combos)) {
-  volcano_combo <- highlight_key(features_rep %>% dplyr::inner_join(combos[i,]),
-                                 ~feature, group = "REP correlations")
-  p <- plot_ly(volcano_combo) %>%
-    add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
-              hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
-              showlegend = T) %>%
-    layout(xaxis = list(title = "Correlation coefficient"),
-           yaxis = list(title = "-log10(q-value)"), hovermode = "closest",
-           annotations = list(x = 0.5, y = 1,
-                              text = paste(combos[i, "pert_iname"], "+", combos[i, "added_compounds"]),
-                              align = "center", showarrow = F, xref="paper", yref="paper",
-                              xanchor = "center", yanchor = "top")) %>%
-    highlight(on = "plotly_click", off = "plotly_doubleclick",
-              dynamic = FALSE, selectize = FALSE, persistent = FALSE,
-              opacityDim = 1, defaultValues = "",
-              selected = attrs_selected(opacity = 1))
-  plots[[i]] <- p
+if (nrow(combos) < 1) {
+  print("No significant correlations to plot")
+} else {
+  for (i in 1:nrow(combos)) {
+    volcano_combo <- highlight_key(features_rep %>% dplyr::inner_join(combos[i,]),
+                                   ~feature, group = "REP correlations")
+    p <- plot_ly(volcano_combo) %>%
+      add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
+                hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
+                showlegend = T) %>%
+      layout(xaxis = list(title = "Correlation coefficient"),
+             yaxis = list(title = "-log10(q-value)"), hovermode = "closest",
+             annotations = list(x = 0.5, y = 1,
+                                text = paste(combos[i, "pert_iname"], "+", combos[i, "added_compounds"]),
+                                align = "center", showarrow = F, xref="paper", yref="paper",
+                                xanchor = "center", yanchor = "top")) %>%
+      highlight(on = "plotly_click", off = "plotly_doubleclick",
+                dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+                opacityDim = 1, defaultValues = "",
+                selected = attrs_selected(opacity = 1))
+    plots[[i]] <- p
+  }
+  subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
 }
 features_combo <- features_rep %>%
   dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
@@ -466,7 +470,6 @@ dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
                                    scrollX = "300px", paging = FALSE),
                     filter = "top",
                     colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
-subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
 dt
 ```
 

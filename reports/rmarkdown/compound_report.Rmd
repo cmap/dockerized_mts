@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/mts018_validation/MTS018_VALIDATION_COMPOUNDS/PMTS046/BRD-K05804044
-  comp: BRD-K05804044
+  data_dir: ~/Desktop/PLD_CONTROL
+  comp: PLD CONTROL
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
