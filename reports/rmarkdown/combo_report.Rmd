@@ -85,44 +85,44 @@ for (const in constituents) {
     warning("No data directory for anchor or test compounds. Unable to generate combination report.")
     quit(save = "no")
   }
-  
+
   # DRC and LFC
   const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
   const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
   if (length(const_lfc_path) == 1) {
     LFC %<>% dplyr::bind_rows(
-      data.table::fread(const_lfc_path) %>% 
+      data.table::fread(const_lfc_path) %>%
         dplyr::mutate(pert_dose = as.character(pert_dose))
     )
   }
   if (length(const_drc_path) == 1) {
     DRC %<>% dplyr::bind_rows(
-      data.table::fread(const_drc_path) %>% 
+      data.table::fread(const_drc_path) %>%
         dplyr::mutate(ec50 = as.numeric(ec50))
     )
   }
-  
+
   # correlations and random forest
   const_corr_path <- list.files(const_path, "continuous_associations", full.names = T)
   const_model_path <- list.files(const_path, "model_table", full.names = T)
   const_rf_path <- list.files(const_path, "RF_table", full.names = T)
-  
+
   if (length(const_corr_path) == 1) {
     correlations %<>% dplyr::bind_rows(
-      data.table::fread(const_corr_path) %>% 
+      data.table::fread(const_corr_path) %>%
         dplyr::mutate(pert_dose = as.character(pert_dose)) %>%
         dplyr::mutate(feature = word(feature, 2, -1, sep = fixed("_")))
     )
   }
   if (length(const_model_path) == 1) {
     model_table %<>% dplyr::bind_rows(
-      data.table::fread(const_model_path) %>% 
+      data.table::fread(const_model_path) %>%
         dplyr::mutate(pert_dose = as.character(pert_dose))
     )
   }
   if (length(const_rf_path) == 1) {
     rf_table %<>% dplyr::bind_rows(
-      data.table::fread(const_rf_path) %>% 
+      data.table::fread(const_rf_path) %>%
         dplyr::mutate(pert_dose = as.character(pert_dose)) %>%
         dplyr::mutate(feature = word(feature, 2, -1, sep = fixed("_")))
     )
@@ -190,10 +190,10 @@ for (i in 1:length(constituents)) {
     dplyr::filter(pert_id == comp) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
-  
+
   new_cols <- paste(colnames(df), i, sep = "_")
   colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
-  
+
   spread_lfc %<>% dplyr::left_join(df)
 }
 
@@ -243,7 +243,7 @@ for (i in 1:length(solo_comps)) {
     dplyr::filter(varied_iname == comp) %>%
     dplyr::distinct(auc, ccle_name, culture) %>%
     dplyr::rename(solo_auc = auc)
-  
+
   auc_plot <- highlight_key(combo_drc %>% dplyr::inner_join(df),
                             ~ccle_name, group = "Synergy scores")
   p <- plot_ly(auc_plot) %>%
