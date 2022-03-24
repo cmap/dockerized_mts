@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-
+ROLE_ID="cmap_core"
+IS_REVIEW=0
 
 while test $# -gt 0; do
   case "$1" in
@@ -18,6 +19,11 @@ while test $# -gt 0; do
     -p|--project_name)
       shift
       PROJECT_NAME=$1
+      ;;
+    -r|--role_id)
+      shift
+      ROLE_ID=$1
+      IS_REVIEW=1
       ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
@@ -61,11 +67,13 @@ else
     errorMessage="$errorMessage register -s <S3_LOCATION> -i <BUILD_ID> [-p PROJECT_NAME | -f COMPOUND_KEY_JSON]${NL}"
 fi
 
-echo  "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}"
+echo PROJECT_NAME: "${PROJECT_NAME}" INDEX_PAGE: "${INDEX_PAGE}"  BUILD_ID: "${BUILD_ID}"
+echo ROLE_ID: "${ROLE_ID}" IS_REVIEW: "${IS_REVIEW}"
 
 if [[ -z "${errorMessage}" ]]
 then
-    node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}"
+    echo node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_ID}" "${IS_REVIEW}"
+    node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_ID}" "${IS_REVIEW}"
 else
     echo "${errorMessage}"
     exit -1

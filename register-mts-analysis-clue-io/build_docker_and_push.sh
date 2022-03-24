@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+REPO="prismcmap"
+NAME="register-mts"
 
-# change the version number for each new build
-docker build \
--t prismcmap/register-mts:latest \
--t prismcmap/register-mts:v0.0.1 \
---rm=true .
+VERSION="v0.1.2" #change the version number for each new build
+TAG="latest"
+
+#change the version number for each new build
+docker build -t $REPO/$NAME:$TAG -t $REPO/$NAME:$VERSION --rm=true .
+
+docker push $REPO/$NAME:$VERSION
+docker push $REPO/$NAME:$TAG
