@@ -39,20 +39,34 @@ if [[ ! -z "${S3_LOCATION}" && ! -z "${BUILD_ID}" ]]
 then
     if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]
     then
-        if [[ ! -z "${COMPOUND_KEY_JSON}" ]]
+        batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+        if test -f "${COMPOUND_KEY_JSON}"
         then
-            batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
             project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
             PROJECT_NAME="${project}"
             INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
-        else
+        elif [[ ! -z "${COMPOUND_KEY_JSON}" ]]
+        then
+            project=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+            role=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].role')
+            PROJECT_NAME="${project}"
+            ROLE_ID="${role}"
+            INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
+         else
             errorMessage="$errorMessage Array jobs must follow the following pattern${NL}"
             errorMessage="$errorMessage register -f <COMPOUND_KEY_JSON> -s <S3_LOCATION> -i <BUILD_ID>${NL}"
         fi
     elif [[ ! -z "${COMPOUND_KEY_JSON}" ]]
     then
         batch_index=0
-        project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+        if test -f "${COMPOUND_KEY_JSON}"
+        then
+            project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+        else
+            project=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+            role=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].role')
+            ROLE_ID="${role}"
+        fi
         PROJECT_NAME="${project}"
         INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
     elif [[ ! -z "${PROJECT_NAME}" ]]
