@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: ~/Desktop/mts018_validation/MTS018_VALIDATION_COMPOUNDS
-  project_name: MTS018_VALIDATION_COMPOUNDS
-  val_link: ~/Desktop/mts018_validation/MTS018_VALIDATION_COMPOUNDS
+  data_dir: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS
+  project_name: CPS005_VALIDATION_COMPOUNDS
+  val_link: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -52,7 +52,7 @@ matrix_text <- c(
 inst <- data.table::fread(list.files(file.path(params$data_dir, "data"), pattern = "inst_info", full.names = T)) %>%
   dplyr::distinct(pert_iname, pert_id)
 name_map <- inst$pert_iname
-names(name_map) <- stringr::str_replace_all(inst$pert_id, pattern = fixed("|"), "_")
+names(name_map) <- stringr::str_replace_all(inst$pert_id, pattern = fixed("|"), "_") %>% toupper()
 
 # get paths to html files
 plates <- list.dirs(params$data_dir, recursive = F)

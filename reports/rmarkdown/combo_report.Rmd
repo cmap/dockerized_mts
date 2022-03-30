@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: ~/Desktop/validation_combos/BRD-K32107296_BRD-K92041145
-  comp: "BRD-K32107296_BRD-K92041145"
-  qc_path: "~/Desktop/validation_combos/MTS016_VALIDATION_COMPOUND_COMBINATIONS_QC_TABLE.csv"
+  data_dir: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS/CPS007/O6-BENZYLGUANINE_TEMOZOLOMIDE
+  comp: "O6-BENZYLGUANINE_TEMOZOLOMIDE"
+  qc_path: "~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS/data/CPS005_VALIDATION_COMPOUNDS_QC_TABLE.csv"
 output:
   html_document:
     toc: false
@@ -187,7 +187,7 @@ spread_lfc <- combo_lfc %>%
 for (i in 1:length(constituents)) {
   comp <- constituents[[i]]
   df <- solo_lfc %>%
-    dplyr::filter(pert_id == comp) %>%
+    dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
   
