@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ROLE_ID="cmap_core"
-IS_REVIEW=0
+APPROVED="false"
 
 while test $# -gt 0; do
   case "$1" in
@@ -23,7 +23,7 @@ while test $# -gt 0; do
     -r|--role_id)
       shift
       ROLE_ID=$1
-      IS_REVIEW=1
+      APPROVED="true"
       ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
@@ -82,12 +82,12 @@ else
 fi
 
 echo PROJECT_NAME: "${PROJECT_NAME}" INDEX_PAGE: "${INDEX_PAGE}"  BUILD_ID: "${BUILD_ID}"
-echo ROLE_ID: "${ROLE_ID}" IS_REVIEW: "${IS_REVIEW}"
+echo ROLE_ID: "${ROLE_ID}" APPROVED: "${APPROVED}"
 
 if [[ -z "${errorMessage}" ]]
 then
-    echo node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_ID}" "${IS_REVIEW}"
-    node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_ID}" "${IS_REVIEW}"
+    echo node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_ID}" "${APPROVED}"
+    node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_ID}" "${APPROVED}"
 else
     echo "${errorMessage}"
     exit -1
