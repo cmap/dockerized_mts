@@ -24,7 +24,6 @@ if [[ ! -z $COMPOUND_KEY && ! -z $COMPOUND_KEY_JSON  ]]
 then
   npx csvtojson $COMPOUND_KEY > $COMPOUND_KEY_JSON
   node ./index.js $COMPOUND_KEY_JSON
-
 else
   echo "The full path to both compound key file and output json file must be specified"
   exit 1

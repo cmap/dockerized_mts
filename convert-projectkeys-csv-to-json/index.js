@@ -29,17 +29,15 @@ const uniquePertPlates = function (projectKeys) {
 }
 const uniqueProjectKeysWithPertPlates = async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_uniq_pert_plates.json");
-    const uniqueProjects = uniqueProjects(projectKeys);
-    const uniquePertPlates = uniquePertPlates(projectKeys);
-    const projects = [];
-    for(const project of uniqueProjects){
-        const clonedProject = Object.assign({}, project);
-        for(const pert_plate of uniquePertPlates){
-            clonedProject["pert_plate"] = pert_plate.pert_plate;
-            projects.push(clonedProject);
+    const projectsPertPlates = _.map(
+        _.uniq(projectKeys, function (projectKey) {
+            return [projectKey.x_project_id,projectKey.pert_plate].join('_');
+        }),
+        function(key) {
+            return { x_project_id: key.x_project_id, pert_plate: key.pert_plate };
         }
-    }
-    return await writeOutput(outPath,projects);
+    );
+    return await writeOutput(outPath,projectsPertPlates);
 }
 /**
  *
