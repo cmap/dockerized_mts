@@ -60,23 +60,20 @@ def float_to_str(f):
 """
 rounds to significant figures
 """
-def _round_sig(x, sig=4):
-    if x == 0:
-        return 0
-    else:
-        return round(x, sig - int(floor(log10(abs(x)))) - 1)
+def _round_sig(x, sig=5):
+    return round(x, sig - int(floor(log10(abs(x)))) - 1)
 
 
 """
 prints string as decimal value not scientific notation
 """
-def _format_floats(fl, sig=4):
+def _format_floats(fl, sig=4, max_precision=50):
     if type(fl) == str:
         fl = float(fl)
     if np.isnan(fl):
         return fl
     else:
-        return float_to_str(round(_round_sig(fl, sig=sig), 6))
+        return float_to_str(round(_round_sig(fl, sig=sig), max_precision))
 
 
 def process_pert_doses(el):
@@ -201,8 +198,8 @@ def mk_inst_info(inst_data, args=None):
 
     inst_info.set_index('profile_id', inplace=True)
 
-    logger.info("Converting pert_dose, pert_idose as strings")
-    inst_info = stringify_inst_doses(inst_info)
+    # logger.info("Converting pert_dose, pert_idose as strings")
+    # inst_info = stringify_inst_doses(inst_info)
 
     inst_info.to_csv(os.path.join(args.build_dir, args.cohort_name + '_inst_info.txt'), sep='\t')
 
