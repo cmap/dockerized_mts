@@ -40,7 +40,7 @@ then
     if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]
     then
         batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-        if test -f "${COMPOUND_KEY_JSON}"
+        if [ -f "${COMPOUND_KEY_JSON}" ];
         then
             project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
             PROJECT_NAME="${project}"
@@ -51,6 +51,7 @@ then
             role=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].role')
             PROJECT_NAME="${project}"
             ROLE_ID="${role}"
+            APPROVED="true"
             INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
          else
             errorMessage="$errorMessage Array jobs must follow the following pattern${NL}"
@@ -59,13 +60,14 @@ then
     elif [[ ! -z "${COMPOUND_KEY_JSON}" ]]
     then
         batch_index=0
-        if test -f "${COMPOUND_KEY_JSON}"
+        if [ -f "${COMPOUND_KEY_JSON}" ];
         then
             project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
         else
             project=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
             role=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].role')
             ROLE_ID="${role}"
+            APPROVED="true"
         fi
         PROJECT_NAME="${project}"
         INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html

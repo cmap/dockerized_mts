@@ -19,7 +19,8 @@ class Analysis2clue {
         this.apiURL = apiURL;
         this.indexFile = indexFile;
         this.roleId = roleId;
-        this.is_review = approved;
+        this.roles = this.roleId.split(",")
+        this.approved = approved;
         this.projectName = projectName.replace(/_/g, " ");
         this.postData = {
             "name": this.projectName,
@@ -29,13 +30,15 @@ class Analysis2clue {
             "created_by": "MTS"
         };
 
+        console.log("within Analysis2clue, roleID:", this.roleId)
+        console.log("within Analysis2clue, approved:", this.approved)
         if (!this.approved){
             this.projectName =  "REVIEW--" + this.projectName
             this.postData.name = this.projectName
-            this.postData.status = "REVIEW"
+            this.postData.status = "NEEDS-REVIEW"
         }
 
-        const whereClause = {where:{"name": this.projectName}};
+        const whereClause = {where:{"name": this.projectName}, include: ["role"]};
         this.resourceExistsURL = this.apiURL + "/api/preliminary-analysis?filter=" + JSON.stringify(whereClause);
         this.postURL = this.apiURL + "/api/data/" + buildID + "/external_analysis";
     }
@@ -89,6 +92,13 @@ class Analysis2clue {
         return await fetch(url, options);
     }
 
+    static arrayEquals (a, b) {
+    return Array.isArray(a) &&
+        Array.isArray(b) &&
+        a.length === b.length &&
+        a.every((val, index) => val === b[index]);
+    }
+
     /**
      *
      * Register resource in CLUE
@@ -97,6 +107,7 @@ class Analysis2clue {
      *
      */
     async registerInCLUE() {
+        const _ = require("underscore")
         const self = this;
         //check if resource exists in API before you post
         const response = await self.resourceExists();
@@ -104,25 +115,17 @@ class Analysis2clue {
         if (response.length > 0) {
             // if (self.indexFile === response[0].url) {
             console.log(self.projectName + " already exists");
-            return {ignore: true};
-            // }
-        }
-        //     const payload = {
-        //         "url": self.indexFile
-        //     }
-        //
-        //     console.log('payload:', payload)
-        //     const prelim_analysisID = response[0].id
-        //     console.log("analysis id", prelim_analysisID)
-        //     const resp = await self.postMethodAPI(payload, self.postURL+"/" + prelim_analysisID, "PUT");
-        //     const data = await resp.json();
-        //
-        //     console.log("DATA:", data)
-        //     if (resp.ok && resp.status < 300) {
-        //         return {ignore: false, id: data.id};
-        //     }
-        // }
 
+            const existingReport_roles = _.pluck(response[0].role, 'role_id');
+
+            if (Analysis2clue.arrayEquals(existingReport_roles.sort(), self.roles.sort())) {
+                //x_project_id expects uppercase with underscore
+                return {ignore: true};
+            }
+            return {ignore: false, id: response[0].id}
+        }
+
+        //If does not exist, create
         const resp = await self.postMethodAPI(self.postData, self.postURL, "POST");
         const data = await resp.json();
         if (resp.ok && resp.status < 300) {
@@ -137,14 +140,14 @@ class Analysis2clue {
      */
     async associateAnalysis2Role(prelim_analysisID) {
         const self = this;
-        const roles = self.roleId.split(",")
-        console.log("Roles to associate:", roles)
+        console.log("Roles to associate:", self.roles)
         const promises = [];
 
         const deleteURL = self.apiURL + "/api/preliminary-analysis/" + prelim_analysisID + "/role"
         await self.postMethodAPI({}, deleteURL, "DELETE")
-        for (const role in roles){
+        for (const role of self.roles){
             const url = self.apiURL + "/api/preliminary-analysis/" + prelim_analysisID + "/role/rel/" + role;
+            console.log("role-assignment url:", url)
             promises.push(self.postMethodAPI({}, url, "PUT"));
         }
         try {
@@ -177,5 +180,7 @@ class Analysis2clue {
         return "done";
     }
 }
+
+
 
 module.exports = Analysis2clue;

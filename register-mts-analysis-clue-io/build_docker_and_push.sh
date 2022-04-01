@@ -2,7 +2,7 @@
 REPO="prismcmap"
 NAME="register-mts"
 
-VERSION="v0.1.4" #change the version number for each new build
+VERSION="v0.1.5" #change the version number for each new build
 TAG="latest"
 
 #change the version number for each new build

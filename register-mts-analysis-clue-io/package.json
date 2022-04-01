@@ -2,6 +2,7 @@
   "name": "macchiato-2-analysis-clue-io",
   "version": "0.0.1",
   "dependencies": {
-    "node-fetch": "^2.6.0"
+    "node-fetch": "^2.6.0",
+    "underscore": "^1.13.2"
   }
 }
