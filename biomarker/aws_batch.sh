@@ -35,7 +35,7 @@ while test $# -gt 0; do
       shift
       qc_file=$1
       ;;
-    -i | --failed_indicies)
+    -i| --failed_indicies)
       shift
       FAILED_INDICES=$1
       ;;
@@ -51,23 +51,31 @@ chmod +x /biomarkers.R
 chmod +x /src/biomarker_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
 
-if [[ -n $failed_indices ]] # same as ! -z
-then
+echo FAILED_INDICES: "$FAILED_INDICES"
+#Case: Multiple Failed Jobs run from rerun-script as array job of size: n_failed_jobs
+if [[ -n "${AWS_BATCH_JOB_ARRAY_INDEX}" && -n $FAILED_INDICES ]]; then # -n is same as ! -z
+  #Case: Multiple Failed Jobs run from rerun-script as array job of size: n_failed_jobs
   IFS=',' read -r -a failed_indices <<< "${FAILED_INDICES}"
   RERUN_INDEX="${failed_indices[${AWS_BATCH_JOB_ARRAY_INDEX}]}"
   echo "RERUN_INDEX IS: ${RERUN_INDEX}"
+elif [[ -n "$FAILED_INDICES" ]]; then
+    #case: Single failed job, cloned job and passed as parameter from command UI in AWS
+    IFS=',' read -r -a failed_indices <<< "${FAILED_INDICES}"
+    RERUN_INDEX="${failed_indices[0]}"
+    echo "RERUN_INDEX IS: ${RERUN_INDEX}"
 fi
 
 
 batch_index=0
-if [[ ! -z $projects ]]
+if [[ -n $projects ]]
 then
-    if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
-        echo "PROJECT_KEY_START_INDEX:" $PROJECT_KEY_START_INDEX
-        echo "AWS_BATCH_JOB_ARRAY_INDEX:" $AWS_BATCH_JOB_ARRAY_INDEX
+    if [[ -n "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+        echo "PROJECT_KEY_START_INDEX:" "$PROJECT_KEY_START_INDEX"
         if [[ -n $RERUN_INDEX ]]; then
+          echo "RERUN_INDEX:" "${RERUN_INDEX}"
           batch_index=$(($PROJECT_KEY_START_INDEX + ${RERUN_INDEX}))
         else
+          echo "AWS_BATCH_JOB_ARRAY_INDEX:" "$AWS_BATCH_JOB_ARRAY_INDEX"
           batch_index=$(($PROJECT_KEY_START_INDEX + ${AWS_BATCH_JOB_ARRAY_INDEX}))
         fi
         echo "BATCH INDEX:" $batch_index
@@ -107,7 +115,6 @@ else
     echo Rscript /biomarkers.R "${args[@]}"
     Rscript /biomarkers.R "${args[@]}"
 fi
-
 
 exit_code=$?
 
