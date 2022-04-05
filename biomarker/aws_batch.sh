@@ -35,6 +35,10 @@ while test $# -gt 0; do
       shift
       qc_file=$1
       ;;
+    -i | --failed_indicies)
+      shift
+      FAILED_INDICES=$1
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -47,14 +51,25 @@ chmod +x /biomarkers.R
 chmod +x /src/biomarker_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
 
-batch_index=0
+if [[ -n $failed_indices ]] # same as ! -z
+then
+  IFS=',' read -r -a failed_indices <<< "${FAILED_INDICES}"
+  RERUN_INDEX="${failed_indices[${AWS_BATCH_JOB_ARRAY_INDEX}]}"
+  echo "RERUN_INDEX IS: ${RERUN_INDEX}"
+fi
 
+
+batch_index=0
 if [[ ! -z $projects ]]
 then
     if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
         echo "PROJECT_KEY_START_INDEX:" $PROJECT_KEY_START_INDEX
         echo "AWS_BATCH_JOB_ARRAY_INDEX:" $AWS_BATCH_JOB_ARRAY_INDEX
-        batch_index=$(($PROJECT_KEY_START_INDEX + ${AWS_BATCH_JOB_ARRAY_INDEX}))
+        if [[ -n $RERUN_INDEX ]]; then
+          batch_index=$(($PROJECT_KEY_START_INDEX + ${RERUN_INDEX}))
+        else
+          batch_index=$(($PROJECT_KEY_START_INDEX + ${AWS_BATCH_JOB_ARRAY_INDEX}))
+        fi
         echo "BATCH INDEX:" $batch_index
     fi
     pert_id=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
