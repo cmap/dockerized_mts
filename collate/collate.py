@@ -198,8 +198,8 @@ def mk_inst_info(inst_data, args=None):
 
     inst_info.set_index('profile_id', inplace=True)
 
-    # logger.info("Converting pert_dose, pert_idose as strings")
-    # inst_info = stringify_inst_doses(inst_info)
+    logger.info("Converting pert_dose, pert_idose as strings")
+    inst_info = stringify_inst_doses(inst_info)
 
     inst_info.to_csv(os.path.join(args.build_dir, args.cohort_name + '_inst_info.txt'), sep='\t')
 
