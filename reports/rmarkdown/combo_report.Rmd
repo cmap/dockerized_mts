@@ -204,6 +204,10 @@ spread_lfc %<>%
   dplyr::mutate(q = p.adjust(p, method = "BH")) %>%
   dplyr::arrange(pert_dose_1)
 
+max_s <- ceiling(max(spread_lfc$S))
+min_s <- floor(min(spread_lfc$S))
+max_q <- ceiling(max(-log10(spread_lfc$q)))
+
 combos <- spread_lfc %>% dplyr::distinct(pert_dose)
 
 plots <- list()
@@ -213,8 +217,8 @@ for (i in 1:nrow(combos)) {
   p <- plot_ly(synergy_plot) %>%
     add_trace(x = ~S, y = ~-log10(q), type = "scatter", mode = "markers",
               hoverinfo = "text", text = ~ccle_name, opacity = 0.5) %>%
-    layout(xaxis = list(title = "Synergy score"),
-           yaxis = list(title = "-log10(q-value)"),
+    layout(xaxis = list(title = "Synergy score", range = c(min_s, max_s)),
+           yaxis = list(title = "-log10(q-value)", range = c(0, max_q)),
            annotations = list(x = 0.5, y = 1,
                               text = combos$pert_dose[[i]],
                               align = "center", showarrow = F, xref="paper", yref="paper",
@@ -226,7 +230,7 @@ for (i in 1:nrow(combos)) {
               defaultValues = "", selected = attrs_selected(opacity = 1))
   plots[[i]] <- p
 }
-subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = T, shareY = T) %>%
+subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F) %>%
   layout(title = pert_iname)
 ```
 
