@@ -60,4 +60,4 @@ node_modules
 __pycache__/
 
 #debug notebooks
-*.ipynb
+#*.ipynb
