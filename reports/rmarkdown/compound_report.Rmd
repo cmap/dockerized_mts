@@ -279,7 +279,7 @@ DT::datatable(lin_tab %>%
 
 ## Plots by lineage
 
-AUC of each cell line is
+The AUC or log-fold change (when AUC is unavailable) of each cell line is shown in the boxplots below. Each square represents a lineage and the individual boxplots are sub-lineages. The black dashed line is the mean value across all cell lines.
 
 ```{r, fig.height=14}
 if (!is.null(DRC)) {
@@ -297,7 +297,7 @@ if (!is.null(DRC)) {
     geom_jitter() +
     facet_wrap(lineage ~ ., scales = "free_x") +
     theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
-    labs(x = "AUC", y = "Lineage")
+    labs(x = "Lineage", y = "AUC")
   p
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
@@ -314,7 +314,7 @@ if (!is.null(DRC)) {
     geom_jitter() +
     facet_wrap(lineage ~ ., scales = "free_x") +
     theme(legend.position = "none") +
-    labs(x = "Log-fold change", y = "Lineage")
+    labs(x = "Lineage", y = "Log-fold change")
   p
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
@@ -372,6 +372,9 @@ DT::datatable(MUT_table %>%
 ```
 
 ## Plots by mutation
+
+The AUC or log-fold change (when AUC is unavailable) of each cell line with the top 20 mutations is shown in the boxplots below. The black dashed line is the mean value across all cell lines.
+
 
 ```{r, fig.height=10}
 if (!is.null(DRC)) {
