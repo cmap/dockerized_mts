@@ -306,6 +306,7 @@ sub_models <- model_table %>%
                 added_compounds = ifelse(is.na(added_compounds), "None", added_compounds))
 sub_rf <- rf_table %>%
   dplyr::filter(pert_dose == "log2.auc" | pert_iname %in% single_dose) %>%
+  dplyr::filter(rank <= 100) %>%
   dplyr::mutate(added_doses = ifelse(is.na(added_doses), "None", added_doses),
                 added_compounds = ifelse(is.na(added_compounds), "None", added_compounds))
 ```
@@ -519,7 +520,7 @@ Results from random forests fit to predict response based on multi-omics dataset
 
 ## Results
 
-These plots show the accuracy of predictive models (left) and the features used ranked by importance in each model (right).
+These plots show the accuracy of predictive models (left) and the top 100 features used ranked by importance in each model (right)
 
 ``` {r multi ccle, fig.height=8}
 p1 <- sub_models %>%
