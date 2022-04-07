@@ -46,6 +46,9 @@ if (length(lfc_path) == 1) {
   quit(save = "no")
 }
 
+n_combos = length(LFC$pert_dose %>% unique())
+synergy_height = ceiling(n_combos / 8) * 5
+
 # read in DRC if available
 if (length(drc_path) == 1) {
   DRC <- data.table::fread(drc_path) %>%
@@ -168,7 +171,7 @@ The second plot shows the AUC of the combination versus the AUC of each constitu
 
 ## Synergy plots
 
-```{r synergy scoring}
+```{r synergy scoring, fig.height=synergy_height}
 # non-combination values
 solo_lfc <- dplyr::anti_join(LFC, combo_lfc)
 
@@ -217,8 +220,8 @@ for (i in 1:nrow(combos)) {
   p <- plot_ly(synergy_plot) %>%
     add_trace(x = ~S, y = ~-log10(q), type = "scatter", mode = "markers",
               hoverinfo = "text", text = ~ccle_name, opacity = 0.5) %>%
-    layout(xaxis = list(title = "Synergy score", range = c(min_s, max_s)),
-           yaxis = list(title = "-log10(q-value)", range = c(0, max_q)),
+    layout(xaxis = list(range = c(min_s, max_s)),
+           yaxis = list(range = c(0, max_q)),
            annotations = list(x = 0.5, y = 1,
                               text = combos$pert_dose[[i]],
                               align = "center", showarrow = F, xref="paper", yref="paper",
@@ -231,7 +234,19 @@ for (i in 1:nrow(combos)) {
   plots[[i]] <- p
 }
 subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F) %>%
-  layout(title = pert_iname)
+  layout(title = pert_iname,
+         annotations = list(
+           list(x = 0, xshift = -50, y = 0.5,
+                textangle = 270, text = "-log10(q)",
+                font = list(size = 14),
+                showarrow = F, xref='paper', yref='paper',
+                size = 48),
+           list(x = 0.5, y = 0, yshift = -40,
+                text = "Synergy score",
+                font = list(size = 14),
+                showarrow = F, xref='paper', yref='paper',
+                size = 48)
+         ))
 ```
 
 ## AUC plots
@@ -523,13 +538,17 @@ p2 <- sub_rf %>%
          yaxis = list(title = "Feature importance"))
 
 df <- sub_models %>% dplyr::inner_join(sub_rf) %>%
-  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore, feature, RF.imp.mean)
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore,
+                feature, RF.imp.mean) %>%
+  dplyr::mutate_at(vars(R2, PearsonScore, RF.imp.mean),
+                   funs(signif(., 3)))
 
 dt <- DT::datatable(df, style="bootstrap", width="100%",
                     options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
-                                   scrollX = "300px", paging = FALSE),
+                                   scrollX = "300px", paging = FALSE,
+                                   columnDefs = list(list(className = 'dt-center', targets = "_all"))),
                     filter = "top",
-                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Model", "R2", "Pearson Score", "Feature", "Feature Importance"))
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Model", "R2", "Pearson Score", "Feature", "Feature Importance"),)
 
 subplot(style(p1, showlegend = FALSE), p2, widths = c(0.2, 0.8),
         titleX = T, titleY = T, margin = 0.05)
