@@ -1,13 +1,14 @@
 ---
 params:
-  data_dir: ~/Desktop/validation_combos/BRD-K32107296_BRD-K92041145
-  comp: "BRD-K32107296_BRD-K92041145"
+  data_dir: ~/Desktop/veneto_test
+  comp: "BRD-K62391742_BRD-K00005263"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
     toc: false
     theme: paper
     highlight: kate
+    mathjax: null
 ---
 
 
@@ -208,7 +209,7 @@ heatmaply::heatmaply(pmin(2^LFC_matrix, 1), Colv = F, Rowv = F,
 
 ## Viability table
 
-The $\log_2$ fold-change and viability values for each cell line at each dose are presented in the table below. Please note the same table is also available in `Compound Data > Replicate collapsed viability data`.
+The log2 fold-change and viability values for each cell line at each dose are presented in the table below. Please note the same table is also available in `Compound Data > Replicate collapsed viability data`.
 
 ```{r viab table, echo=F, message=F, warning=F}
 DT::datatable(LFC %>%
@@ -300,7 +301,7 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
     dplyr::inner_join(m) %>%
     dplyr::filter(lineage != "") %>%
     dplyr::distinct()
-
+  
   p <- df %>%
     ggplot(aes(y = auc, x = reorder(lin_sub_abbreviation, auc, function(x) mean(x, na.rm = T)),
                color = added_doses)) +
@@ -324,7 +325,7 @@ Cell lines are grouped by mutation status to compute mutation-based sensitivity 
 
 ## Volcano plot
 
-Mutation effects are visualized below on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. **Only the top 500 mutations with a q value less than 0.1 at each dose are visualized**. Large negative effect size corresponds to increased sensitivity. Distributions of AUC values within each mutation are visualized on the next tab, sorted by significance.
+Mutation effects are visualized below on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. **Only the top 200 mutations, or top 25 negative and positive effect sizes based on q value, with a q value less than 0.1 at each dose are visualized**. Large negative effect size corresponds to increased sensitivity. Distributions of AUC values within each mutation are visualized on the next tab, sorted by significance.
 
 ```{r, echo=F, message=F, warning=F}
 n_lines <- LFC %>%
@@ -337,10 +338,17 @@ MUT_table <- disc_table %>%
   dplyr::filter(feature_type == "MUT")
 
 p_table <- MUT_table %>%
-  dplyr::filter(q.value < 0.1, rank <= 500) %>%
+  dplyr::filter(q.value < 0.1) %>%
   dplyr::inner_join(n_lines %>%
                       dplyr::filter(n_lines >= 5),
-                    by = c("feature" = "mutation"))
+                    by = c("feature" = "mutation")) %>%
+  dplyr::mutate(is_positive = effect_size > 0) %>%
+  dplyr::ungroup() %>%
+  dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
+  dplyr::arrange(q.value) %>%
+  dplyr::mutate(sign_rank = 1:n()) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(rank <= 200 | sign_rank <= 25)
 
 if(nrow(p_table) > 0){
   p <- p_table %>%
@@ -352,11 +360,7 @@ if(nrow(p_table) > 0){
   plotly::ggplotly(p)
 }
 
-DT::datatable(MUT_table %>%
-                dplyr::arrange(q.value, desc(abs(effect_size))) %>%
-                dplyr::inner_join(n_lines %>%
-                      dplyr::filter(n_lines >= 5),
-                    by = c("feature" = "mutation")) %>%
+DT::datatable(p_table %>%
                 dplyr::distinct(feature, n_lines,
                                 effect_size, q.value, pert_iname, pert_dose) %>%
                 dplyr::mutate(effect_size = signif(effect_size, 3),
@@ -379,19 +383,19 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
     dplyr::mutate(n = n()) %>%
     dplyr::ungroup() %>%
     dplyr::filter(n >= 5)
-
+  
   top_muts <- MUT_table %>%
     dplyr::inner_join(df %>% dplyr::distinct(varied_iname, added_compounds, added_doses, mutation, n),
                       by = c("feature" = "mutation")) %>%
     dplyr::filter(str_detect(pert_dose, "log2.auc")) %>%
     dplyr::arrange(q.value)
-
+  
   top_muts <- top_muts$feature %>% unique() %>% .[1:20]
-
+  
   df %<>%
     dplyr::filter(mutation %in% top_muts) %>%
     dplyr::inner_join(m)
-
+  
   p <- df %>%
     ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
                color = added_doses)) +
@@ -400,7 +404,7 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
     geom_jitter() +
     theme(legend.position = "none") +
     labs(x = "AUC", y = "Mutation")
-
+  
   p
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
@@ -413,17 +417,24 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
 
 In this section, we explore the univariate associations between the PRISM sensitivity profiles and the genomic features or genetic dependencies. In particular, we compute the Pearson correlations and associated p-values.
 
-On each of the following tabs, the correlations and p-values for log-viability values at each dose, AUC scores and logIC50 values are shown. **Only the top 500 features with a q value less than 0.1 at each dose are visualized**. Because correlations are done **at each dose and for AUC and logIC50** (in order to allow for analysis of relationships at particular doses and overall), the same feature may appear multiple times in the table. The dose or curve-level statistic used for correlation is noted in the "Dose" column. For each dataset, the q-values are computed from p-values using the Benjamini-Hochberg algorithm. Associations with q-values above 0.1 are filtered out. Also, the significant genes/features are illustrated on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. Data interpretation overviews are included above each plot.
+On each of the following tabs, the correlations and p-values for log-viability values at each dose, AUC scores and logIC50 values are shown. **Only the top 200 features, or top 25 negative and positive correlations based on q value, with a q value less than 0.1 at each dose are visualized**. Because correlations are done **at each dose and for AUC and logIC50**. Because correlations are done **at each dose and for AUC and logIC50** (in order to allow for analysis of relationships at particular doses and overall), the same feature may appear multiple times in the table. The dose or curve-level statistic used for correlation is noted in the "Dose" column. For each dataset, the q-values are computed from p-values using the Benjamini-Hochberg algorithm. Associations with q-values above 0.1 are filtered out. Also, the significant genes/features are illustrated on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. Data interpretation overviews are included above each plot.
 
 ```{r correlations, results='asis', include=T, fig.height=10}
 for (feat in corr_feats) {
   cat(sprintf('\n\n## %s \n\n', feature_full[feat], '\n\n'))
   df <- corr_table %>%
     dplyr::filter(feature_type == feat)
-
+  
   plot_df <- df %>%
-    dplyr::filter(q.val < 0.1, rank <= 500)
-
+    dplyr::filter(q.val < 0.1) %>%
+    dplyr::mutate(is_positive = coef > 0) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
+    dplyr::arrange(q.val) %>%
+    dplyr::mutate(sign_rank = 1:n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(rank <= 200 | sign_rank <= 25)
+  
   if (nrow(plot_df) > 0) {
     p <- plot_df %>%
       ggplot() + geom_point(aes(x = coef, y = -log10(q.val),
@@ -432,20 +443,19 @@ for (feat in corr_feats) {
       labs(x = "Correlation", y = "-log10(q)", color = "Dose") +
       geom_vline(aes(xintercept = 0), lty = 2, lwd =.5)
     p <- plotly::ggplotly(p)
-
+    
     cat(htmltools::knit_print.shiny.tag(p))
   }
-
-  dt <- DT::datatable(df %>%
-                        dplyr::filter(q.val < 0.1 || rank <= 100) %>%
-                        dplyr::select(feature, coef, q.val, pert_iname, pert_dose) %>%
-                        dplyr::arrange(q.val) %>%
+  
+  dt <- DT::datatable(plot_df %>%
+                        dplyr::select(feature, coef, q.val, rank, pert_iname, pert_dose) %>%
+                        dplyr::arrange(rank) %>%
                         dplyr::mutate(coef = signif(coef, 3),
                                       q.val = signif(q.val, 3)),
                       filter = "top", rownames = F, options = list(dom = "tp"),
-                      colnames = c("Feature", "Correlation", "q value", "Compound", "Dose")
+                      colnames = c("Feature", "Correlation", "q value", "Rank", "Compound", "Dose")
   )
-
+  
   cat(htmltools::knit_print.shiny.tag(dt))
 }
 ```
@@ -482,7 +492,7 @@ DT::datatable(model_table %>%
 
 ### CCLE model (LIN + GE + MUT + CNA)
 
-Variable importance versus model accuracy ($R^2$). High variable importance and high accuracy for a given feature suggests that it is important for predicting sensitivity (at the given dose modeled). Variable importance is directionless for Random Forest models but can be inferred based on univariate analysis results.
+Variable importance versus model accuracy (R2). High variable importance and high accuracy for a given feature suggests that it is important for predicting sensitivity (at the given dose modeled). Variable importance is directionless for Random Forest models but can be inferred based on univariate analysis results. **Only the top 50 features by importance for each model are shown in the table**.
 
 ```{r, echo=F, message=F, warning=F, fig.height=4}
 df <- rf_table %>%
@@ -500,6 +510,7 @@ p <- df %>%
 plotly::ggplotly(p)
 
 DT::datatable(df %>%
+                dplyr::filter(rank <= 50) %>%
                 dplyr::select(feature, R2, rank, RF.imp.mean, RF.imp.stability, RF.imp.sd, pert_iname, pert_dose) %>%
                 dplyr::mutate_at(vars(RF.imp.mean, RF.imp.sd, RF.imp.stability, R2),
                                  funs(signif(., 3))) %>%
@@ -511,7 +522,7 @@ DT::datatable(df %>%
 
 ### Complete model (LIN + GE + MUT + CNA + CRISPR + RPPA + miRNA + MET)
 
-Variable importance versus model accuracy ($R^2$). High variable importance and high accuracy for a given feature suggests that it is important for predicting sensitivity (at the given dose modeled). Variable importance is directionless for Random Forest models but can be inferred based on univariate analysis results.
+Variable importance versus model accuracy (R2). High variable importance and high accuracy for a given feature suggests that it is important for predicting sensitivity (at the given dose modeled). Variable importance is directionless for Random Forest models but can be inferred based on univariate analysis results. **Only the top 50 features by importance for each model are shown in the table**.
 
 ```{r, echo=F, message=F, warning=F, fig.height=4}
 df <- rf_table %>%
@@ -529,6 +540,7 @@ p <- df %>%
 plotly::ggplotly(p)
 
 DT::datatable(df %>%
+                dplyr::filter(rank <= 50) %>%
                 dplyr::select(feature, R2, rank, RF.imp.mean, RF.imp.stability, RF.imp.sd, pert_iname, pert_dose) %>%
                 dplyr::mutate_at(vars(RF.imp.mean, RF.imp.sd, RF.imp.stability, R2),
                                  funs(signif(., 3))) %>%

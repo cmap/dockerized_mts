@@ -297,7 +297,7 @@ single_dose <- LFC %>%
 sub_correlations <- correlations %>%
   dplyr::filter(pert_dose == "log2.auc" | pert_iname %in% single_dose,
                 is.finite(coef), is.finite(q.val),
-                q.val < 0.1, rank <= 500) %>%
+                q.val < 0.1, rank <= 250) %>%
   dplyr::mutate(added_doses = ifelse(is.na(added_doses), "None", added_doses),
                 added_compounds = ifelse(is.na(added_compounds), "None", added_compounds))
 sub_models <- model_table %>%
