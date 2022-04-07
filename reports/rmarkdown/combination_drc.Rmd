@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/test_combo_reports
-  comp: ""
+  data_dir: ~/Desktop/veneto_test
+  comp: "BRD-K62391742_BRD-K00005263"
 output:
   html_document:
     toc: false
@@ -144,6 +144,7 @@ for (comp in varied_comps) {
 
   curves_all <- highlight_key(drc_plots %>%
                                 dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+                                dplyr::mutate(added_doses = factor(added_doses)) %>%
                                 dplyr::arrange(auc),
                               ~cell_id, group = comp)
   p <- plot_ly() %>%
