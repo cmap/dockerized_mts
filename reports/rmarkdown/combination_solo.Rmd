@@ -343,14 +343,16 @@ p_table <- MUT_table %>%
                       dplyr::filter(n_lines >= 5),
                     by = c("feature" = "mutation")) %>%
   dplyr::mutate(is_positive = effect_size > 0) %>%
-  dplyr::ungroup() %>%
-  dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
-  dplyr::arrange(q.value) %>%
-  dplyr::mutate(sign_rank = 1:n()) %>%
-  dplyr::ungroup() %>%
-  dplyr::filter(rank <= 200 | sign_rank <= 25)
+  dplyr::ungroup()
 
 if(nrow(p_table) > 0){
+  p_table %<>%
+    dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
+    dplyr::arrange(q.value) %>%
+    dplyr::mutate(sign_rank = 1:n()) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(rank <= 200 | sign_rank <= 25)
+  
   p <- p_table %>%
     ggplot() + geom_point(aes(x = effect_size, y =  -log10(q.value),
                               color = pert_dose, name = feature)) +
@@ -428,14 +430,16 @@ for (feat in corr_feats) {
   plot_df <- df %>%
     dplyr::filter(q.val < 0.1) %>%
     dplyr::mutate(is_positive = coef > 0) %>%
-    dplyr::ungroup() %>%
-    dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
-    dplyr::arrange(q.val) %>%
-    dplyr::mutate(sign_rank = 1:n()) %>%
-    dplyr::ungroup() %>%
-    dplyr::filter(rank <= 200 | sign_rank <= 25)
+    dplyr::ungroup()
   
   if (nrow(plot_df) > 0) {
+    plot_df %<>%
+      dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
+      dplyr::arrange(q.val) %>%
+      dplyr::mutate(sign_rank = 1:n()) %>%
+      dplyr::ungroup() %>%
+      dplyr::filter(rank <= 200 | sign_rank <= 25)
+    
     p <- plot_df %>%
       ggplot() + geom_point(aes(x = coef, y = -log10(q.val),
                                 name = feature, color = pert_dose)) +
