@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS/CPS007/O6-BENZYLGUANINE_TEMOZOLOMIDE
-  comp: "O6-BENZYLGUANINE_TEMOZOLOMIDE"
-  qc_path: "~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS/data/CPS005_VALIDATION_COMPOUNDS_QC_TABLE.csv"
+  data_dir: ~/Desktop/combination_compare/new_veneto/BRD-K62391742_BRD-K00005263
+  comp: "BRD-K62391742_BRD-K00005263"
+  qc_path: "~/Desktop/combination_compare/new_veneto/MTS016_VALIDATION_COMPOUND_INTERNAL_QC_TABLE.csv"
 output:
   html_document:
     toc: false
@@ -270,8 +270,10 @@ for (i in 1:length(solo_comps)) {
               hoverinfo = "text", text = ~ccle_name,
               hovertemplate = "%{text} <br> %{xaxis.title.text}: %{x} <br> %{yaxis.title.text}: %{y} <extra></extra>",
               opacity = 0.5) %>%
-    layout(xaxis = list(title = paste(pert_iname, "AUC")),
-           yaxis = list(title = paste(comp, "AUC")),
+    layout(xaxis = list(title = paste(pert_iname, "AUC"),
+                        range = c(0, 1)),
+           yaxis = list(title = paste(comp, "AUC"),
+                        range = c(0, 1)),
            hovermode = "closest",
            showlegend = T) %>%
     highlight(on = "plotly_click", off = "plotly_doubleclick",
@@ -279,7 +281,7 @@ for (i in 1:length(solo_comps)) {
               defaultValues = "", selected = attrs_selected(opacity = 1))
   plots[[i]] <- p
 }
-subplot(plots, nrows = max(1, ceiling(length(plots)/3)), shareX = T, shareY = T)
+subplot(plots, nrows = max(1, ceiling(length(plots)/3)), titleX = T, titleY = T, margin = 0.05)
 ```
 
 # Continuous associations {.tabset .tabset-pills}
