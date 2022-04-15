@@ -73,7 +73,7 @@ pert_iname <- toupper(dplyr::distinct(LFC, pert_iname)$pert_iname)
 n_lines <- LFC %>% dplyr::distinct(ccle_name, culture) %>% nrow()
 n_days <- LFC$pert_time %>%
   unique() %>%
-  substr(1, nchar(.) -1) %>%
+  gsub("[^0-9.-]", "", .) %>%
   as.numeric() / 24
 
 # factorize dosing scheme
