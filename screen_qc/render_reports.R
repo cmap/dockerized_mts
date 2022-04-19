@@ -1,0 +1,14 @@
+library(argparse)
+
+parser <- ArgumentParser()
+# specify our desired options
+parser$add_argument("-d", "--data_dir", default="", help="Input directory (project)")
+parser$add_argument("-o", "--out_dir", default="", help = "Output directory. Default is working directory.")
+
+# get command line options, if help option encountered print help and exit
+args <- parser$parse_args()
+
+rmarkdown::render("rmarkdown/qc_report.Rmd",
+                  output_file = "qc_report.html",
+                  output_dir = args$out_dir,
+                  params = list(data_dir=args$data_dir))

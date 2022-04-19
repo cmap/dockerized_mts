@@ -1,0 +1,5 @@
+install.packages(magrittr)
+install.packages(data.table)
+install.packages(tidyverse)
+install.packages(ggthemes)
+install.packages(ggrepel)
