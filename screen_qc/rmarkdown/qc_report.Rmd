@@ -1,0 +1,224 @@
+---
+params:
+  data_dir: ~/Desktop/MTS016
+title: "`r basename(params$data_dir)` QC Report"
+author: "Andrew Boghossian"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: paper
+    highlight: kate
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.width = 10)
+
+# load libraries
+library(magrittr)
+library(data.table)
+library(tidyverse)
+library(ggthemes)
+library(ggrepel)
+
+# load QC data
+qc_path <- list.files(params$data_dir, "QC_TABLE", full.names = T)
+qc_table <- data.table::fread(qc_path) %>%
+  dplyr::filter(pert_time == "120H")
+
+# load level 4 data
+level4_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
+if (length(lfc_path) == 1) {
+  level4_table <- data.table::fread(level4_path) %>%
+    dplyr::filter(pert_time == "120H")
+} else {
+  level4_path <- list.files(params$data_dir, "LEVEL4_LFC", full.names = T)
+  level4_table <- data.table::fread(level4_path) %>%
+    dplyr::filter(pert_time == "120H") %>%
+    dplyr::rename(LFC_cb = LFC)
+}
+
+# load LFC collapsed data
+lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+if (length(lfc_path) == 1) {
+  lfc_table <- data.table::fread(lfc_path) %>%
+    dplyr::filter(pert_time == "120H")
+} else {
+  lfc_path <- list.files(params$data_dir, "LEVEL5_LFC", full.names = T)
+  lfc_table <- data.table::fread(lfc_path) %>%
+    dplyr::filter(pert_time != "0H") %>%
+    dplyr::rename(LFC_cb = LFC)
+}
+
+# push NAs to bottom in tables
+options(DT.TOJSON_ARGS = list(na = "string"))
+
+# plot theme
+theme_set(theme_light())
+```
+
+## Overall performance {.tabset .tabset-fade}
+
+### Included lines by plate
+
+```{r summary}
+qc_table %>%
+  dplyr::group_by(ccle_name, culture, pool_id, pert_plate) %>%
+  dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
+  dplyr::group_by(pass, culture, pert_plate) %>%
+  dplyr::summarise(count = n(), .groups = "drop") %>%
+  dplyr::group_by(pert_plate, culture) %>%
+  dplyr::mutate(total = sum(count)) %>%
+  dplyr::ungroup() %>%
+  ggplot(aes(x = pass, y = count/total * 100)) +
+  geom_bar(aes(fill = pass), stat = "identity") +
+  facet_grid(culture ~ pert_plate) +
+  geom_text(aes(label = count)) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_fill_fivethirtyeight(limits = c("TRUE", "FALSE")) +
+  labs(fill = "Pass", y = "Percent")
+```
+
+### Passing lines by replicate
+
+```{r rep summary}
+qc_table %>%
+  dplyr::group_by(ccle_name, culture, pool_id, prism_replicate) %>%
+  dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
+  dplyr::group_by(pass, culture, prism_replicate) %>%
+  dplyr::summarise(count = n(), .groups = "drop") %>%
+  dplyr::group_by(prism_replicate, culture) %>%
+  dplyr::mutate(total = sum(count)) %>%
+  dplyr::ungroup() %>%
+  ggplot(aes(x = pass, y = count/total * 100)) +
+  geom_bar(aes(fill = pass), stat = "identity") +
+  facet_wrap(culture ~ prism_replicate, nrow = 2) +
+  geom_text(aes(label = count)) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_fill_fivethirtyeight(limits = c("TRUE", "FALSE")) +
+  labs(fill = "Pass", y = "Percent")
+```
+
+### Fully failing lines
+
+```{r failures}
+dt <- qc_table %>%
+  dplyr::group_by(ccle_name, culture, pool_id, pert_plate) %>%
+  dplyr::summarise(pass = max(pass), .groups = "drop") %>%
+  dplyr::filter(pass == 0) %>%
+  dplyr::select(-pass) %>%
+  dplyr::group_by(ccle_name, pool_id, culture) %>%
+  dplyr::summarise(n_failed = n(),
+                   failed_plates = paste(pert_plate, collapse = "|"),
+                   .groups = "drop") %>%
+  dplyr::arrange(desc(n_failed))
+
+DT::datatable(dt, rownames = F, options = list(dom = "tp"),
+              colnames = c("Cell Line", "Pool", "Culture", "Num. Failed plates", "Failed plates"))
+```
+
+## Dynamic range and error rate {.tabset .tabset-fade}
+
+### Overview
+
+```{r standard plot, fig.height=10}
+qc_table %>%
+  ggplot(aes(x = dr, y = error_rate, color = pass)) +
+  geom_vline(xintercept = -log2(0.3), linetype = "dashed") +
+  geom_hline(yintercept = 0.05, linetype = "dashed") +
+  geom_point() +
+  facet_wrap(culture ~ prism_replicate) +
+  scale_color_fivethirtyeight(limits = c("TRUE", "FALSE")) +
+  labs(x = "Dynamic range", y = "Error rate", color = "Pass")
+```
+
+### Dynamic ranges
+
+```{r dr, fig.height=8}
+qc_table %>%
+  ggplot(aes(x = dr, color = prism_replicate)) +
+  geom_vline(xintercept = -log2(0.3), linetype = "dashed") +
+  stat_ecdf() +
+  facet_wrap(culture ~ ., ncol = 1) +
+  labs(color = "Replicate", x = "Dynamic range", y = "Proportion")
+```
+
+## Medians and MADs {.tabset .tabset-fade}
+
+### DMSO
+
+```{r medmad DMSO, fig.height=8}
+qc_table %>%
+  ggplot(aes(x = ctl_vehicle_md, y = ctl_vehicle_mad, color = pass)) +
+  geom_point(alpha = 0.6) +
+  facet_wrap(culture ~ prism_replicate) +
+  labs(x = "DMSO median", y = "DMSO MAD", color = "Pass") +
+  scale_color_fivethirtyeight(limits = c("TRUE", "FALSE"))
+```
+
+### Bortezomib
+
+```{r medmad bort, fig.height=8}
+qc_table %>%
+  ggplot(aes(x = trt_poscon_md, y = trt_poscon_mad, color = pass)) +
+  geom_point(alpha = 0.6) +
+  facet_wrap(culture ~ prism_replicate) +
+  labs(x = "Bortezomib median", y = "Bortezomib MAD", color = "Pass") +
+  scale_color_fivethirtyeight(limits = c("TRUE", "FALSE"))
+```
+
+## Replicate correlations
+
+```{r rep cor}
+units <- level4_table %>%
+  dplyr::filter(is.finite(LFC)) %>% 
+  dplyr::distinct(pool_id, culture, pert_dose, pert_id, pert_type, pert_plate, x_project_id)
+
+  
+
+res <- list()
+for(ix in 1:nrow(units)){ 
+  temp = units[ix,] %>% 
+    dplyr::left_join(level4_table) %>% 
+    reshape2::acast(ccle_name ~ prism_replicate + pert_well,
+                    value.var = "LFC")
+  temp.median = apply(temp,1,function(x) median(x, na.rm = T))
+  cc = cor(temp, temp.median, use  = "p")
+
+  res[[ix]] = dplyr::bind_cols(units[ix,] ,
+                               tibble(prism_replicate = word(rownames(cc),1,-2, sep = fixed("_")),
+                                      pert_well = word(rownames(cc),-1, sep = fixed("_")),
+                                      c.rep.cor = c(cc - median(cc, na.rm = T)),
+                                      rep.cor = c(cc), 
+                                      bias = apply(temp - temp.median,2, function(x) median(x,na.rm = T)),
+                                      mae = apply(temp - temp.median,2, function(x) median(abs(x),na.rm = T))))  
+}
+
+res %<>% dplyr::bind_rows()
+```
+
+
+## Cell line sensitivity
+
+```{r lfc pre, include=F}
+cl_summary <- lfc_table %>%
+  dplyr::group_by(ccle_name, culture, pool_id, pert_plate) %>%
+  dplyr::summarise(prop_killed = sum(LFC_cb < log2(0.3)) / n(),
+                   min_lfc = min(LFC_cb))
+```
+
+```{r cls, fig.height=8}
+cl_summary %>%
+  ggplot(aes(x = min_lfc, y = prop_killed, color = pool_id)) +
+  geom_point(alpha = 0.6) +
+  geom_text_repel(data = . %>% dplyr::filter(prop_killed == 0 || prop_killed > 0.3),
+                  mapping = aes(label = word(ccle_name, 1, sep = "_")),
+                  color = "black", size = 3) +
+  facet_wrap(culture ~ pert_plate) +
+  labs(x = "Minimum LFC", y = "Proportion of doses killing to 30%", color = "Pool")
+```
