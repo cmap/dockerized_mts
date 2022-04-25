@@ -159,7 +159,9 @@ To navigate through the report please click on the blue tabs under each heading.
 This compound was screened in the PRISM assay at `r n_doses`-point dose (3-fold dilution) with a `r n_days` day treatment with `r n_lines` cancer cell lines passing QC. Two PRISM cell line collections were used in the assay: PR500 (including only adherent cell lines), and PR300+ (including adherent and suspension cell lines). Three benchmark compounds – included in the MTS Validation set – were also tested at dose to ensure high data quality. All compounds were run in triplicate, and each plate contained positive (Bortezomib, 20uM) and negative (DMSO) controls.
 
 ```{r compound}
-DT::datatable(compounds, options = list(dom = "t", ordering = FALSE),
+DT::datatable(compounds,
+              options = list(dom = "t", ordering = TRUE,
+                             lengthChange = FALSE, scrollY = "300px", paging = FALSE),
               colnames = c("Compound name", "Compound ID", "Dose", "Dose with units", "Plate"),
               rownames = FALSE)
 ```
