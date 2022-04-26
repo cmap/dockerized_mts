@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: ~/Desktop/combination_compare/new_veneto/BRD-K62391742_BRD-K00005263
-  comp: "BRD-K62391742_BRD-K00005263"
-  qc_path: "~/Desktop/combination_compare/new_veneto/MTS016_VALIDATION_COMPOUND_INTERNAL_QC_TABLE.csv"
+  data_dir: ~/Desktop/report_test/
+  comp: ""
+  qc_path: ""
 output:
   html_document:
     toc: false
@@ -207,6 +207,11 @@ spread_lfc %<>%
   dplyr::mutate(q = p.adjust(p, method = "BH")) %>%
   dplyr::arrange(pert_dose_1)
 
+if (all(is.na(spread_lfc$S))) {
+  warning("No matching data from combination constituents alone, unable to generate combination report.")
+  quit(save = "no")
+}
+
 max_s <- ceiling(max(spread_lfc$S))
 min_s <- floor(min(spread_lfc$S))
 max_q <- ceiling(max(-log10(spread_lfc$q)))
@@ -257,6 +262,10 @@ solo_comps <- solo_drc$varied_iname %>% unique()
 
 plots <- list()
 for (i in 1:length(solo_comps)) {
+  if (i < 1) {
+    warning("No AUC data from combination any constituents alone, unable to generate combination report.")
+    quit(save = "no")
+  }
   comp <- solo_comps[[i]]
   df <- solo_drc %>%
     dplyr::filter(varied_iname == comp) %>%
