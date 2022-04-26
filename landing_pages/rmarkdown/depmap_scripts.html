@@ -3,7 +3,7 @@
         const index = window.location.href;
         const win_url = index.replace("index.html","");
         const sanitized_file_name = win_url+ filename.replace("./","");
-        const u = "https://clue.io/depmap?index=" + + encodeURIComponent(index) + "&url=" + encodeURIComponent(sanitized_file_name);
+        const u = "https://clue.io/depmap?index=" + encodeURIComponent(index) + "&url=" + encodeURIComponent(sanitized_file_name);
         window.open(u, "clue");
     }
     $(document).ready(function () {
