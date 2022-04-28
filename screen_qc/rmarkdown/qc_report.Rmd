@@ -29,7 +29,7 @@ qc_table <- data.table::fread(qc_path) %>%
 
 # load level 4 data
 level4_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
-if (length(lfc_path) == 1) {
+if (length(level4_path) == 1) {
   level4_table <- data.table::fread(level4_path) %>%
     dplyr::filter(pert_time == "120H")
 } else {
