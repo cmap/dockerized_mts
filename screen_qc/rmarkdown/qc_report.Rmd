@@ -1,13 +1,13 @@
 ---
 params:
   data_dir: ~/Desktop/MTS016
-title: "`r basename(params$data_dir)` QC Report"
+  screen_name: MTS016
+title: "`r params$screen_name` QC Report"
 author: "Andrew Boghossian"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: 
+output:
   html_document:
-    toc: true
-    toc_float: true
+    toc: false
     theme: paper
     highlight: kate
 ---
@@ -17,12 +17,19 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.width = 10
 
 # load libraries
 library(magrittr)
+library(reshape2)
 library(data.table)
 library(tidyverse)
 library(ggthemes)
 library(ggrepel)
+library(mousetrap)
+library(uwot)
+library(DT)
+library(plotly)
+library(ggExtra)
+library(heatmaply)
 
-# load QC data
+# load QC data (filter to 120H data (exclude base etc.))
 qc_path <- list.files(params$data_dir, "QC_TABLE", full.names = T)
 qc_table <- data.table::fread(qc_path) %>%
   dplyr::filter(pert_time == "120H")
@@ -39,7 +46,7 @@ if (length(level4_path) == 1) {
     dplyr::rename(LFC_cb = LFC)
 }
 
-# load LFC collapsed data
+# load LFC collapsed data (level 5)
 lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
 if (length(lfc_path) == 1) {
   lfc_table <- data.table::fread(lfc_path) %>%
@@ -56,13 +63,19 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 
 # plot theme
 theme_set(theme_light())
+
+mycolors <- tableau_color_pal()(10)
+mycolors <- colorRampPalette(mycolors)(length(qc_table$prism_replicate %>% unique()))
 ```
 
 ## Overall performance {.tabset .tabset-fade}
 
 ### Included lines by plate
 
+Number of cell lines included in LFC and downstream analysis per plate (must pass >50% of replicates to be included).
+
 ```{r summary}
+# sum number lines passing >= 2 replicates on each plate/culture (bar chart)
 qc_table %>%
   dplyr::group_by(ccle_name, culture, pool_id, pert_plate) %>%
   dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
@@ -84,18 +97,22 @@ qc_table %>%
 
 ### Passing lines by replicate
 
-```{r rep summary}
+Number of cell lines passing QC per replicate. Must have dynamic range > $\log_2(0.3) \approx 1.74$ and error rate $\leq$ 0.05.
+
+```{r rep summary, fig.height=10}
+# same as above on replicate level
 qc_table %>%
-  dplyr::group_by(ccle_name, culture, pool_id, prism_replicate) %>%
+  dplyr::group_by(ccle_name, culture, pool_id, pert_plate, prism_replicate) %>%
   dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
-  dplyr::group_by(pass, culture, prism_replicate) %>%
+  dplyr::group_by(pass, culture, pert_plate, prism_replicate) %>%
   dplyr::summarise(count = n(), .groups = "drop") %>%
-  dplyr::group_by(prism_replicate, culture) %>%
+  dplyr::group_by(pert_plate, prism_replicate, culture) %>%
   dplyr::mutate(total = sum(count)) %>%
   dplyr::ungroup() %>%
+  dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_")))) %>%
   ggplot(aes(x = pass, y = count/total * 100)) +
   geom_bar(aes(fill = pass), stat = "identity") +
-  facet_wrap(culture ~ prism_replicate, nrow = 2) +
+  facet_wrap(culture ~ replicate) +
   geom_text(aes(label = count)) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_blank(),
@@ -106,7 +123,11 @@ qc_table %>%
 
 ### Fully failing lines
 
+Table of cell lines that were removed from each plate (must fail on $\geq$ 50% of replicates). Sorted by number of plates removed from.
+
 ```{r failures}
+# find lines that are failing on every replicate of a plate
+# show in table (and how many plates they are failing on)
 dt <- qc_table %>%
   dplyr::group_by(ccle_name, culture, pool_id, pert_plate) %>%
   dplyr::summarise(pass = max(pass), .groups = "drop") %>%
@@ -118,7 +139,7 @@ dt <- qc_table %>%
                    .groups = "drop") %>%
   dplyr::arrange(desc(n_failed))
 
-DT::datatable(dt, rownames = F, options = list(dom = "tp"),
+DT::datatable(dt, rownames = F, options = list(dom = "tp"), filter = "top",
               colnames = c("Cell Line", "Pool", "Culture", "Num. Failed plates", "Failed plates"))
 ```
 
@@ -126,99 +147,253 @@ DT::datatable(dt, rownames = F, options = list(dom = "tp"),
 
 ### Overview
 
+Dynamic range versus error rate for each cell line on each replicate (points are cell lines). Points in red failed QC. Lines indicate passing thresholds for each metric.
+
 ```{r standard plot, fig.height=10}
+# dynamic range versus error rate by replicate
 qc_table %>%
+  dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_")))) %>%
   ggplot(aes(x = dr, y = error_rate, color = pass)) +
   geom_vline(xintercept = -log2(0.3), linetype = "dashed") +
   geom_hline(yintercept = 0.05, linetype = "dashed") +
   geom_point() +
-  facet_wrap(culture ~ prism_replicate) +
+  facet_wrap(culture ~ replicate) +
   scale_color_fivethirtyeight(limits = c("TRUE", "FALSE")) +
   labs(x = "Dynamic range", y = "Error rate", color = "Pass")
 ```
 
 ### Dynamic ranges
 
+Cumulative distribution plot of cell line dynamic ranges on each replicate.
+
 ```{r dr, fig.height=8}
+# cumulative distribution plot of dynamic range
 qc_table %>%
-  ggplot(aes(x = dr, color = prism_replicate)) +
+  ggplot(aes(x = dr, color = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_"))))) +
   geom_vline(xintercept = -log2(0.3), linetype = "dashed") +
   stat_ecdf() +
   facet_wrap(culture ~ ., ncol = 1) +
-  labs(color = "Replicate", x = "Dynamic range", y = "Proportion")
+  labs(color = "Replicate", x = "Dynamic range", y = "Proportion") +
+  scale_color_manual(values = mycolors)
 ```
 
 ## Medians and MADs {.tabset .tabset-fade}
 
 ### DMSO
 
+Median versus MAD logMFI in DMSO. Each point is a cell line. Points in red failed QC.
+
 ```{r medmad DMSO, fig.height=8}
+# median vs MAD logMFI in DMSO
 qc_table %>%
+  dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_")))) %>%
   ggplot(aes(x = ctl_vehicle_md, y = ctl_vehicle_mad, color = pass)) +
   geom_point(alpha = 0.6) +
-  facet_wrap(culture ~ prism_replicate) +
+  facet_wrap(culture ~ replicate) +
   labs(x = "DMSO median", y = "DMSO MAD", color = "Pass") +
   scale_color_fivethirtyeight(limits = c("TRUE", "FALSE"))
 ```
 
 ### Bortezomib
 
+Median versus MAD logMFI in bortezomib. Each point is a cell line. Points in red failed QC.
+
 ```{r medmad bort, fig.height=8}
+# same as above in bortezomib
 qc_table %>%
+  dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_")))) %>%
   ggplot(aes(x = trt_poscon_md, y = trt_poscon_mad, color = pass)) +
   geom_point(alpha = 0.6) +
-  facet_wrap(culture ~ prism_replicate) +
+  facet_wrap(culture ~ replicate) +
   labs(x = "Bortezomib median", y = "Bortezomib MAD", color = "Pass") +
   scale_color_fivethirtyeight(limits = c("TRUE", "FALSE"))
 ```
 
-## Replicate correlations
+### CDF plot
 
-```{r rep cor}
-units <- level4_table %>%
-  dplyr::filter(is.finite(LFC)) %>% 
-  dplyr::distinct(pool_id, culture, pert_dose, pert_id, pert_type, pert_plate, x_project_id)
+Cumulative distribution plot of cell line median logMFI in DMSO (solid lines) and bortezomib (dashed lines) on each replicate.
 
-  
+```{r medmad cdf, fig.height=8}
+# cumulative distribution plot of dynamic range
+qc_table %>%
+  ggplot(aes(color = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_"))))) +
+  stat_ecdf(aes(x = ctl_vehicle_md)) +
+  stat_ecdf(aes(x = trt_poscon_md), linetype = "dashed") +
+  facet_wrap(culture ~ ., ncol = 1) +
+  labs(color = "Replicate", x = "Normalized logMFI", y = "Proportion") +
+  scale_color_manual(values = mycolors)
+```
 
-res <- list()
-for(ix in 1:nrow(units)){ 
-  temp = units[ix,] %>% 
-    dplyr::left_join(level4_table) %>% 
-    reshape2::acast(ccle_name ~ prism_replicate + pert_well,
-                    value.var = "LFC")
-  temp.median = apply(temp,1,function(x) median(x, na.rm = T))
-  cc = cor(temp, temp.median, use  = "p")
+## Replicate correlations {.tabset .tabset-fade}
 
-  res[[ix]] = dplyr::bind_cols(units[ix,] ,
-                               tibble(prism_replicate = word(rownames(cc),1,-2, sep = fixed("_")),
-                                      pert_well = word(rownames(cc),-1, sep = fixed("_")),
-                                      c.rep.cor = c(cc - median(cc, na.rm = T)),
-                                      rep.cor = c(cc), 
-                                      bias = apply(temp - temp.median,2, function(x) median(x,na.rm = T)),
-                                      mae = apply(temp - temp.median,2, function(x) median(abs(x),na.rm = T))))  
+Correlation between replicates versus median correlation between replicates of perturbations across each replicate for each plate. Each point is a perturbation.
+
+```{r rep cor, results='asis', fig.height=8}
+plates <- level4_table$pert_plate %>% unique() %>% sort()
+plots <- list()
+
+for (i in 1:length(plates)) {
+  plate <- plates[[i]]
+  rep_cor_tab <- level4_table %>%
+    dplyr::filter(pert_plate == plate, pert_type == "trt_cp", pool_id != "CTLBC")
+
+  replicates <- rep_cor_tab$x_replicate %>% unique()
+  if (length(replicates) < 2) {
+    next
+  }
+  replicates_data <- list()
+  for (j in 1:length(replicates)) {
+    rep_val <- replicates[[j]]
+
+    replicate_data <- rep_cor_tab %>%
+      dplyr::filter(x_replicate == rep_val) %>%
+      reshape2::acast(ccle_name + culture ~ pert_id + pert_dose + x_project_id,
+                      value.var = "LFC_cb", fun.aggregate = mean)
+    replicates_data[[j]] <- replicate_data
+  }
+
+  combos <- combn(1:length(replicates), m = 2)
+  replicates_cor <- list()
+  shared_perts <- Reduce(intersect, lapply(replicates_data, colnames))
+  for (j in 1:ncol(combos)) {
+    df1 <- replicates_data[[combos[1, j]]]
+    df2 <- replicates_data[[combos[2, j]]]
+    overlap <- dplyr::intersect(rownames(df1), rownames(df2))
+    replicates_cor[[j]] <- cor(df1[overlap, shared_perts], df2[overlap, shared_perts]) %>% diag()
+    names(replicates_cor)[[j]] <- paste("X", combos[, j], collapse = "", sep = "")
+  }
+
+  replicates_cor %<>% dplyr::bind_cols()
+  replicates_cor$R0 <- apply(replicates_cor, 1, median)
+  replicates_cor %<>%
+    tidyr::gather("Rep", "cor", 1:3)
+
+  p <- replicates_cor %>%
+    ggplot(aes(x = R0, y = cor, color = Rep)) +
+    geom_point() +
+    geom_density_2d() +
+    geom_abline() +
+    scale_color_tableau() +
+    scale_fill_tableau() +
+    labs(x = "Median correlation", y = "Correlation", color = "Replicate correlation") +
+    theme(legend.position = "bottom")
+
+  p <- ggExtra::ggMarginal(p, type = "histogram", groupFill = T,
+                           position = "identity")
+
+  plots[[i]] <- p
+
+  cat("\n\n### ")
+  cat(plate)
+  cat("\n\n")
+  print(p, newpage = T)
+  cat("\n\n")
 }
-
-res %<>% dplyr::bind_rows()
 ```
 
 
 ## Cell line sensitivity
 
+This plot shows the proportion of perturbations killing a given cell line on a given plate to 30% viability and the 90th percentile of LFC for that cell line. Each point is a cell line. Cell lines in the table are killed in either 0 or more that 40% of perturbations on a plate.
+
 ```{r lfc pre, include=F}
+# calculate proportion of perturbations killing to 30% viability
 cl_summary <- lfc_table %>%
   dplyr::group_by(ccle_name, culture, pool_id, pert_plate) %>%
   dplyr::summarise(prop_killed = sum(LFC_cb < log2(0.3)) / n(),
-                   min_lfc = min(LFC_cb))
+                   ninety_perc = quantile(LFC_cb, probs = c(0.1)))
 ```
 
 ```{r cls, fig.height=8}
+mycolors <- tableau_color_pal()(10)
+mycolors <- colorRampPalette(mycolors)(length(cl_summary$pool_id %>% unique()))
+
 cl_summary %>%
-  ggplot(aes(x = min_lfc, y = prop_killed, color = pool_id)) +
+  ggplot(aes(x = ninety_perc, y = prop_killed, color = pool_id)) +
   geom_point(alpha = 0.6) +
-  geom_text_repel(data = . %>% dplyr::filter(prop_killed == 0 || prop_killed > 0.3),
-                  mapping = aes(label = word(ccle_name, 1, sep = "_")),
-                  color = "black", size = 3) +
-  facet_wrap(culture ~ pert_plate) +
-  labs(x = "Minimum LFC", y = "Proportion of doses killing to 30%", color = "Pool")
+  facet_wrap(pert_plate ~ culture) +
+  labs(x = "90th percentile LFC", y = "Perturbations killing to 30%", color = "Pool") +
+  scale_color_manual(values = mycolors)
+
+DT::datatable(cl_summary %>%
+                dplyr::filter(prop_killed == 0 | prop_killed > 0.4) %>%
+                dplyr::mutate(prop_killed = signif(prop_killed, 3),
+                              ninety_perc = signif(ninety_perc, 3)),
+              filter = "top", rownames = F, options = list(dom = "tp"),
+              colnames = c("Cell line", "Culture", "Pool", "Plate", "Kiling proportion", "90th percentile LFC"))
+```
+
+## LFC comparisons {.tabset .tabset-fade}
+
+Comparing log-fold changes of compounds based on the dose with the highest bimodality coefficient.
+
+```{r comp compare, include = F}
+# find dose for each pert/plate/project with highest bimodality coefficient
+pert_bcs <- lfc_table %>%
+  dplyr::group_by(pert_iname, pert_idose, x_project_id, pert_plate) %>%
+  dplyr::summarise(bc = mousetrap::bimodality_coefficient(LFC_cb),
+                   .groups = "drop") %>%
+  dplyr::group_by(pert_iname, x_project_id, pert_plate) %>%
+  dplyr::filter(bc == max(bc)) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(pert = paste(pert_iname, pert_idose, x_project_id, pert_plate, sep = fixed("::")))
+
+# correlate LFCs of each compound (single dose chosen above)
+pert_cors <- lfc_table %>%
+  dplyr::inner_join(pert_bcs) %>%
+  reshape2::acast(ccle_name + culture ~ pert, value.var = "LFC_cb") %>%
+  cor(use = "p")
+
+# UMAP projection of correlation matrix
+pert_umap <- uwot::umap(X = as.dist(1 - pert_cors), n_neighbors = 7) %>%
+  as_tibble() %>%
+  dplyr::mutate(id = colnames(pert_cors)) %>%
+  tidyr::separate(col = "id",
+                  into = c("pert_iname", "pert_idose", "x_project_id", "pert_plate"),
+                  sep = "::")
+
+# color palette
+mycolors <- tableau_color_pal()(10)
+mycolors <- colorRampPalette(mycolors)(length(pert_umap$x_project_id %>% unique()))
+```
+
+### UMAP
+
+UMAP projection of correlation matrix of compounds.
+
+```{r umap, fig.height=8}
+p <- pert_umap %>%
+  dplyr::mutate(Perturbation = paste(pert_iname, pert_idose, pert_plate)) %>%
+  dplyr::rename(Project = x_project_id) %>%
+  ggplot(mapping = aes(x = V1, y = V2, color = Project, name = Perturbation)) +
+  labs(x = "UMAP1", y = "UMAP2") +
+  geom_point(data = . %>% dplyr::filter(str_detect(Project, "VALIDATION")),
+             shape = 17) +
+  geom_point(data = . %>% dplyr::filter(str_detect(Project, "VALIDATION", negate = T)),
+             shape = 16) +
+  scale_color_manual(values = mycolors)
+
+plotly::ggplotly(p)
+```
+
+### Heatmap
+
+Heatmap of correlation matrix of compounds.
+
+```{r comp heatmap, fig.height=16, fig.width=16}
+projects <- tibble(Project = word(colnames(pert_cors), 3, sep = fixed("::")))
+colnames(pert_cors) <- paste(word(colnames(pert_cors), 1, sep = fixed("::")),
+                             word(colnames(pert_cors), 4, sep = fixed("::")))
+rownames(pert_cors) <- paste(word(rownames(pert_cors), 1, sep = fixed("::")),
+                             word(rownames(pert_cors), 4, sep = fixed("::")))
+
+heatmaply::heatmaply(pert_cors,
+                     show_dendrogram = F,
+                     fontsize_row = 6, fontsize_col = 6,
+                     colorbar_yanchor = "top", colorbar_len = 0.1,
+                     colorbar_ypos = 1, colorbar_xpos = 1,
+                     plot_method = "plotly", limits = c(-1, 1),
+                     row_side_colors = projects,
+                     row_side_palette = colorRampPalette(mycolors),
+                     side_color_colorbar_len = 0.6)
 ```
