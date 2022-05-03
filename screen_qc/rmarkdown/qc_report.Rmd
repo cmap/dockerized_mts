@@ -294,7 +294,7 @@ for (i in 1:length(plates)) {
 
 ## Cell line sensitivity
 
-This plot shows the proportion of perturbations killing a given cell line on a given plate to 30% viability and the 90th percentile of LFC for that cell line. Each point is a cell line. Cell lines in the table are killed in either 0 or more that 40% of perturbations on a plate.
+This plot shows the proportion of perturbations killing a given cell line on a given plate to 30% viability and the 90th percentile of LFC for that cell line. Each point is a cell line. Cell lines in the table are killed in 0, more that 40% of perturbations on a plate, or whose 90th percentile of LFC is > -1 (corresponding to viability of 50%).
 
 ```{r lfc pre, include=F}
 # calculate proportion of perturbations killing to 30% viability
@@ -316,7 +316,7 @@ cl_summary %>%
   scale_color_manual(values = mycolors)
 
 DT::datatable(cl_summary %>%
-                dplyr::filter(prop_killed == 0 | prop_killed > 0.4) %>%
+                dplyr::filter(prop_killed == 0 | prop_killed > 0.4 | ninety_perc > -1) %>%
                 dplyr::mutate(prop_killed = signif(prop_killed, 3),
                               ninety_perc = signif(ninety_perc, 3)),
               filter = "top", rownames = F, options = list(dom = "tp"),
