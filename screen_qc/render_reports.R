@@ -2,7 +2,7 @@ library(argparse)
 
 parser <- ArgumentParser()
 # specify our desired options
-parser$add_argument("-d", "--data_dir", default="", help="Input directory (project)")
+parser$add_argument("-d", "--data_dir", default="", help="Input directory (build).")
 parser$add_argument("-o", "--out_dir", default="", help = "Output directory. Default is working directory.")
 parser$add_argument("-n", "--screen_name", default="MTS", help = "Screen name")
 
