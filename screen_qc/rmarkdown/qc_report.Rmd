@@ -1,10 +1,11 @@
 ---
 params:
   data_dir: ~/Desktop/MTS016
-title: "`r basename(params$data_dir)` QC Report"
+  screen_name: MTS016
+title: "`r params$screen_name` QC Report"
 author: "Andrew Boghossian"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: 
+output:
   html_document:
     toc: false
     theme: paper
@@ -16,6 +17,7 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.width = 10
 
 # load libraries
 library(magrittr)
+library(reshape2)
 library(data.table)
 library(tidyverse)
 library(ggthemes)
@@ -24,8 +26,8 @@ library(mousetrap)
 library(uwot)
 library(DT)
 library(plotly)
-library(GGally)
 library(ggExtra)
+library(heatmaply)
 
 # load QC data (filter to 120H data (exclude base etc.))
 qc_path <- list.files(params$data_dir, "QC_TABLE", full.names = T)
@@ -211,7 +213,7 @@ qc_table %>%
 
 Cumulative distribution plot of cell line median logMFI in DMSO (solid lines) and bortezomib (dashed lines) on each replicate.
 
-```{r med mad cdf, fig.height=8}
+```{r medmad cdf, fig.height=8}
 # cumulative distribution plot of dynamic range
 qc_table %>%
   ggplot(aes(color = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_"))))) +
@@ -234,7 +236,7 @@ for (i in 1:length(plates)) {
   plate <- plates[[i]]
   rep_cor_tab <- level4_table %>%
     dplyr::filter(pert_plate == plate, pert_type == "trt_cp", pool_id != "CTLBC")
-  
+
   replicates <- rep_cor_tab$x_replicate %>% unique()
   if (length(replicates) < 2) {
     next
@@ -242,44 +244,45 @@ for (i in 1:length(plates)) {
   replicates_data <- list()
   for (j in 1:length(replicates)) {
     rep_val <- replicates[[j]]
-    
+
     replicate_data <- rep_cor_tab %>%
       dplyr::filter(x_replicate == rep_val) %>%
       reshape2::acast(ccle_name + culture ~ pert_id + pert_dose + x_project_id,
                       value.var = "LFC_cb", fun.aggregate = mean)
     replicates_data[[j]] <- replicate_data
   }
-  
+
   combos <- combn(1:length(replicates), m = 2)
   replicates_cor <- list()
+  shared_perts <- Reduce(intersect, lapply(replicates_data, colnames))
   for (j in 1:ncol(combos)) {
     df1 <- replicates_data[[combos[1, j]]]
     df2 <- replicates_data[[combos[2, j]]]
     overlap <- dplyr::intersect(rownames(df1), rownames(df2))
-    replicates_cor[[j]] <- cor(df1[overlap, ], df2[overlap, ]) %>% diag()
+    replicates_cor[[j]] <- cor(df1[overlap, shared_perts], df2[overlap, shared_perts]) %>% diag()
     names(replicates_cor)[[j]] <- paste("X", combos[, j], collapse = "", sep = "")
   }
-  
+
   replicates_cor %<>% dplyr::bind_cols()
   replicates_cor$R0 <- apply(replicates_cor, 1, median)
   replicates_cor %<>%
     tidyr::gather("Rep", "cor", 1:3)
-  
+
   p <- replicates_cor %>%
     ggplot(aes(x = R0, y = cor, color = Rep)) +
-    geom_point() + 
-    geom_density_2d() + 
+    geom_point() +
+    geom_density_2d() +
     geom_abline() +
     scale_color_tableau() +
     scale_fill_tableau() +
     labs(x = "Median correlation", y = "Correlation", color = "Replicate correlation") +
     theme(legend.position = "bottom")
-  
+
   p <- ggExtra::ggMarginal(p, type = "histogram", groupFill = T,
                            position = "identity")
-  
+
   plots[[i]] <- p
-  
+
   cat("\n\n### ")
   cat(plate)
   cat("\n\n")
@@ -312,7 +315,7 @@ cl_summary %>%
   labs(x = "90th percentile LFC", y = "Perturbations killing to 30%", color = "Pool") +
   scale_color_manual(values = mycolors)
 
-DT::datatable(cl_summary %>% 
+DT::datatable(cl_summary %>%
                 dplyr::filter(prop_killed == 0 | prop_killed > 0.4) %>%
                 dplyr::mutate(prop_killed = signif(prop_killed, 3),
                               ninety_perc = signif(ninety_perc, 3)),
@@ -347,7 +350,7 @@ pert_umap <- uwot::umap(X = as.dist(1 - pert_cors), n_neighbors = 7) %>%
   dplyr::mutate(id = colnames(pert_cors)) %>%
   tidyr::separate(col = "id",
                   into = c("pert_iname", "pert_idose", "x_project_id", "pert_plate"),
-                  sep = fixed("::"))
+                  sep = "::")
 
 # color palette
 mycolors <- tableau_color_pal()(10)
