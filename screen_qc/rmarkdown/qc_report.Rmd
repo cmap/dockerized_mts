@@ -121,7 +121,27 @@ qc_table %>%
   labs(fill = "Pass", y = "Percent")
 ```
 
-### Fully failing lines
+### Passing lines by pool
+
+Proportion of cell lines passing QC per pool per replicate. Must have dynamic range > $\log_2(0.3) \approx 1.74$ and error rate $\leq$ 0.05.
+
+```{r pool summary, fig.height=8}
+# same as above on pool x replicate level
+pool_matrix <- qc_table %>%
+  dplyr::group_by(ccle_name, culture, pool_id, pert_plate, prism_replicate) %>%
+  dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
+  dplyr::group_by(pert_plate, prism_replicate, pool_id, culture) %>%
+  dplyr::summarise(count = n(),
+                   passing = sum(pass),
+                   .groups = "drop") %>%
+  dplyr::mutate(passing_prop = passing/count) %>%
+  dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_")))) %>%
+  reshape2::acast(pool_id ~ replicate, value.var = "passing_prop")
+
+heatmaply::heatmaply(pool_matrix, Rowv = F, Colv = F, limits = c(0, 1))
+```
+
+### Removed lines
 
 Table of cell lines that were removed from each plate (must fail on $\geq$ 50% of replicates). Sorted by number of plates removed from.
 
