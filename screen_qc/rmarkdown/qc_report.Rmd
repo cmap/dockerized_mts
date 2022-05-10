@@ -135,8 +135,9 @@ pool_matrix <- qc_table %>%
                    passing = sum(pass),
                    .groups = "drop") %>%
   dplyr::mutate(passing_prop = passing/count) %>%
-  dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_")))) %>%
-  reshape2::acast(pool_id ~ replicate, value.var = "passing_prop")
+  dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_"))),
+                replicate = word(replicate, 1, sep = fixed("."))) %>%
+  reshape2::acast(pool_id + culture ~ replicate, value.var = "passing_prop")
 
 heatmaply::heatmaply(pool_matrix, Rowv = F, Colv = F, limits = c(0, 1))
 ```
