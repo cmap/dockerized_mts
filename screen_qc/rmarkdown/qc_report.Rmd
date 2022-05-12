@@ -102,8 +102,6 @@ Number of cell lines passing QC per replicate. Must have dynamic range > $\log_2
 ```{r rep summary, fig.height=10}
 # same as above on replicate level
 qc_table %>%
-  dplyr::group_by(ccle_name, culture, pool_id, pert_plate, prism_replicate) %>%
-  dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
   dplyr::group_by(pass, culture, pert_plate, prism_replicate) %>%
   dplyr::summarise(count = n(), .groups = "drop") %>%
   dplyr::group_by(pert_plate, prism_replicate, culture) %>%
@@ -128,8 +126,6 @@ Proportion of cell lines passing QC per pool per replicate. Must have dynamic ra
 ```{r pool summary, fig.height=8}
 # same as above on pool x replicate level
 pool_matrix <- qc_table %>%
-  dplyr::group_by(ccle_name, culture, pool_id, pert_plate, prism_replicate) %>%
-  dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
   dplyr::group_by(pert_plate, prism_replicate, pool_id, culture) %>%
   dplyr::summarise(count = n(),
                    passing = sum(pass),
