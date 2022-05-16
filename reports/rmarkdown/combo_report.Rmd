@@ -169,9 +169,7 @@ The first plot shows synergy score (x-axis) and the significance of that score (
 
 The second plot shows the AUC of the combination versus the AUC of each constituent for each cell line. Points that fall below the diagonal are more sensitive to the combination and points that fall above the diagonal are more sensitive to the constituent. Only points with AUC values in both conditions are shown.
 
-## Synergy plots {.tabset .tabset-fade}
-
-### Synergy by dose
+## Synergy by dose
 
 ```{r synergy scoring, fig.height=synergy_height}
 # non-combination values
@@ -251,50 +249,6 @@ subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F)
                 size = 48),
            list(x = 0.5, y = 0, yshift = -40,
                 text = "Synergy score",
-                font = list(size = 14),
-                showarrow = F, xref='paper', yref='paper',
-                size = 48)
-         ))
-```
-
-### Viability versus Bliss expectation
-
-```{r bliss scatter, fig.height=synergy_height}
-spread_lfc$B <- pmin(B, 1)
-spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
-
-plots <- list()
-for (i in 1:nrow(combos)) {
-  bliss_plot <- highlight_key(spread_lfc %>% dplyr::inner_join(combos[i,]),
-                                ~ccle_name, group = "Bliss scores")
-  p <- plot_ly(bliss_plot) %>%
-    add_trace(x = ~B, y = ~FC, type = "scatter", mode = "markers",
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.5) %>%
-    layout(xaxis = list(range = c(0, 1)),
-           yaxis = list(range = c(0, 1)),
-           annotations = list(x = 0.5, y = 1,
-                              text = combos$pert_dose[[i]],
-                              align = "center", showarrow = F, xref="paper", yref="paper",
-                              xanchor = "center", yanchor = "top"),
-           hovermode = "closest",
-           showlegend = F,
-           shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
-                         line = list(dash = "dash", layer = "below"))) %>%
-    highlight(on = "plotly_click", off = "plotly_doubleclick",
-              dynamic = FALSE, selectize = FALSE, persistent = FALSE,
-              defaultValues = "", selected = attrs_selected(opacity = 1))
-  plots[[i]] <- p
-}
-subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F) %>%
-  layout(title = pert_iname,
-         annotations = list(
-           list(x = 0, xshift = -50, y = 0.5,
-                textangle = 270, text = "Combo fold-change",
-                font = list(size = 14),
-                showarrow = F, xref='paper', yref='paper',
-                size = 48),
-           list(x = 0.5, y = 0, yshift = -40,
-                text = "Bliss expectation",
                 font = list(size = 14),
                 showarrow = F, xref='paper', yref='paper',
                 size = 48)
