@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/veneto_test
-  comp: "BRD-K62391742_BRD-K00005263"
+  data_dir: ~/Desktop/combination_compare/new_combo/BRD-K32107296_BRD-K92041145
+  comp: "BRD-K32107296_BRD-K92041145"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -78,7 +78,8 @@ n_days <- LFC$pert_time %>%
 
 # factorize dosing scheme
 LFC$pert_dose_sort <- stringr::word(LFC$pert_dose, 1, sep = fixed("|"))
-LFC %<>% dplyr::arrange(as.numeric(pert_dose_sort))
+LFC$pert_dose_sort_2 <- stringr::word(LFC$pert_dose, 2, sep = fixed("|"))
+LFC %<>% dplyr::arrange(as.numeric(pert_dose_sort), as.numeric(pert_dose_sort_2))
 dose_factors <- LFC$pert_dose %>% unique()
 corr_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
