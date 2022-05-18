@@ -217,7 +217,9 @@ max_s <- ceiling(max(spread_lfc$S))
 min_s <- floor(min(spread_lfc$S))
 max_q <- ceiling(max(-log10(spread_lfc$q)))
 
-combos <- spread_lfc %>% dplyr::distinct(pert_dose)
+combos <- spread_lfc %>%
+  dplyr::arrange(pert_dose_1, pert_dose_2) %>%
+  dplyr::distinct(pert_dose)
 
 plots <- list()
 for (i in 1:nrow(combos)) {
