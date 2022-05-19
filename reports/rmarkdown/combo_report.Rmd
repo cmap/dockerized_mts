@@ -167,7 +167,7 @@ This section compares the activity of combination with constituents based on log
 
 The first plot shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Large positive values indicate synergy while large negative values indicate antagonism. Significance metrics, $q$ values, are obtained by normalizing the synergy score to the variance of the cell line abundance in DMSO, calculating a $p$ value and correcting it for multiple hypothesis testing.
 
-The second plot shows the AUC of the combination versus the AUC of each constituent for each cell line. Points that fall below the diagonal are more sensitive to the combination and points that fall above the diagonal are more sensitive to the constituent. Only points with AUC values in both conditions are shown.
+The second plot shows the AUC of the combination versus the AUC of each constituent for each cell line. Points that fall below the diagonal are more sensitive to the constituent and points that fall above the diagonal are more sensitive to the combination. Only points with AUC values in both conditions are shown.
 
 ## Synergy by dose
 
