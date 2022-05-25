@@ -68,13 +68,12 @@ if (length(drc_path == 1)) {
 if (length(lfc_path) == 1) {
   LFC <- data.table::fread(lfc_path) %>%
     dplyr::distinct(across(any_of(c("ccle_name", "culture", "pool_id", "pert_id", "pert_time",
-                                    "pert_iname", "pert_dose", "pert_plate", "LFC", "LFC.cb")))) %>%
+                                    "pert_iname", "pert_dose", "pert_plate", "LFC", "LFC_cb")))) %>%
     dplyr::mutate(pert_dose = as.character(pert_dose))
 
   if ("LFC_cb" %in% colnames(LFC)) {
     LFC %<>%
-      dplyr::rename(response = LFC_cb) %>%
-      dplyr::select(-LFC)
+      dplyr::rename(response = LFC_cb)
   } else {
     LFC %<>%
       dplyr::rename(response = LFC)
