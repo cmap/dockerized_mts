@@ -32,17 +32,17 @@ library(heatmaply)
 # load QC data (filter to 120H data (exclude base etc.))
 qc_path <- list.files(params$data_dir, "QC_TABLE", full.names = T)
 qc_table <- data.table::fread(qc_path) %>%
-  dplyr::filter(pert_time == "120H")
+  dplyr::filter(str_detect(pert_plate, "BASE", negate = T))
 
 # load level 4 data
 level4_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
 if (length(level4_path) == 1) {
   level4_table <- data.table::fread(level4_path) %>%
-    dplyr::filter(pert_time == "120H")
+    dplyr::filter(str_detect(pert_plate, "BASE", negate = T))
 } else {
   level4_path <- list.files(params$data_dir, "LEVEL4_LFC", full.names = T)
   level4_table <- data.table::fread(level4_path) %>%
-    dplyr::filter(pert_time == "120H") %>%
+    dplyr::filter(str_detect(pert_plate, "BASE", negate = T)) %>%
     dplyr::rename(LFC_cb = LFC)
 }
 
@@ -50,11 +50,11 @@ if (length(level4_path) == 1) {
 lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
 if (length(lfc_path) == 1) {
   lfc_table <- data.table::fread(lfc_path) %>%
-    dplyr::filter(pert_time == "120H")
+    dplyr::filter(str_detect(pert_plate, "BASE", negate = T))
 } else {
   lfc_path <- list.files(params$data_dir, "LEVEL5_LFC", full.names = T)
   lfc_table <- data.table::fread(lfc_path) %>%
-    dplyr::filter(pert_time != "0H") %>%
+    dplyr::filter(str_detect(pert_plate, "BASE", negate = T)) %>%
     dplyr::rename(LFC_cb = LFC)
 }
 
