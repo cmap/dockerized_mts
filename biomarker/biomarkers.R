@@ -71,9 +71,9 @@ if (length(lfc_path) == 1) {
                                     "pert_iname", "pert_dose", "pert_plate", "LFC", "LFC.cb")))) %>%
     dplyr::mutate(pert_dose = as.character(pert_dose))
 
-  if ("LFC.cb" %in% colnames(LFC)) {
+  if ("LFC_cb" %in% colnames(LFC)) {
     LFC %<>%
-      dplyr::rename(response = LFC.cb) %>%
+      dplyr::rename(response = LFC_cb) %>%
       dplyr::select(-LFC)
   } else {
     LFC %<>%
