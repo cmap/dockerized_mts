@@ -13,7 +13,7 @@ import pandas as pd
 from cmapPy.pandasGEXpress.parse import parse
 
 logger = logging.getLogger('deal')
-
+CTL_TYPES = ['ctl_vehicle']
 build_contents_dict = {
     'inst_info': {
         'search_pattern': '*_inst_info.txt',
@@ -77,7 +77,7 @@ build_contents_dict = {
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--build_path', '-b', help='Build path')
+    parser.add_argument('--build_path', '-b', help='Build path', required=True)
     parser.add_argument('--only_key', '-k',
                         help='key to extract. Useful if parallelizing, only listed keys will be concatenated')
     parser.add_argument('--project', '-p', help='Project to extract')
@@ -103,12 +103,23 @@ def make_sig_id(level5_table, id_cols):
     level5_table['sig_id'] = level5_table.apply(lambda row: '_'.join([str(row[col]) for col in col_hds]), axis=1)
     return level5_table
 
+def get_data_plus_controls(data, project):
+    proj_inst = data.loc[
+        (data['x_project_id'] == project)
+    ]
+
+    proj_plates = proj_inst.pert_plate.unique()
+
+    proj_ctls = data.loc[
+        (data['pert_plate'].isin(proj_plates)) &
+        (data['pert_type'].isin(CTL_TYPES))
+        ]
+
+    return pd.concat([proj_inst, proj_ctls])
 
 """
     Extract project data and write to file
 """
-
-
 def slice_and_write_project(data, data_level, project, outpath, args):
     print(project)
     proj_dir = os.path.join(outpath, project, 'data')
@@ -129,9 +140,7 @@ def slice_and_write_project(data, data_level, project, outpath, args):
             dtype={'pert_dose': 'str', 'pert_idose': 'str'}
         )
 
-        proj_inst = inst.loc[
-            inst['x_project_id'] == project
-            ]
+        proj_inst = get_data_plus_controls(inst, project)
 
         proj_data = data.loc[
             data['cid'].isin(proj_inst['profile_id'].unique())
@@ -140,8 +149,11 @@ def slice_and_write_project(data, data_level, project, outpath, args):
         nc = len(proj_data['cid'].unique())
         nr = len(proj_data['rid'].unique())
     else:
-        proj_data = data.loc[
-            data['x_project_id'] == project
+        if 'pert_type' in data.columns:
+            proj_data = get_data_plus_controls(data, project)
+        else:  # protects for when we dropped pert_type from Level5
+            proj_data = data.loc[
+                data['x_project_id'] == project
             ]
 
         col_id = ('profile_id' if 'profile_id' in data.columns else 'sig_id')
