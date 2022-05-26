@@ -154,7 +154,7 @@ p <- plot_ly() %>%
             hovertemplate = "%{text} <br> %{xaxis.title.text}: %{x} <br> %{yaxis.title.text}: %{y} <extra></extra>",
             opacity = 0.1, color = ~Replicate) %>%
   layout(xaxis = list(title = "Dose", type = "log"),
-         yaxis = list(title = "Viability", range = c(0, 2)),
+         yaxis = list(title = "Viability", range = c(0, 1.5)),
          hovermode = "closest") %>%
   highlight(on = "plotly_selected", off = "plotly_deselect",
             dynamic = FALSE, selectize = TRUE, persistent = FALSE,

@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: ~/Desktop/report_test/
-  comp: ""
-  qc_path: ""
+  data_dir: ~/Desktop/combination_compare/new_veneto/BRD-K62391742_BRD-K00005263
+  comp: BRD-K62391742_BRD-K00005263
+  qc_path: ~/Desktop/combination_compare/new_veneto/MTS016_VALIDATION_COMPOUND_INTERNAL_QC_TABLE.csv
 output:
   html_document:
     toc: false
@@ -167,9 +167,9 @@ This section compares the activity of combination with constituents based on log
 
 The first plot shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Large positive values indicate synergy while large negative values indicate antagonism. Significance metrics, $q$ values, are obtained by normalizing the synergy score to the variance of the cell line abundance in DMSO, calculating a $p$ value and correcting it for multiple hypothesis testing.
 
-The second plot shows the AUC of the combination versus the AUC of each constituent for each cell line. Points that fall below the diagonal are more sensitive to the combination and points that fall above the diagonal are more sensitive to the constituent. Only points with AUC values in both conditions are shown.
+The second plot shows the AUC of the combination versus the AUC of each constituent for each cell line. Points that fall below the diagonal are more sensitive to the constituent and points that fall above the diagonal are more sensitive to the combination. Only points with AUC values in both conditions are shown.
 
-## Synergy plots
+## Synergy by dose
 
 ```{r synergy scoring, fig.height=synergy_height}
 # non-combination values
@@ -200,6 +200,7 @@ for (i in 1:length(constituents)) {
   spread_lfc %<>% dplyr::left_join(df)
 }
 
+B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, prod)
 spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
 spread_lfc %<>%
   dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
@@ -216,7 +217,9 @@ max_s <- ceiling(max(spread_lfc$S))
 min_s <- floor(min(spread_lfc$S))
 max_q <- ceiling(max(-log10(spread_lfc$q)))
 
-combos <- spread_lfc %>% dplyr::distinct(pert_dose)
+combos <- spread_lfc %>%
+  dplyr::arrange(pert_dose_1, pert_dose_2) %>%
+  dplyr::distinct(pert_dose)
 
 plots <- list()
 for (i in 1:nrow(combos)) {
@@ -284,7 +287,9 @@ for (i in 1:length(solo_comps)) {
            yaxis = list(title = paste(comp, "AUC"),
                         range = c(0, 1)),
            hovermode = "closest",
-           showlegend = T) %>%
+           showlegend = T,
+           shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
+                         line = list(dash = "dash", layer = "below"))) %>%
     highlight(on = "plotly_click", off = "plotly_doubleclick",
               dynamic = FALSE, selectize = FALSE, persistent = FALSE,
               defaultValues = "", selected = attrs_selected(opacity = 1))

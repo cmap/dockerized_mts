@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/veneto_test
-  comp: "BRD-K62391742_BRD-K00005263"
+  data_dir: ~/Desktop/combination_compare/new_combo/BRD-K32107296_BRD-K92041145
+  comp: "BRD-K32107296_BRD-K92041145"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -78,7 +78,8 @@ n_days <- LFC$pert_time %>%
 
 # factorize dosing scheme
 LFC$pert_dose_sort <- stringr::word(LFC$pert_dose, 1, sep = fixed("|"))
-LFC %<>% dplyr::arrange(as.numeric(pert_dose_sort))
+LFC$pert_dose_sort_2 <- stringr::word(LFC$pert_dose, 2, sep = fixed("|"))
+LFC %<>% dplyr::arrange(as.numeric(pert_dose_sort), as.numeric(pert_dose_sort_2))
 dose_factors <- LFC$pert_dose %>% unique()
 corr_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
@@ -86,14 +87,16 @@ corr_table %<>%
                                    pert_dose),
                 pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
                                    paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
-                                   pert_dose))
+                                   pert_dose),
+                pert_iname = unique(LFC$pert_iname))
 disc_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
                                    pert_dose),
                 pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
                                    paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
-                                   pert_dose)) %>%
+                                   pert_dose),
+                pert_iname = unique(LFC$pert_iname)) %>%
   dplyr::arrange(q.value, effect_size) %>%
   dplyr::group_by(pert_iname, pert_dose, pert_plate, pert_time, pert_id, feature_type, added_doses, added_compounds) %>%
   dplyr::mutate(rank = 1:n()) %>%
@@ -104,14 +107,16 @@ model_table %<>%
                                    pert_dose),
                 pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
                                    paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
-                                   pert_dose))
+                                   pert_dose),
+                pert_iname = unique(LFC$pert_iname))
 rf_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
                                    pert_dose),
                 pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
                                    paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
-                                   pert_dose))
+                                   pert_dose),
+                pert_iname = unique(LFC$pert_iname))
 
 dose_factors <- dplyr::union(dose_factors, corr_table$pert_dose %>% unique())
 LFC$pert_dose <- factor(LFC$pert_dose, levels = dose_factors)

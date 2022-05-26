@@ -44,7 +44,7 @@ LFC_TABLE %<>%
 LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
   dplyr::mutate(sig_id = paste(pert_plate, culture, pert_id, pert_idose, pert_time, sep = fixed("_"))) %>%
   dplyr::select(rid, ccle_name, culture, pool_id, pert_iname, pert_id, pert_dose,
-                pert_idose, pert_plate, pert_vehicle, pert_time, LFC, LFC_cb, sig_id,
+                pert_idose, pert_plate, pert_vehicle, pert_time, pert_type, LFC, LFC_cb, sig_id,
                 any_of(c("x_mixture_contents", "x_mixture_id", "x_project_id"))) %>%
   dplyr::group_by(across(.cols = !contains("LFC"))) %>%
   # LFC and LFC_cb values will be medians across replicates

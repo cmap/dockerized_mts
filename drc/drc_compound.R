@@ -147,6 +147,7 @@ for (i in 1:nrow(dosed_compounds)) {
                       varied_id = comp$pert_id,
                       ccle_name = df[j,]$ccle_name,
                       culture = df[j,]$culture,
+                      pool_id = df[j,]$pool_id,
                       pert_time = df[j,]$pert_time,
                       pert_plate = df[j,]$pert_plate)
       
