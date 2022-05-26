@@ -66,7 +66,7 @@ LFC_TABLE <- calculate_lfc(LFC_TABLE)
 #---- Make collapsed LFC table ----
 LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
   dplyr::select(ccle_name, culture, pool_id, pert_iname, pert_id, pert_dose,
-                pert_idose, pert_plate, pert_vehicle, pert_time, LFC,
+                pert_idose, pert_plate, pert_vehicle, pert_time, pert_type, LFC,
                 any_of(c("x_mixture_contents", "x_mixture_id", "x_project_id"))) %>%
   dplyr::group_by(across(.cols = !contains("LFC"))) %>%
   # LFC and LFC.cb values will be medians across replicates
