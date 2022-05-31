@@ -6,7 +6,7 @@ This module creates a build level QC report.
 
 ## QC report overview
 
-QC reports generated with RMarkdown (files in [`rmarkdown`](./rmarkdown)).
+QC reports generated with RMarkdown (files in [`rmarkdown`](./rmarkdown)). Requires a build directory with QC and level 3 and 4 data as input.
 
 ## Docker image
 
