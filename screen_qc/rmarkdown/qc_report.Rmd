@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/MTS016
-  screen_name: MTS016
+  data_dir: ~/Downloads/PCAL_MDR1
+  screen_name: MDR1
 title: "`r params$screen_name` QC Report"
 author: "Andrew Boghossian"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -32,17 +32,21 @@ library(heatmaply)
 # load QC data (filter to 120H data (exclude base etc.))
 qc_path <- list.files(params$data_dir, "QC_TABLE", full.names = T)
 qc_table <- data.table::fread(qc_path) %>%
-  dplyr::filter(pert_time == "120H")
+  dplyr::filter(str_detect(pert_plate, "BASE", negate = T))
+
+# load level 3 data
+level3_path <- list.files(params$data_dir, "LEVEL3_LMFI", full.names = T)
+level3_table <- data.table::fread(level3_path)
 
 # load level 4 data
 level4_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
 if (length(level4_path) == 1) {
   level4_table <- data.table::fread(level4_path) %>%
-    dplyr::filter(pert_time == "120H")
+    dplyr::filter(str_detect(pert_plate, "BASE", negate = T))
 } else {
   level4_path <- list.files(params$data_dir, "LEVEL4_LFC", full.names = T)
   level4_table <- data.table::fread(level4_path) %>%
-    dplyr::filter(pert_time == "120H") %>%
+    dplyr::filter(str_detect(pert_plate, "BASE", negate = T)) %>%
     dplyr::rename(LFC_cb = LFC)
 }
 
@@ -50,11 +54,11 @@ if (length(level4_path) == 1) {
 lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
 if (length(lfc_path) == 1) {
   lfc_table <- data.table::fread(lfc_path) %>%
-    dplyr::filter(pert_time == "120H")
+    dplyr::filter(str_detect(pert_plate, "BASE", negate = T))
 } else {
   lfc_path <- list.files(params$data_dir, "LEVEL5_LFC", full.names = T)
   lfc_table <- data.table::fread(lfc_path) %>%
-    dplyr::filter(pert_time != "0H") %>%
+    dplyr::filter(str_detect(pert_plate, "BASE", negate = T)) %>%
     dplyr::rename(LFC_cb = LFC)
 }
 
@@ -239,6 +243,54 @@ qc_table %>%
   facet_wrap(culture ~ ., ncol = 1) +
   labs(color = "Replicate", x = "Normalized logMFI", y = "Proportion") +
   scale_color_manual(values = mycolors)
+```
+
+### Barcodes
+
+```{r fig.height=8}
+controls <- level3_table %>%
+  dplyr::filter(pert_type %in% c("trt_poscon", "ctl_vehicle"),
+                str_detect(prism_replicate, "BASE", negate = T)) %>%
+  dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_")))) %>%
+  dplyr::distinct(ccle_name, culture, pool_id, pert_time, replicate, pert_type, logMFI, logMFI_norm) %>%
+  dplyr::group_by(ccle_name, culture, pool_id, pert_time, replicate, pert_type) %>%
+  dplyr::summarise_all(.funs = c("med" = median, "mad" = mad)) %>%
+  tidyr::pivot_wider(names_from = "pert_type",
+                     values_from = c("logMFI_med", "logMFI_mad", "logMFI_norm_med", "logMFI_norm_mad"))
+
+p1 <- controls %>%
+  ggplot(aes(x = logMFI_med_ctl_vehicle, y = logMFI_med_trt_poscon, color = pool_id == "CTLBC")) +
+  geom_abline(intercept = c(0, -1, -2), linetype = "dashed") +
+  geom_point(shape = 1) +
+  geom_errorbar(aes(ymax = logMFI_med_trt_poscon + logMFI_mad_trt_poscon,
+                    ymin = logMFI_med_trt_poscon - logMFI_mad_trt_poscon),
+                alpha = 0.3) +
+  geom_errorbar(aes(xmax = logMFI_med_ctl_vehicle + logMFI_mad_ctl_vehicle,
+                    xmin = logMFI_med_ctl_vehicle - logMFI_mad_ctl_vehicle),
+                alpha = 0.3) +
+  labs(x = "DMSO logMFI", y = "Bortezomib logMFI", color = "CTLBC",
+       title = "Raw") +
+  facet_wrap(replicate ~ .) +
+  scale_color_wsj(limits = c("TRUE", "FALSE"))
+
+p2 <- controls %>%
+  ggplot(aes(x = logMFI_norm_med_ctl_vehicle, y = logMFI_norm_med_trt_poscon, color = pool_id == "CTLBC")) +
+  geom_abline(intercept = c(0, -1, -2), linetype = "dashed") +
+  geom_point(shape = 1) +
+  geom_errorbar(aes(ymax = logMFI_norm_med_trt_poscon + logMFI_norm_mad_trt_poscon,
+                    ymin = logMFI_norm_med_trt_poscon - logMFI_norm_mad_trt_poscon),
+                alpha = 0.3) +
+  geom_errorbar(aes(xmax = logMFI_norm_med_ctl_vehicle + logMFI_norm_mad_ctl_vehicle,
+                    xmin = logMFI_norm_med_ctl_vehicle - logMFI_norm_mad_ctl_vehicle),
+                alpha = 0.3) +
+  labs(x = "DMSO logMFI", y = "Bortezomib logMFI", color = "CTLBC",
+       title = "Normalized") +
+  facet_wrap(replicate ~ .) +
+  scale_color_wsj(limits = c("TRUE", "FALSE"))
+
+
+p1
+p2
 ```
 
 ## Replicate correlations {.tabset .tabset-fade}

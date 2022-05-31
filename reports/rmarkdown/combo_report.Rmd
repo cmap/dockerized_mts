@@ -88,7 +88,7 @@ for (const in constituents) {
     warning("No data directory for anchor or test compounds. Unable to generate combination report.")
     quit(save = "no")
   }
-  
+
   # DRC and LFC
   const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
   const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
@@ -104,12 +104,12 @@ for (const in constituents) {
         dplyr::mutate(ec50 = as.numeric(ec50))
     )
   }
-  
+
   # correlations and random forest
   const_corr_path <- list.files(const_path, "continuous_associations", full.names = T)
   const_model_path <- list.files(const_path, "model_table", full.names = T)
   const_rf_path <- list.files(const_path, "RF_table", full.names = T)
-  
+
   if (length(const_corr_path) == 1) {
     correlations %<>% dplyr::bind_rows(
       data.table::fread(const_corr_path) %>%
@@ -196,10 +196,10 @@ for (i in 1:length(constituents)) {
     dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
-  
+
   new_cols <- paste(colnames(df), i, sep = "_")
   colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
-  
+
   spread_lfc %<>% dplyr::left_join(df)
 }
 
@@ -221,7 +221,9 @@ max_s <- ceiling(max(spread_lfc$S))
 min_s <- floor(min(spread_lfc$S))
 max_q <- ceiling(max(-log10(spread_lfc$q)))
 
-combos <- spread_lfc %>% dplyr::distinct(pert_dose)
+combos <- spread_lfc %>%
+  dplyr::arrange(pert_dose_1, pert_dose_2) %>%
+  dplyr::distinct(pert_dose)
 
 plots <- list()
 for (i in 1:nrow(combos)) {
@@ -302,12 +304,12 @@ for (i in 1:length(comps)) {
   comp = comps[[i]]
   df <- pseudo_auc %>% dplyr::filter(pert_iname == comp)
   doses <- df$pert_dose %>% unique()
-  
+
   plots = list()
   for (j in 1:length(doses)) {
     df <- highlight_key(pseudo_auc %>% dplyr::filter(pert_dose == doses[[j]]),
                         ~ccle_name, group = comp)
-    
+
     p <- plot_ly() %>%
       add_trace(data = df,
                 x = ~B, y = ~FC,
@@ -327,10 +329,10 @@ for (i in 1:length(comps)) {
                 dynamic = FALSE, selectize = TRUE, persistent = FALSE,
                 opacityDim = 1, defaultValues = "",
                 selected = attrs_selected(opacity = 1))
-    
+
     plots[[j]] <- p
   }
-  
+
   super_plots[[i]] <- subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
 }
 ```
