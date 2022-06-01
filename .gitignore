@@ -60,5 +60,9 @@ landing_pages/rmarkdown/*.html
 node_modules
 __pycache__/
 
+# biomarker feature files
+biomarker_files/*.csv
+biomarker_data/*.csv
+
 #debug notebooks
 #*.ipynb
