@@ -122,4 +122,4 @@ The upper asymptote is constrained to be near 1 and the lower asymptote is const
 
 #### Overview
 
-The biomarker step generates univariate and multivariate associations with CCLE and DepMap data. The results are -omics features that are associated with response to treatment. For more specifics on the types of analyses see [here](./analysis_info.pdf). The datasets used for associations are listed in [`biomarker_files`](../biomarker_files/README.md)
+The biomarker step generates univariate and multivariate associations with CCLE and DepMap data. The results are -omics features that are associated with response to treatment. For more specifics on the types of analyses see [here](./analysis_info.pdf). The datasets used for associations are listed in [`biomarker_files`](../biomarker_files/README.md).
