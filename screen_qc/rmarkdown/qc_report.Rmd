@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Downloads/PCAL_MDR1
-  screen_name: MDR1
+  data_dir: ~/Desktop/MTS016
+  screen_name: MTS016
 title: "`r params$screen_name` QC Report"
 author: "Andrew Boghossian"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -129,17 +129,22 @@ Proportion of cell lines passing QC per pool per replicate. Must have dynamic ra
 
 ```{r pool summary, fig.height=8}
 # same as above on pool x replicate level
-pool_matrix <- qc_table %>%
+pool_stats <- qc_table %>%
   dplyr::group_by(pert_plate, prism_replicate, pool_id, culture) %>%
   dplyr::summarise(count = n(),
                    passing = sum(pass),
                    .groups = "drop") %>%
   dplyr::mutate(passing_prop = passing/count) %>%
   dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_"))),
-                replicate = word(replicate, 1, sep = fixed("."))) %>%
-  reshape2::acast(pool_id + culture ~ replicate, value.var = "passing_prop")
+                replicate = word(replicate, 1, sep = fixed(".")))
 
-heatmaply::heatmaply(pool_matrix, Rowv = F, Colv = F, limits = c(0, 1))
+prop_mat <- pool_stats %>%
+  reshape2::acast(pool_id + culture ~ replicate, value.var = "passing_prop")
+count_mat <- pool_stats %>%
+  reshape2::acast(pool_id + culture ~ replicate, value.var = "passing")
+
+heatmaply::heatmaply(prop_mat, Rowv = F, Colv = F, limits = c(0, 1),
+                     cellnote = count_mat)
 ```
 
 ### Removed lines
@@ -390,6 +395,36 @@ DT::datatable(cl_summary %>%
                               ninety_perc = signif(ninety_perc, 3)),
               filter = "top", rownames = F, options = list(dom = "tp"),
               colnames = c("Cell line", "Culture", "Pool", "Plate", "Kiling proportion", "90th percentile LFC"))
+```
+
+## Dose-dependence
+
+```{r dose dep, fig.height=16, fig.width=16}
+m_vector <- lfc_table %>%
+  dplyr::filter(str_detect(pert_dose, pattern = fixed("|"), negate = T),
+                str_detect(x_project_id, "CONTROLS", negate = T)) %>%
+  dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
+  dplyr::group_by(pert_iname, pert_plate, x_project_id, ccle_name, culture) %>%
+  dplyr::mutate(dose_num = rank(pert_dose),) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(sample_identifier = paste(pert_iname, pert_plate, x_project_id, ccle_name, culture, sep = "::"),
+                viability = pmin(2^LFC_cb, 1)) %>%
+  reshape2::acast(dose_num ~ sample_identifier, value.var = "viability") %>%
+  diff() %>%
+  t() %>%
+  apply(1, function(x) sum(x[x > 0], na.rm = T))
+
+m_matrix <- tibble(m = m_vector, id = names(m_vector)) %>%
+  tidyr::separate(id,
+                  into = c("pert_iname", "pert_plate", "x_project_id", "ccle_name", "culture"),
+                  sep = "::") %>%
+  dplyr::mutate(row_id = paste(ccle_name, culture, sep = "::"),
+                col_id = paste(pert_iname, x_project_id, pert_plate, sep = "::")) %>%
+  reshape2::acast(row_id ~ col_id, value.var = "m", fun.aggregate = mean, fill = 0)
+
+m_matrix <- m_matrix[apply(m_matrix, 1, sum) > 0, apply(m_matrix, 2, sum) > 0]
+
+heatmaply::heatmaply(m_matrix, show_dendrogram = F, fontsize_row = 6, fontsize_col = 6)
 ```
 
 ## LFC comparisons {.tabset .tabset-fade}
