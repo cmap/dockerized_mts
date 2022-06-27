@@ -403,7 +403,7 @@ DT::datatable(cl_summary %>%
 
 Sum of positive differences between lower and higher doses across cell lines and compounds. Larger numbers indicate potential concerning non-monotonic behavior. Actual calculation is
 $$M = \sum_{i=1}^{n-1}(x_i - x_{i+1})_+$$
-where $x_i$ is fold change (capped at 1) at dose $i$ of compound $x$ in a given cell line.
+where $x_i$ is fold change (capped at 1) at dose $i$ of compound $x$ in a given cell line. Heatmap is filtered to compounds and cell lines with at least one positive value.
 
 ### Heatmap
 
