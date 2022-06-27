@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/MTS016
-  screen_name: MTS016
+  data_dir: ~/Downloads/MTS019
+  screen_name: MTS019
 title: "`r params$screen_name` QC Report"
 author: "Andrew Boghossian"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -311,7 +311,7 @@ for (i in 1:length(plates)) {
   rep_cor_tab <- level4_table %>%
     dplyr::filter(pert_plate == plate, pert_type == "trt_cp", pool_id != "CTLBC")
 
-  replicates <- rep_cor_tab$x_replicate %>% unique()
+  replicates <- rep_cor_tab$replicate %>% unique()
   if (length(replicates) < 2) {
     next
   }
@@ -320,7 +320,7 @@ for (i in 1:length(plates)) {
     rep_val <- replicates[[j]]
 
     replicate_data <- rep_cor_tab %>%
-      dplyr::filter(x_replicate == rep_val) %>%
+      dplyr::filter(replicate == rep_val) %>%
       reshape2::acast(ccle_name + culture ~ pert_id + pert_dose + x_project_id,
                       value.var = "LFC_cb", fun.aggregate = mean)
     replicates_data[[j]] <- replicate_data
@@ -397,7 +397,15 @@ DT::datatable(cl_summary %>%
               colnames = c("Cell line", "Culture", "Pool", "Plate", "Kiling proportion", "90th percentile LFC"))
 ```
 
-## Dose-dependence
+## Dose-dependence {.tabset .tabset-fade}
+
+### Description
+
+Sum of positive differences between lower and higher doses across cell lines and compounds. Larger numbers indicate potential concerning non-monotonic behavior. Actual calculation is
+$$M = \sum_{i=1}^{n-1}(x_i - x_{i+1})_+$$
+where $x_i$ is fold change (capped at 1) at dose $i$ of compound $x$ in a given cell line.
+
+### Heatmap
 
 ```{r dose dep, fig.height=16, fig.width=16}
 m_vector <- lfc_table %>%
