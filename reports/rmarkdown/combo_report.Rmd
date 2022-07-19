@@ -88,7 +88,7 @@ for (const in constituents) {
     warning("No data directory for anchor or test compounds. Unable to generate combination report.")
     quit(save = "no")
   }
-  
+
   # DRC and LFC
   const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
   const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
@@ -104,12 +104,12 @@ for (const in constituents) {
         dplyr::mutate(ec50 = as.numeric(ec50))
     )
   }
-  
+
   # correlations and random forest
   const_corr_path <- list.files(const_path, "continuous_associations", full.names = T)
   const_model_path <- list.files(const_path, "model_table", full.names = T)
   const_rf_path <- list.files(const_path, "RF_table", full.names = T)
-  
+
   if (length(const_corr_path) == 1) {
     correlations %<>% dplyr::bind_rows(
       data.table::fread(const_corr_path) %>%
@@ -167,7 +167,10 @@ This section compares the activity of combination with constituents based on log
 
 The first plot shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Large positive values indicate synergy while large negative values indicate antagonism. Significance metrics, $q$ values, are obtained by normalizing the synergy score to the variance of the cell line abundance in DMSO, calculating a $p$ value and correcting it for multiple hypothesis testing.
 
-The second plot shows the AUC of the combination versus the AUC of each constituent for each cell line. Points that fall below the diagonal are more sensitive to the constituent and points that fall above the diagonal are more sensitive to the combination. Only points with AUC values in both conditions are shown.
+The second plot shows the AUC of the combination versus the Bliss expected AUC. Each value is calculated by taking the mean fold-change across doses with a given anchor dose as a proxy for AUC. For example:
+$$AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$$
+$$AUC_{combo} \approx \frac{1}{n}\sum_{i=1}^nFC_{c_i}$$
+The same is repeated for compound $b$ if there are more than 4 doses.
 
 ## Synergy by dose
 
@@ -193,14 +196,15 @@ for (i in 1:length(constituents)) {
     dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
-  
+
   new_cols <- paste(colnames(df), i, sep = "_")
   colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
-  
+
   spread_lfc %<>% dplyr::left_join(df)
 }
 
-B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, prod)
+# bliss expected fold change (capped FCs at 1)
+B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
 spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
 spread_lfc %<>%
   dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
@@ -257,46 +261,90 @@ subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F)
          ))
 ```
 
-## AUC plots
+## AUC plots {.tabset .tabset-fade}
 
-```{r auc}
-solo_drc <- dplyr::anti_join(DRC, combo_drc)
-solo_comps <- solo_drc$varied_iname %>% unique()
+```{r auc, include=F, fig.height=10}
+# calculate fold-change of combination
+spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
+spread_lfc$B <- B
 
-plots <- list()
-for (i in 1:length(solo_comps)) {
-  if (i < 1) {
-    warning("No AUC data from combination any constituents alone, unable to generate combination report.")
-    quit(save = "no")
+# group by dose 2 to calculate AUC and expected for comp 1
+pseudo_auc_1 <- spread_lfc %>%
+  dplyr::select(ccle_name, culture,
+                pert_iname_1, pert_dose_1, pert_dose_2, FC, B) %>%
+  dplyr::rename(pert_iname = pert_iname_1) %>%
+  dplyr::group_by(ccle_name, culture, pert_iname, pert_dose_2) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::summarise_all(mean) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(-pert_dose_1) %>%
+  dplyr::rename(pert_dose = pert_dose_2) %>%
+  dplyr::filter(n >= 4)
+
+# group by dose 1 to calculate AUC and expected for comp 2
+pseudo_auc_2 <- spread_lfc %>%
+  dplyr::select(ccle_name, culture,
+                pert_iname_2, pert_dose_1, pert_dose_2,
+                FC, B) %>%
+  dplyr::rename(pert_iname = pert_iname_2) %>%
+  dplyr::group_by(ccle_name, culture, pert_iname, pert_dose_1) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::summarise_all(mean) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(-pert_dose_2) %>%
+  dplyr::rename(pert_dose = pert_dose_1) %>%
+  dplyr::filter(n >= 4)
+
+pseudo_auc <- dplyr::bind_rows(pseudo_auc_1, pseudo_auc_2) %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture))
+comps <- pseudo_auc$pert_iname %>% unique()
+
+super_plots <- list()
+for (i in 1:length(comps)) {
+  comp = comps[[i]]
+  df <- pseudo_auc %>% dplyr::filter(pert_iname == comp)
+  doses <- df$pert_dose %>% unique()
+
+  plots = list()
+  for (j in 1:length(doses)) {
+    df <- highlight_key(pseudo_auc %>% dplyr::filter(pert_dose == doses[[j]]),
+                        ~ccle_name, group = comp)
+
+    p <- plot_ly() %>%
+      add_trace(data = df,
+                x = ~B, y = ~FC,
+                type = "scatter", mode = "markers", opacity = 0.5,
+                hoverinfo = "text", text = ~cell_id) %>%
+      layout(xaxis = list(title = "Bliss expected AUC", range = c(0, 1)),
+             yaxis = list(title = "AUC", range = c(0, 1)),
+             hovermode = "closest",
+             shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
+                           line = list(dash = "dash", layer = "below")),
+             annotations = list(x = 0.5, y = 1,
+                              text = doses[[j]],
+                              align = "center", showarrow = F, xref="paper", yref="paper",
+                              xanchor = "center", yanchor = "top"),
+             showlegend = F) %>%
+      highlight(on = "plotly_selected", off = "plotly_deselect",
+                dynamic = FALSE, selectize = TRUE, persistent = FALSE,
+                opacityDim = 1, defaultValues = "",
+                selected = attrs_selected(opacity = 1))
+
+    plots[[j]] <- p
   }
-  comp <- solo_comps[[i]]
-  df <- solo_drc %>%
-    dplyr::filter(varied_iname == comp) %>%
-    dplyr::distinct(auc, ccle_name, culture) %>%
-    dplyr::rename(solo_auc = auc)
-  
-  auc_plot <- highlight_key(combo_drc %>% dplyr::inner_join(df),
-                            ~ccle_name, group = "Synergy scores")
-  p <- plot_ly(auc_plot) %>%
-    add_trace(x = ~auc, y = ~solo_auc, color = ~as.character(added_doses), type = "scatter", mode = "markers",
-              hoverinfo = "text", text = ~ccle_name,
-              hovertemplate = "%{text} <br> %{xaxis.title.text}: %{x} <br> %{yaxis.title.text}: %{y} <extra></extra>",
-              opacity = 0.5) %>%
-    layout(xaxis = list(title = paste(pert_iname, "AUC"),
-                        range = c(0, 1)),
-           yaxis = list(title = paste(comp, "AUC"),
-                        range = c(0, 1)),
-           hovermode = "closest",
-           showlegend = T,
-           shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
-                         line = list(dash = "dash", layer = "below"))) %>%
-    highlight(on = "plotly_click", off = "plotly_doubleclick",
-              dynamic = FALSE, selectize = FALSE, persistent = FALSE,
-              defaultValues = "", selected = attrs_selected(opacity = 1))
-  plots[[i]] <- p
+
+  super_plots[[i]] <- subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
 }
-subplot(plots, nrows = max(1, ceiling(length(plots)/3)), titleX = T, titleY = T, margin = 0.05)
 ```
+
+```{r auc plots, fig.height=10, results='asis'}
+for (i in 1:length(super_plots)) {
+  cat(sprintf('\n\n### %s \n\n', comps[[i]], '\n\n'))
+  cat(htmltools::knit_print.shiny.tag(super_plots[[i]]))
+  cat("\n\n")
+}
+```
+
 
 # Continuous associations {.tabset .tabset-pills}
 

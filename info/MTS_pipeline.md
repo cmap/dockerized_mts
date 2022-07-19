@@ -1,64 +1,125 @@
 # MTS Processing Pipeline
 
-This document outlines the steps executed by `MTS_Data_Processing.R`, an R script to process Level 2 MTS data. That script can be used to regenerate any data obtained from PRISM based on logMFI values. This information is also available in the "Data Processing" section of the report.
-
-- **Input** is mean-fluorescence intensity of cell lines treated with small molecules and controls.
-- **Output** is files describing dose-response behavior of each cell line to each drug, median-fold change of cell lines in response to small molecules, and statistical significance metrics.
-- **To execute:** change `data_path` variable in `MTS_Data_Processing.R` to match local path of unprocessed data (if data is in .gctx form, use `make_logMFI.R` first).
-
-The "resulting data" section of each step is meant to guide the user through the code and does not necessarily reflect output or files generated (only internal R variables).
-
-### 1) Load Data
-1. Reads in a .csv of logMFI (median fluorescence intensity, a proxy for cell count) data for each sample (each sample being 1 cell line treated with 1 drug)
-2. Splits data into PR300 and PR500 datasets (PR300 and PR500 refer to unique sets of PRISM cell lines, referred to as cultures, which have slightly different properties)
-3. Creates reference tables containing only control barcodes (pool ID is "CTLBC", these could be either negative, DMSO treated, or positive, treated with 10µM Bortezomib)
-4. **Resulting data:** `PR300`, `PR500`, `PR300_barcodes`, `PR500_barcodes`
-
-### 2) Normalize control vehicle samples (negative controls)
-1. Calculates the median logMFI of each well across replicates for negative controls (DMSO treated)
-2. Takes the median of calculated median to generate overall median for negative controls
-3. Subtracts the well median from the sample value and adds back overall DMSO median (result is normalized samples with respect to overall DMSO median)
-4. **Resulting data:** `PR300_normalized` (just negative controls), `PR500_normalized` (just negative controls)
-
-### 3) Normalize all samples using controls
-1. Fits a curve to the normalized control data relating logMFI to normalized logMFI, this defines a "normalization function" that can be applied to treatment data
-2. Uses the equation to normalize non-control data
-3. Recombines the newly normalized data with original data, replacing logMFI with normalized values (from here on logMFI refers to this normalized value)
-4. **Resulting data:** `PR300_normalized` (all data), `PR500_normalized` (all data)
-
-### 4) Generate statistics table for controls
-1. For each control treatment pool:
- 1. Calculates the median logMFI (MD)
- 2. Calculates the median absolute deviation: $MAD = med(|logMFI - med(logMFI)|)$
- 3. Calculates the strictly standardized mean difference: $SSMD = \frac{med_{neg} - med_{pos}}{MAD_{neg}^2 + MAD_{pos}^2}$
- 4. Calculates the null-normalized mean difference: $NNMD = \frac{med_{neg} - med_{pos}}{MAD_{neg}}
- 5. Calculate the error rate of logMFI distributions: error rate is determined by the accuracy of a perfect threshold classifier of control data
-2. Remove samples with an error rate > 0.05 from further analysis
-3. **Resulting data:** `SSMD_TABLE`
-
-### 5) Calculate log-fold changes (LFC) with respect to negative controls
-1. Only use samples with error rate < 0.05
-2. Wells must be present or have a low enough error rate on at least 2 replicates
-3. $LFC_{sample} = logMFI_{sample} - median(logMFI_{controls})$
-4. **Resulting data:** `LFC_TABLE`
-
-### 6) Correct for pool effects using ComBat
-1. Generates a corrected LFC for each sample (`LFC.cb`) and stores in new table (separate from uncorrected)
-2. **Resulting data:** `LFC_TABLE` (with new LFC.cb value)
-
-### 7) Compute dose-response curve (DRC) parameters
-1. Only attempt on cell line x drug combinations with more than 4 samples (doses)
-2. Fit curve to dose and LFC (repeat with LFC.cb)
-3. **Resulting data:** `DRC_TABLE`, `DRC_TABLE_cb`
-
-### 8) Collapse LFC table across replicates
-1. Take median LFC for each condition
-2. **Resulting data:** `LFC_COLLAPSED_TABLE`
-
-### 9) Generate DRC plots for each compound
-1. Plot dose-response curves for each cell line x drug
-2. **Resulting data:** creates a PDF for each drug in the set containing DRC for each cell line
+This document outlines the steps executed by each module of the MTS pipeline, with particular focus on inputs and outputs, that might be used by collaborators, from `LEVEL2` data through biomarker analysis.
+* [normalization](#normalization)
+* [qc](#qc)
+* [lfc](#lfc)
+* [batch_correction](#batch_correction)
+* [drc](#drc)
+* [biomarker](#biomarker)
 
 ---
 
-To run biomarker analyses, use `MTS_Analysis.R`, passing a folder with the data output from this pipeline. Output and tests done in the biomarker analysis portion are described in `analysis_info.md`
+## normalization
+
+#### Inputs
+* `cell_info`: metadata about cell lines/samples (rows)
+* `inst_info`: metadata about perturbations (columns)
+* `LEVEL2_MFI`: median fluorescence intensities (from Luminex)
+
+#### Outputs
+* `LEVEL3_LMFI`: normalized $\log_2(MFI)$ (called logMFI from now on)
+* `compound_key`: overview of the perturbations, projects, and doses
+
+#### Overview
+The normalization step $\log_2$ transforms the MFI values for each sample and then normalizes to the control barcodes (`pool_id == "CTLBC"`) in each well. Normalization is done by fitting a spline from the logMFI values to the median logMFI of the control barcode on the replicate. The resulting spline is then used to correct all data on the replicate.
+
+---
+
+## qc
+
+#### Inputs
+* `LEVEL3_LMFI`: normalized logMFI
+
+#### Outputs
+* `QC_TABLE`: quality control metrics for each cell line on each replicate
+
+#### Overview
+The QC step calculates a number of quality control metrics for each cell line on each replicate. Two of these metrics are used to filter cell lines out of downstream analysis:
+
+**Dynamic range:**
+$$DR = \mu_- - \mu_+$$
+where $\mu_-$ is the median logMFI in negative controls and $\mu_+$ is the median in positive controls. Cell lines with $DR > -\log_2{0.3} \approx 1.74$ pass QC on their replicate.
+
+**Error rate:**
+$$ER = \frac{FP + FN}{n}$$
+where $FP$ and $FN$ are the number of false positives and negatives of the omptimum threshold classifier between positive and negative controls. Cell lines with $ER <= 0.05$ pass QC on their replicate.
+
+In order for a cell line to be included in downstream analyses for a given plate, it must pass QC by the above metrics on more that 50% of replicates (only passing replicates are included).
+
+---
+
+## lfc
+
+#### Inputs
+* `LEVEL3_LMFI`: normalized logMFI
+* `QC_TABLE`: QC metrics for each cell line on each replicate
+
+#### Outputs
+* `LEVEL4_LFC`: log-fold change values for each cell line treatment on each replicate (that passes QC)
+* `LEVEL5_LFC`: replicate collapsed log-fold change values for each cell line treatment on each plate
+
+#### Overview
+The log-fold change step calculates the $\log_2$ fold-change (LFC) between treatment and negative controls on a given replicate.
+$$LFC = \log_2MFI_x - \mu_-$$
+where $\log_2MFI_x$ is the logMFI in treatment and $\log_2MFI_{\mu_-}$ is the median logMFI in the negative control.
+
+For those more familiar with viability, LFC is just log-viability such that
+$$v = 2^{LFC}$$
+
+The replicate collapsed LFC (`LEVEL5_LFC`) takes the median LFC for a cell line treatment across replicates of a given plate.
+
+---
+
+## batch_correction
+
+#### Inputs
+* `LEVEL4_LFC`: replicate level LFC values
+
+#### Outputs
+* `LEVEL4_LFC_COMBAT`: replicate level LFC values batch corrected using ComBat
+* `LEVEL5_LFC_COMBAT`: replicate collapsed batch corrected LFC values
+
+#### Overview
+The batch correction step corrects for batch effects by applying [ComBat](https://pubmed.ncbi.nlm.nih.gov/16632515/) to the `LEVEL4_LFC` data. `LEVEL5_LFC_COMBAT` takes the median ComBat corrected LFC for a cell line treatment across replicates of a given plate.
+
+---
+
+## drc
+
+**Note:** this module is meant to be run per compound per plate and therefore requires splitting into compound folders prior to execution (see [split](../split/README.md) module not covered in this document)
+
+#### Inputs
+* `LEVEL4_LFC_COMBAT` or `LEVEL4_LFC`: replicate level LFC data (ComBat corrected if available)
+
+#### Outputs
+* `DRC_TABLE`: dose-response curve parameters for each cell line in treatment
+
+#### Overview
+The dose-response curve step fits a robust four-parameter logistic curve to the response of each cell line of the form
+$$f(x) = b + \frac{a - b}{1 + e^{s \log \frac{x}{EC_{50}}}}$$
+where $x$ is the viability of the cell line at each dose. The parameters of the curve are
+* $b$: lower asymptote
+* $a$: upper asymptote
+* $s$: slope
+* $EC_{50}$: inflection point
+
+The upper asymptote is constrained to be near 1 and the lower asymptote is constrained to be between 0 and 1. In addition to these parameters, several others are reported in the table (see [column headers](./ColumnHeaders.md)), of particular note are $AUC$, the area under the dose response curve, and $IC_{50}$, the dose at which the curve reaches 50% viability.
+
+---
+
+## biomarker
+
+#### Inputs
+* `LEVEL5_LFC_COMBAT` or `LEVEL5_LFC`: replicate collapsed log-fold change data
+* `DRC_TABLE` (optional): dose-response parameters
+
+#### Outputs
+* `continuous_associations`: correlations with continuous CCLE and DepMap features
+* `discrete_associations`: lineage and mutation associations
+* `RF_table`: random forest feature level data
+* `model_table`: random forest model level results
+
+#### Overview
+
+The biomarker step generates univariate and multivariate associations with CCLE and DepMap data. The results are -omics features that are associated with response to treatment. For more specifics on the types of analyses see [here](./analysis_info.pdf). The datasets used for associations are listed in [`biomarker_files`](../biomarker_files/README.md).

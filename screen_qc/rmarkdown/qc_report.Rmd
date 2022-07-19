@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/MTS016
-  screen_name: MTS016
+  data_dir: ~/Downloads/MTS019
+  screen_name: MTS019
 title: "`r params$screen_name` QC Report"
 author: "Andrew Boghossian"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -33,6 +33,10 @@ library(heatmaply)
 qc_path <- list.files(params$data_dir, "QC_TABLE", full.names = T)
 qc_table <- data.table::fread(qc_path) %>%
   dplyr::filter(str_detect(pert_plate, "BASE", negate = T))
+
+# load level 3 data
+level3_path <- list.files(params$data_dir, "LEVEL3_LMFI", full.names = T)
+level3_table <- data.table::fread(level3_path)
 
 # load level 4 data
 level4_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
@@ -102,8 +106,6 @@ Number of cell lines passing QC per replicate. Must have dynamic range > $\log_2
 ```{r rep summary, fig.height=10}
 # same as above on replicate level
 qc_table %>%
-  dplyr::group_by(ccle_name, culture, pool_id, pert_plate, prism_replicate) %>%
-  dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
   dplyr::group_by(pass, culture, pert_plate, prism_replicate) %>%
   dplyr::summarise(count = n(), .groups = "drop") %>%
   dplyr::group_by(pert_plate, prism_replicate, culture) %>%
@@ -127,19 +129,22 @@ Proportion of cell lines passing QC per pool per replicate. Must have dynamic ra
 
 ```{r pool summary, fig.height=8}
 # same as above on pool x replicate level
-pool_matrix <- qc_table %>%
-  dplyr::group_by(ccle_name, culture, pool_id, pert_plate, prism_replicate) %>%
-  dplyr::summarise(pass = sum(pass) > n()/2, .groups = "drop") %>%
+pool_stats <- qc_table %>%
   dplyr::group_by(pert_plate, prism_replicate, pool_id, culture) %>%
   dplyr::summarise(count = n(),
                    passing = sum(pass),
                    .groups = "drop") %>%
   dplyr::mutate(passing_prop = passing/count) %>%
   dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_"))),
-                replicate = word(replicate, 1, sep = fixed("."))) %>%
-  reshape2::acast(pool_id + culture ~ replicate, value.var = "passing_prop")
+                replicate = word(replicate, 1, sep = fixed(".")))
 
-heatmaply::heatmaply(pool_matrix, Rowv = F, Colv = F, limits = c(0, 1))
+prop_mat <- pool_stats %>%
+  reshape2::acast(pool_id + culture ~ replicate, value.var = "passing_prop")
+count_mat <- pool_stats %>%
+  reshape2::acast(pool_id + culture ~ replicate, value.var = "passing")
+
+heatmaply::heatmaply(prop_mat, Rowv = F, Colv = F, limits = c(0, 1),
+                     cellnote = count_mat)
 ```
 
 ### Removed lines
@@ -245,6 +250,54 @@ qc_table %>%
   scale_color_manual(values = mycolors)
 ```
 
+### Barcodes
+
+```{r fig.height=8}
+controls <- level3_table %>%
+  dplyr::filter(pert_type %in% c("trt_poscon", "ctl_vehicle"),
+                str_detect(prism_replicate, "BASE", negate = T)) %>%
+  dplyr::mutate(replicate = paste(pert_plate, word(prism_replicate, 4, sep = fixed("_")))) %>%
+  dplyr::distinct(ccle_name, culture, pool_id, pert_time, replicate, pert_type, logMFI, logMFI_norm) %>%
+  dplyr::group_by(ccle_name, culture, pool_id, pert_time, replicate, pert_type) %>%
+  dplyr::summarise_all(.funs = c("med" = median, "mad" = mad)) %>%
+  tidyr::pivot_wider(names_from = "pert_type",
+                     values_from = c("logMFI_med", "logMFI_mad", "logMFI_norm_med", "logMFI_norm_mad"))
+
+p1 <- controls %>%
+  ggplot(aes(x = logMFI_med_ctl_vehicle, y = logMFI_med_trt_poscon, color = pool_id == "CTLBC")) +
+  geom_abline(intercept = c(0, -1, -2), linetype = "dashed") +
+  geom_point(shape = 1) +
+  geom_errorbar(aes(ymax = logMFI_med_trt_poscon + logMFI_mad_trt_poscon,
+                    ymin = logMFI_med_trt_poscon - logMFI_mad_trt_poscon),
+                alpha = 0.3) +
+  geom_errorbar(aes(xmax = logMFI_med_ctl_vehicle + logMFI_mad_ctl_vehicle,
+                    xmin = logMFI_med_ctl_vehicle - logMFI_mad_ctl_vehicle),
+                alpha = 0.3) +
+  labs(x = "DMSO logMFI", y = "Bortezomib logMFI", color = "CTLBC",
+       title = "Raw") +
+  facet_wrap(replicate ~ .) +
+  scale_color_wsj(limits = c("TRUE", "FALSE"))
+
+p2 <- controls %>%
+  ggplot(aes(x = logMFI_norm_med_ctl_vehicle, y = logMFI_norm_med_trt_poscon, color = pool_id == "CTLBC")) +
+  geom_abline(intercept = c(0, -1, -2), linetype = "dashed") +
+  geom_point(shape = 1) +
+  geom_errorbar(aes(ymax = logMFI_norm_med_trt_poscon + logMFI_norm_mad_trt_poscon,
+                    ymin = logMFI_norm_med_trt_poscon - logMFI_norm_mad_trt_poscon),
+                alpha = 0.3) +
+  geom_errorbar(aes(xmax = logMFI_norm_med_ctl_vehicle + logMFI_norm_mad_ctl_vehicle,
+                    xmin = logMFI_norm_med_ctl_vehicle - logMFI_norm_mad_ctl_vehicle),
+                alpha = 0.3) +
+  labs(x = "DMSO logMFI", y = "Bortezomib logMFI", color = "CTLBC",
+       title = "Normalized") +
+  facet_wrap(replicate ~ .) +
+  scale_color_wsj(limits = c("TRUE", "FALSE"))
+
+
+p1
+p2
+```
+
 ## Replicate correlations {.tabset .tabset-fade}
 
 Correlation between replicates versus median correlation between replicates of perturbations across each replicate for each plate. Each point is a perturbation.
@@ -258,7 +311,7 @@ for (i in 1:length(plates)) {
   rep_cor_tab <- level4_table %>%
     dplyr::filter(pert_plate == plate, pert_type == "trt_cp", pool_id != "CTLBC")
 
-  replicates <- rep_cor_tab$x_replicate %>% unique()
+  replicates <- rep_cor_tab$replicate %>% unique()
   if (length(replicates) < 2) {
     next
   }
@@ -267,7 +320,7 @@ for (i in 1:length(plates)) {
     rep_val <- replicates[[j]]
 
     replicate_data <- rep_cor_tab %>%
-      dplyr::filter(x_replicate == rep_val) %>%
+      dplyr::filter(replicate == rep_val) %>%
       reshape2::acast(ccle_name + culture ~ pert_id + pert_dose + x_project_id,
                       value.var = "LFC_cb", fun.aggregate = mean)
     replicates_data[[j]] <- replicate_data
@@ -342,6 +395,44 @@ DT::datatable(cl_summary %>%
                               ninety_perc = signif(ninety_perc, 3)),
               filter = "top", rownames = F, options = list(dom = "tp"),
               colnames = c("Cell line", "Culture", "Pool", "Plate", "Kiling proportion", "90th percentile LFC"))
+```
+
+## Dose-dependence {.tabset .tabset-fade}
+
+### Description
+
+Sum of positive differences between lower and higher doses across cell lines and compounds. Larger numbers indicate potential concerning non-monotonic behavior. Actual calculation is
+$$M = \sum_{i=1}^{n-1}(x_i - x_{i+1})_+$$
+where $x_i$ is fold change (capped at 1) at dose $i$ of compound $x$ in a given cell line. Heatmap is filtered to compounds and cell lines with at least one positive value.
+
+### Heatmap
+
+```{r dose dep, fig.height=16, fig.width=16}
+m_vector <- lfc_table %>%
+  dplyr::filter(str_detect(pert_dose, pattern = fixed("|"), negate = T),
+                str_detect(x_project_id, "CONTROLS", negate = T)) %>%
+  dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
+  dplyr::group_by(pert_iname, pert_plate, x_project_id, ccle_name, culture) %>%
+  dplyr::mutate(dose_num = rank(pert_dose),) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(sample_identifier = paste(pert_iname, pert_plate, x_project_id, ccle_name, culture, sep = "::"),
+                viability = pmin(2^LFC_cb, 1)) %>%
+  reshape2::acast(dose_num ~ sample_identifier, value.var = "viability") %>%
+  diff() %>%
+  t() %>%
+  apply(1, function(x) sum(x[x > 0], na.rm = T))
+
+m_matrix <- tibble(m = m_vector, id = names(m_vector)) %>%
+  tidyr::separate(id,
+                  into = c("pert_iname", "pert_plate", "x_project_id", "ccle_name", "culture"),
+                  sep = "::") %>%
+  dplyr::mutate(row_id = paste(ccle_name, culture, sep = "::"),
+                col_id = paste(pert_iname, x_project_id, pert_plate, sep = "::")) %>%
+  reshape2::acast(row_id ~ col_id, value.var = "m", fun.aggregate = mean, fill = 0)
+
+m_matrix <- m_matrix[apply(m_matrix, 1, sum) > 0, apply(m_matrix, 2, sum) > 0]
+
+heatmaply::heatmaply(m_matrix, show_dendrogram = F, fontsize_row = 6, fontsize_col = 6)
 ```
 
 ## LFC comparisons {.tabset .tabset-fade}
