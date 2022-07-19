@@ -434,7 +434,7 @@ top_tab <- features_ge %>%
 top_tab[top_tab > 100] <- NA
 top_tab <- top_tab[, order(apply(top_tab, 2, function(x) mean(x, na.rm = T)))]
 if (is.null(dim(top_tab))) {
-  print("Only one condition with relevant feaatures, no heatmap to display")
+  print("Only one condition with relevant features, no heatmap to display")
 } else {
   heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
                        key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
@@ -502,7 +502,7 @@ top_tab <- features_xpr %>%
 top_tab[top_tab > 100] <- NA
 top_tab <- top_tab[, order(apply(top_tab, 2, function(x) mean(x, na.rm = T)))]
 if (is.null(dim(top_tab))) {
-  print("Only one condition with relevant feaatures, no heatmap to display")
+  print("Only one condition with relevant features, no heatmap to display")
 } else {
   heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
                        key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
@@ -569,7 +569,7 @@ top_tab <- features_rep %>%
 top_tab[top_tab > 100] <- NA
 top_tab <- top_tab[, order(apply(top_tab, 2, function(x) mean(x, na.rm = T)))]
 if (is.null(dim(top_tab))) {
-  print("Only one condition with relevant feaatures, no heatmap to display")
+  print("Only one condition with relevant features, no heatmap to display")
 } else {
   heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
                        key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
