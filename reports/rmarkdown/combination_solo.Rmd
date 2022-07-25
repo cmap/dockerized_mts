@@ -187,7 +187,7 @@ DT::datatable(compounds,
 
 ## Overview
 
-This section log-fold change data and a link to the dose response data page. For more details on how each metric displayed here is calculated please refer to the `Data Processing` section on your landing page.
+This section contains log-fold change data and a link to the dose response data page. For more details on how each metric displayed here is calculated please refer to the `Data Processing` section on your landing page.
 
 ## Heatmap
 
@@ -475,7 +475,7 @@ for (feat in corr_feats) {
 
 ## Info
 
-Next, for each logViability at a dose, AUC, and logIC50 we train and fit multivariate models using the molecular characterizations and genetic dependencies of the PRISM cell lines. The resulting importance of various features can be used to suggest potential biomarkers of compound response or to inform potential hypotheses for mechanisms of action. As with the continuous analyses, features may appear in the table or on the plot multiple times for different "doses" (note that dose can also refer to AUC or logIC50).
+Next, for each log2-Viability at a dose, $log_2$ AUC, and $log_2$ IC50 we train and fit multivariate models using the molecular characterizations and genetic dependencies of the PRISM cell lines. The resulting importance of various features can be used to suggest potential biomarkers of compound response or to inform potential hypotheses for mechanisms of action. As with the continuous analyses, features may appear in the table or on the plot multiple times for different "doses" (note that dose can also refer to $log_2$ AUC or $log_2$ IC50).
 
 In particular, we trained random forest models using:
 i. CCLE features (copy number alterations, RNA expression, mutation status and lineage annotation)
