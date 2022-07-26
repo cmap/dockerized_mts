@@ -24,11 +24,16 @@ def handler(event, context):
     file_key = event['Records'][0]['s3']['object']['key']
     s3obj = s3.Object(bucket_name, file_key)
     file_content = s3obj.get()['Body'].read()
-    missing_fields = map_validator.validate(file_content,False,False)
+    missing_fields = map_validator.validate_required_fields(file_content, False, False)
+    failed_perts = map_validator.validate_pert_ids(file_content, False, False)
 
-    if (len(missing_fields) > 0):
+    if len(missing_fields) > 0:
         errorMessage = file_key + ' missing following required fields: {}'.format(', '.join(missing_fields))
         postSlack(file_key,errorMessage)
+        raise Exception(errorMessage)
+    elif len(failed_perts) > 0:
+        errorMessage = file_key + ' contains pert_ids that contain spaces or lowercase characters'
+        postSlack(file_key, errorMessage)
         raise Exception(errorMessage)
     else:
         message = 'map validated successfully'
