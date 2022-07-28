@@ -231,6 +231,8 @@ for (i in 1:nrow(combos)) {
                                 ~ccle_name, group = "Synergy scores")
   p <- plot_ly(synergy_plot) %>%
     add_trace(x = ~S, y = ~-log10(q), type = "scatter", mode = "markers",
+              marker = list(color = "rgba(0, 0, 0, 0)",
+                            line = list(width = 1)),
               hoverinfo = "text", text = ~ccle_name, opacity = 0.5) %>%
     layout(xaxis = list(range = c(min_s, max_s)),
            yaxis = list(range = c(0, max_q)),
@@ -262,6 +264,8 @@ subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F)
 ```
 
 ## AUC plots {.tabset .tabset-fade}
+
+The tab(s) below indicate which compound is treated as the test compound for calculating AUC, the dose(s) of anchor are indicated at the top of each plot.
 
 ```{r auc, include=F, fig.height=10}
 # calculate fold-change of combination
@@ -310,10 +314,12 @@ for (i in 1:length(comps)) {
     df <- highlight_key(pseudo_auc %>% dplyr::filter(pert_dose == doses[[j]]),
                         ~ccle_name, group = comp)
 
-    p <- plot_ly() %>%
+    p <- plot_ly(height = 200 * length(doses)) %>%
       add_trace(data = df,
                 x = ~B, y = ~FC,
                 type = "scatter", mode = "markers", opacity = 0.5,
+                marker = list(color = "rgba(0, 0, 0, 0)",
+                            line = list(width = 1)),
                 hoverinfo = "text", text = ~cell_id) %>%
       layout(xaxis = list(title = "Bliss expected AUC", range = c(0, 1)),
              yaxis = list(title = "AUC", range = c(0, 1)),
@@ -326,8 +332,7 @@ for (i in 1:length(comps)) {
                               xanchor = "center", yanchor = "top"),
              showlegend = F) %>%
       highlight(on = "plotly_selected", off = "plotly_deselect",
-                dynamic = FALSE, selectize = TRUE, persistent = FALSE,
-                opacityDim = 1, defaultValues = "",
+                dynamic = FALSE, selectize = TRUE, persistent = FALSE, defaultValues = "",
                 selected = attrs_selected(opacity = 1))
 
     plots[[j]] <- p
@@ -337,7 +342,7 @@ for (i in 1:length(comps)) {
 }
 ```
 
-```{r auc plots, fig.height=10, results='asis'}
+```{r auc plots, results='asis'}
 for (i in 1:length(super_plots)) {
   cat(sprintf('\n\n### %s \n\n', comps[[i]], '\n\n'))
   cat(htmltools::knit_print.shiny.tag(super_plots[[i]]))
