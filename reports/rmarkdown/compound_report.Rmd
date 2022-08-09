@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: "~/Desktop/combination_compare/new_veneto/BRD-K62391742"
-  comp: "BRD-K62391742"
+  data_dir: "/Users/shiker/Documents/reports/BRD-K00005265"
+  comp: "BRD-K00005265"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -399,19 +399,23 @@ if (!is.null(DRC)) {
     dplyr::filter(pert_dose == "log2.auc") %>%
     dplyr::arrange(q.value)
   
-  top_muts <- top_muts$feature[1:20]
+  top_muts_names <- top_muts$feature[1:20]
+  df$gene = word(df$mutation, 2, sep = '_')
+  top_muts_genes <- word(top_muts_names, 2, sep = '_')
   
   df %<>%
-    dplyr::filter(mutation %in% top_muts)
+    dplyr::filter(gene %in% top_muts_genes)
   
+
   p <- df %>%
-    ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
+    ggplot(aes(y = auc, x = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
                color = mutation)) +
     geom_boxplot(outlier.alpha = 0) +
-    geom_vline(xintercept = m, linetype = "dashed") +
+    geom_hline(yintercept = m, linetype = "dashed") +
     geom_jitter() +
-    theme(legend.position = "none") +
-    labs(x = "AUC", y = "Mutation")
+    facet_wrap(gene ~ ., scales = "free_x") +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
+    labs(x = "Mutation", y = "AUC")
   
   p
 } else if (n_doses == 1) {

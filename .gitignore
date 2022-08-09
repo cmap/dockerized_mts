@@ -66,3 +66,5 @@ biomarker_data/*.csv
 
 #debug notebooks
 #*.ipynb
+
+.DS_Store
