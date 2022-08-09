@@ -161,7 +161,7 @@ This compound was screened in the PRISM assay at `r n_doses`-point dose (3-fold 
 ```{r compound}
 DT::datatable(compounds,
               options = list(dom = "t", ordering = TRUE,
-                             lengthChange = FALSE, scrollY = "300px", paging = FALSE),
+                             lengthChange = FALSE, scrollY = "350px", paging = FALSE),
               colnames = c("Compound name", "Compound ID", "Dose", "Dose with units", "Plate"),
               rownames = FALSE)
 ```
