@@ -24,7 +24,10 @@ def parse_json(data, BuildClass):
     for obj in data:
         bc = BuildClass()
         r.append(bc)
-        bc.__dict__ = { k:parse_raw_value(v) for k,v in obj.items() }
+        for k,v in obj.items():
+            bc.__dict__[k] = parse_raw_value(v)
+
+        #bc.__dict__ = { k:parse_raw_value(v) for k,v in obj.items() }
     return r
 
 def parse_raw_value(raw_value):

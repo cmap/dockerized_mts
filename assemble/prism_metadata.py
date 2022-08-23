@@ -1,14 +1,27 @@
 import merino.setup_logger as setup_logger
+import os
+import ast
+import pandas
 import logging
 import requests
-import os
-import pandas
 import parse_data
 
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
 
 API_URL = 'https://api.clue.io/api/'
 API_KEY = os.environ['API_KEY']
+
+CELL_SET_DEFINITION_HEADERS = [
+    'analyte_id',
+    'pool_id',
+    'davepool_id',
+    'feature_id',
+    'cell_iname',
+    'ccle_name',
+    'cell_lineage',
+    'cell_culture',
+    'barcode_id'
+]
 
 class PrismCell(object):
     def __init__(self, pool_id=None, analyte_id=None, davepool_id=None, feature_id=None):
@@ -51,21 +64,38 @@ class Perturbagen(object):
                 raise Exception("missing property: {}".format(property))
 
 
-def make_request_url_filter(endpoint_url, filter_dict):
-    if filter_dict:
-        filter_clause = '{"where":{'
-        for k,v in filter_dict.items():
-            filter_clause += '"{k}":"{v}",'.format(k=k, v=v)
-        filter_clause = filter_clause[:-1] + '}}'
+def make_request_url_filter(endpoint_url, where=None, fields=None):
+    clauses = []
+    if where:
+        where_clause = '"where":{'
+        wheres = []
+        for k,v in where.items():
+            wheres.append('"{k}":"{v}"'.format(k=k, v=v))
+        where_clause += ','.join(wheres) + '}'
+        clauses.append(where_clause)
 
-        return endpoint_url.rstrip("/") + '?filter=' +  requests.utils.quote(filter_clause)
+    if fields:
+        fields_clause = '"fields":{'
+        fields_list = []
+        if type(fields) == dict:
+            for k, v in fields.items():
+                fields_list.append('"{k}":"{v}"'.format(k=k, v=v))
+        elif type(fields) == list:
+            for field in fields:
+                fields_list.append('"{k}":"{v}"'.format(k=field, v="true"))
+        fields_clause += ','.join(fields_list) + '}'
+        clauses.append(fields_clause)
+
+    if len(clauses) > 0:
+        #print(endpoint_url.rstrip("/") + '?filter={' +  ','.join(clauses) + '}')
+        return endpoint_url.rstrip("/") + '?filter={' +  requests.utils.quote(','.join(clauses)) + '}'
     else:
         return endpoint_url
 
 
-def get_data_from_db(endpoint_url, filters, user_key):
-    request_url = make_request_url_filter(endpoint_url, filters)
-    print(request_url)
+def get_data_from_db(endpoint_url, user_key, where = None, fields=None):
+    request_url = make_request_url_filter(endpoint_url, where = where, fields=fields)
+    # print(request_url)
     response = requests.get(request_url, headers={'user_key': user_key})
     if response.ok:
         return response.json()
@@ -84,6 +114,49 @@ def read_prism_cell_from_file(row_metadata_file, items):
 
     logger.debug("header_map:  {}".format(header_map))
     return parse_data.parse_data(header_map, data, PrismCell)
+
+def _read_prism_cell_from_db(cell_set_name):
+    cell_set_def_url = API_URL + 'cell_set_definition_files/'
+    data = get_data_from_db(
+        cell_set_def_url,
+        where = {'davepool_id':cell_set_name},
+        fields= CELL_SET_DEFINITION_HEADERS,
+        user_key=API_KEY)
+
+    return parse_data.parse_json(data, PrismCell)
+
+def build_prism_cell_list(config_parser, cell_set_definition_file):
+    '''
+    read PRISM cell line metadata from file specified in config file, then associate with
+    assay_plate based on pool ID, pulling out metadata based on config specifications.  Check for cell pools that are not associated with any assay plate
+    :param config_parser: parser pre-loaded with config file
+    :param cell_set_definition_file:
+    :param analyte_mapping_file:
+    :return:
+    '''
+
+    #read headers to pull from config and convert to tuple format expected by data parser
+    prism_cell_list_items = config_parser.get("headers_to_pull", "cell_set_definition_headers")
+
+    prism_cell_list_items = [(x,x) for x in ast.literal_eval(prism_cell_list_items)]
+    prism_cell_list = read_prism_cell_from_file(cell_set_definition_file, prism_cell_list_items)
+
+    return prism_cell_list
+
+def build_prism_cell_list_from_db(cell_set_name):
+    '''
+    read PRISM cell line metadata from file specified in config file, then associate with
+    assay_plate based on pool ID, pulling out metadata based on config specifications.  Check for cell pools that are not associated with any assay plate
+    :param config_parser: parser pre-loaded with config file
+    :param cell_set_definition_file:
+    :param analyte_mapping_file:
+    :return:
+    '''
+
+    #read headers to pull from config and convert to tuple format expected by data parser
+    prism_cell_list = _read_prism_cell_from_db(cell_set_name)
+
+    return prism_cell_list
 
 
 def build_perturbagens_from_file(filepath, pert_time):
@@ -121,8 +194,9 @@ def _read_perturbagen_from_db(map_src_name, do_keep_all):
     map_src_url = API_URL + 'v_plate_map_src/'
     data = get_data_from_db(
         map_src_url,
-        filters = {'pert_plate':pert_plate, 'replicate':replicate},
-        user_key=API_KEY)
+        user_key=API_KEY,
+        where={'pert_plate': pert_plate, 'replicate': replicate}
+    )
 
     return parse_data.parse_json(data, Perturbagen)
 

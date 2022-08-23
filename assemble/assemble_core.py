@@ -55,7 +55,7 @@ def build_data_by_cell(cells, davepool_data_obj):
         cell_header_map = {}
         for c in cells:
             if c.ignore == False:
-                cell_header_map[c] = headers.index(c.analyte_id)
+                cell_header_map[c] = headers.index(str(c.analyte_id).capitalize())
             cell_data_map[c] = []
 
         for d in data.keys():
@@ -283,7 +283,7 @@ def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects,
 
     # Write Inst info file
     instinfo_outfile = os.path.join(outfile, "assemble", prism_replicate_name, prism_replicate_name + "_inst_info.txt")
-    inst.to_csv(instinfo_outfile, sep='\t')
+    inst.reset_index().rename(columns={'index':'profile_id'}).to_csv(instinfo_outfile, sep='\t', index=False)
     logger.info("Instinfo has been written to {}".format(instinfo_outfile))
 
     count_outfile = os.path.join(outfile, "assemble", prism_replicate_name, prism_replicate_name + "_COUNT.gct")

@@ -90,55 +90,6 @@ def read_csv(csv_filepath, assay_type):
     pd.davepool_id = assay_type
     return pd
 
-def build_prism_cell_list(config_parser, cell_set_definition_file, analyte_mapping_file):
-    '''
-    read PRISM cell line metadata from file specified in config file, then associate with
-    assay_plate based on pool ID, pulling out metadata based on config specifications.  Check for cell pools that are not associated with any assay plate
-    :param config_parser: parser pre-loaded with config file
-    :param cell_set_definition_file:
-    :param analyte_mapping_file:
-    :return:
-    '''
-
-    #read headers to pull from config and convert to tuple format expected by data parser
-    prism_cell_list_items = config_parser.get("headers_to_pull", "cell_set_definition_headers")
-
-    prism_cell_list_items = [(x,x) for x in ast.literal_eval(prism_cell_list_items)]
-    prism_cell_list = prism_metadata.read_prism_cell_from_file(cell_set_definition_file, prism_cell_list_items)
-
-    analyte_mapping_items = config_parser.get("headers_to_pull", "analyte_mapping_headers")
-    analyte_mapping_items = [(x,x) for x in ast.literal_eval(analyte_mapping_items)]
-    analyte_mapping = prism_metadata.read_prism_cell_from_file(analyte_mapping_file, analyte_mapping_items)
-
-    cell_list_id_not_in_davepool_mapping = set()
-
-    # Assign davepool mapping info to respective cell feature IDs
-
-    cell_id_davepool_map = {}
-
-    for dp in analyte_mapping:
-        cell_id_davepool_map[dp.feature_id] = dp
-
-
-    for pc in prism_cell_list:
-        if pc.feature_id in cell_id_davepool_map.keys():
-            cell_davepool = cell_id_davepool_map[pc.feature_id]
-            pc.analyte_id = cell_davepool.analyte_id
-
-        else:
-            cell_list_id_not_in_davepool_mapping.add(pc.feature_id)
-
-    #TODO Deprecate analyte mapping file, appears to only be used to check against prism_cell_list
-
-    if len(cell_list_id_not_in_davepool_mapping) > 0:
-        cell_list_id_not_in_davepool_mapping = list(cell_list_id_not_in_davepool_mapping)
-        cell_list_id_not_in_davepool_mapping.sort()
-        msg = ("some cell ids were found in the cell set but not in the davepool mapping - IDs: {}".format(cell_list_id_not_in_davepool_mapping))
-        raise merino_exception.DataMappingMismatch(msg)
-
-    return prism_cell_list
-
-
 def truncate_data_objects_to_plate_map(davepool_data_objects, all_perturbagens, truncate_to_platemap):
     '''
     There are some cases in which we are subsetting plates into different groups, ie. more than one gct per plate.
@@ -234,14 +185,10 @@ def main(args, all_perturbagens=None, assay_plates=None):
     for pert in all_perturbagens:
         pert.validate_properties(ast.literal_eval(cp.get("required_metadata_fields", "column_metadata_fields")))
 
-    # # %%
-    # pert_info = get_table_from_db(API_URL + "v_plate_map_src/",
-    #                   filters={"pert_plate": "PMTS055", "replicate": "X1"},
-    #                   user_key=USER_KEY)
-
-
     #read actual data from relevant csv files, associate it with davepool ID
-    prism_cell_list = build_prism_cell_list(cp, cell_set_file, analyte_mapping_file)
+    prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type)
+
+    #prism_cell_list = prism_metadata.build_prism_cell_list(cp, cell_set_file)
 
     logger.info("len(prism_cell_list):  {}".format(len(prism_cell_list)))
 
