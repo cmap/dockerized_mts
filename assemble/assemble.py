@@ -43,7 +43,10 @@ def build_parser():
     parser.add_argument("-assay_type", "-at", help="assay data was profiled in",
                         type=str, required=False)
     parser.add_argument("-plate_map_path", "-pmp",
-                        help="path to file containing plate map describing perturbagens used", type=str, required=True)
+                        help="path to file containing plate map describing perturbagens used", type=str, required=False)
+    parser.add_argument("-map_src_plate", "-pp",
+                        help="Pert Plate with replicate map name. Searches database, using API KEY environment variable",
+                        type=str, required=False)
 
     # These arguments are optional. Some may be superfluous now and might be removed.
     parser.add_argument("-verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
@@ -57,6 +60,29 @@ def build_parser():
                         action="store_true", default=True)
 
     return parser
+
+# def filter_lod(lod, key, value):
+#     return [d for d in lod if d[key] == value]
+#
+# def make_request_url_filter(endpoint_url, filter_dict):
+#     if filter_dict:
+#         filter_clause = '{"where":{'
+#         for k,v in filter_dict.items():
+#             filter_clause += f'"{k}":"{v}",'
+#         filter_clause = filter_clause[:-1] + '}}'
+#
+#         return endpoint_url.rstrip("/") + '?filter=' +  requests.utils.quote(filter_clause)
+#     else:
+#         return endpoint_url
+#
+# def get_data_from_db(endpoint_url, filters, user_key):
+#     request_url = make_request_url_filter(endpoint_url, filters)
+#     print(request_url)
+#     response = requests.get(request_url, headers={'user_key': user_key})
+#     if response.ok:
+#         return response.json()
+#     else:
+#         response.raise_for_status()
 
 def read_csv(csv_filepath, assay_type):
 
@@ -151,9 +177,9 @@ def setup_input_files(args):
         config_path = path_utils.validate_path_as_uri(args.config_filepath)
         page = urllib2.urlopen(config_path)
         content = page.read()
-        #f = open("local.cfg", "w")
-        #f.write(content)
-        #f.close()
+        f = open("local.cfg", "w")
+        f.write(content)
+        f.close()
         cp.read('local.cfg')
     else:
         #todo: download from s3 to overwrite local prism_pipeline.cfg
@@ -168,8 +194,6 @@ def setup_input_files(args):
 def main(args, all_perturbagens=None, assay_plates=None):
 
     if args.csv_filepath is not None:
-
-        pert_plate = os.path.basename(args.plate_map_path).rsplit(".", 1)[0].split('.')[0]
         prism_replicate_name = os.path.basename(args.csv_filepath).rsplit(".", 1)[0]
         (_, assay, tp, replicate_number, bead) = prism_replicate_name.rsplit("_")
 
@@ -198,11 +222,23 @@ def main(args, all_perturbagens=None, assay_plates=None):
 
     (cp, cell_set_file, analyte_mapping_file) = setup_input_files(args)
 
-    if all_perturbagens is None:
+    if args.map_src_plate is not None:
+        # TODO
+        #raise NotImplementedError
+        all_perturbagens = prism_metadata.build_perturbagens_from_db(args.map_src_plate, tp) # Read from DB
+    elif args.plate_map_path is not None:
         all_perturbagens = prism_metadata.build_perturbagens_from_file(args.plate_map_path, tp)
+    else:
+        raise ValueError("One of -plate_map_path or -map_src_plate is required")
 
     for pert in all_perturbagens:
         pert.validate_properties(ast.literal_eval(cp.get("required_metadata_fields", "column_metadata_fields")))
+
+    # # %%
+    # pert_info = get_table_from_db(API_URL + "v_plate_map_src/",
+    #                   filters={"pert_plate": "PMTS055", "replicate": "X1"},
+    #                   user_key=USER_KEY)
+
 
     #read actual data from relevant csv files, associate it with davepool ID
     prism_cell_list = build_prism_cell_list(cp, cell_set_file, analyte_mapping_file)
@@ -236,5 +272,8 @@ if __name__ == "__main__":
     setup_logger.setup(verbose=args.verbose)
 
     logger.info("args:  {}".format(args))
+
+    if not (args.map_src_plate or args.plate_map_path):
+        raise ValueError("One of -plate_map_path or -map_src_plate is required")
 
     main(args)

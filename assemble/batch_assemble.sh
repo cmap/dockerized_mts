@@ -53,6 +53,8 @@ echo "PLATE IS: ${PLATE}"
 
 IFS='_' read -r -a plate_token <<< "${PLATE}";
 
+plate_map=${plate_token[0]}.${plate_token[3]}
+
 if [ "${REPLICATE_MAP}" = "TRUE" ];
 then
     PLATE_MAP_PATH="${CONFIG_ROOT}${PROJECT_CODE}/map_src/${plate_token[0]}.${plate_token[3]}.src"

@@ -1,9 +1,14 @@
 import merino.setup_logger as setup_logger
 import logging
+import requests
+import os
 import pandas
 import parse_data
 
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
+
+API_URL = 'https://api.clue.io/api/'
+API_KEY = os.environ['API_KEY']
 
 class PrismCell(object):
     def __init__(self, pool_id=None, analyte_id=None, davepool_id=None, feature_id=None):
@@ -45,6 +50,28 @@ class Perturbagen(object):
             else:
                 raise Exception("missing property: {}".format(property))
 
+
+def make_request_url_filter(endpoint_url, filter_dict):
+    if filter_dict:
+        filter_clause = '{"where":{'
+        for k,v in filter_dict.items():
+            filter_clause += '"{k}":"{v}",'.format(k=k, v=v)
+        filter_clause = filter_clause[:-1] + '}}'
+
+        return endpoint_url.rstrip("/") + '?filter=' +  requests.utils.quote(filter_clause)
+    else:
+        return endpoint_url
+
+
+def get_data_from_db(endpoint_url, filters, user_key):
+    request_url = make_request_url_filter(endpoint_url, filters)
+    print(request_url)
+    response = requests.get(request_url, headers={'user_key': user_key})
+    if response.ok:
+        return response.json()
+    else:
+        response.raise_for_status()
+
 def read_prism_cell_from_file(row_metadata_file, items):
 
     filepath = row_metadata_file
@@ -66,6 +93,13 @@ def build_perturbagens_from_file(filepath, pert_time):
 
     return perturbagens
 
+def build_perturbagens_from_db(map_src_name, pert_time):
+
+    perturbagens = _read_perturbagen_from_db(map_src_name, do_keep_all=True)
+    _add_pert_time_info(perturbagens, pert_time)
+
+    return perturbagens
+
 
 def _read_perturbagen_from_file(filepath, do_keep_all):
 
@@ -79,6 +113,19 @@ def _read_perturbagen_from_file(filepath, do_keep_all):
     logger.debug("header_map:  {}".format(header_map))
 
     return parse_data.parse_data(header_map, data, Perturbagen)
+
+def _read_perturbagen_from_db(map_src_name, do_keep_all):
+    tok = map_src_name.split('.')
+    pert_plate, replicate = tok[0],tok[1]
+
+    map_src_url = API_URL + 'v_plate_map_src/'
+    data = get_data_from_db(
+        map_src_url,
+        filters = {'pert_plate':pert_plate, 'replicate':replicate},
+        user_key=API_KEY)
+
+    return parse_data.parse_json(data, Perturbagen)
+
 
 
 def _add_pert_time_info(perturbagens, pert_time):
