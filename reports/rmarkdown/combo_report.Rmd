@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: ~/Desktop/combination_compare/new_veneto/BRD-K62391742_BRD-K00005263
-  comp: BRD-K62391742_BRD-K00005263
-  qc_path: ~/Desktop/combination_compare/new_veneto/MTS016_VALIDATION_COMPOUND_INTERNAL_QC_TABLE.csv
+  data_dir: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/O6-BENZYLGUANINE_TEMOZOLOMIDE
+  comp: O6-BENZYLGUANINE_TEMOZOLOMIDE
+  qc_path: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/data/CPS06_VALIDATION_COMPOUNDS_QC_TABLE.csv
 output:
   html_document:
     toc: false
@@ -181,10 +181,10 @@ solo_lfc <- dplyr::anti_join(LFC, combo_lfc)
 # split combination perts
 spread_lfc <- combo_lfc %>%
   dplyr::inner_join(qc_table %>%
-                      dplyr::group_by(ccle_name, culture) %>%
-                      dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad),
+                      dplyr::group_by(ccle_name, culture, pert_plate) %>%
+                      dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad), dr = median(dr), 
                                        .groups = "drop")) %>%  # QC info
-  dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
+  dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad, dr) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
                           sep = "|", fixed = T,
                           direction = "wide", drop = F, type.convert = T)
@@ -203,9 +203,20 @@ for (i in 1:length(constituents)) {
   spread_lfc %<>% dplyr::left_join(df)
 }
 
+spread_lfc %<>% dplyr::mutate(diff = abs(LFC_cb + dr))
+spread_lfc %<>% dplyr::mutate(diff_exp = (LFC_cb_1 + LFC_cb_2 + dr))
+#spread_lfc %<>% dplyr::mutate(flag = ifelse(diff < 1, 1, 0))
+
+#spread_lfc %<>% dplyr::filter(diff > 1)
+spread_lfc %>% ggplot() + geom_point(aes(x = diff_exp, y = diff))  + geom_abline()
+
 # bliss expected fold change (capped FCs at 1)
-B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
-spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+B <- apply(2^spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')], 1, function(x) prod(pmin(x, 1))) # converting back to FC and multiplying cap at 1 
+spread_lfc$S <- rowSums(spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')]) - spread_lfc$LFC_cb # adding individual lfc and subtracting by combined lfc (S formula)
+
+spread_lfc %<>% dplyr::mutate(flag = ifelse((diff < 1 & S < 0), 1, 0))
+
+
 spread_lfc %<>%
   dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
   dplyr::mutate(p = 2*pnorm(abs(Z), lower.tail = F)) %>%
@@ -321,7 +332,7 @@ for (i in 1:length(comps)) {
                 marker = list(color = "rgba(0, 0, 0, 0)",
                             line = list(width = 1)),
                 hoverinfo = "text", text = ~cell_id) %>%
-      layout(xaxis = list(title = "Bliss expected AUC", range = c(0, 1)),
+      layout(height = 600, xaxis = list(title = "Bliss expected AUC", range = c(0, 1)),
              yaxis = list(title = "AUC", range = c(0, 1)),
              hovermode = "closest",
              shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
