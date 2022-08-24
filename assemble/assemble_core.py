@@ -275,8 +275,14 @@ def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects,
     median_outfile = os.path.join(outfile, "assemble", prism_replicate_name, prism_replicate_name + "_MEDIAN.gct")
     median_gctoo = build_gctoo(prism_replicate_name, all_perturbagens, all_median_data_by_cell)
 
+
     # enforce doses as strings
-    inst = stringify_inst_doses(median_gctoo.col_metadata_df)
+    try:
+        logger.info("Attempting to convert doses to strings")
+        inst = stringify_inst_doses(median_gctoo.col_metadata_df)
+    except TypeError as e:
+        inst = median_gctoo.col_metadata_df
+        logger.warning("Could not stringify doses due to TypeError: {}".format(e))
     median_gctoo.col_metadata_df = inst
 
     write_gct.write(median_gctoo, median_outfile, data_null=_NaN, filler_null=_null)
