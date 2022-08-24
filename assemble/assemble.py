@@ -224,7 +224,7 @@ def main(args, all_perturbagens=None, assay_plates=None):
     except Exception as e:
         failure_path = os.path.join(args.outfile, "assemble", prism_replicate_name,  "failure.txt")
         with open(failure_path, "w") as file:
-            file.write("plate {} failed for reason {}\n".format(prism_replicate_name, e))
+            file.write("plate {} failed for reason: {}\n".format(prism_replicate_name, e))
         sys.exit(-1)
 
     success_path = os.path.join(args.outfile, "assemble", prism_replicate_name, "success.txt")
