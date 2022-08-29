@@ -203,19 +203,16 @@ for (i in 1:length(constituents)) {
   spread_lfc %<>% dplyr::left_join(df)
 }
 
-spread_lfc %<>% dplyr::mutate(diff = abs(LFC_cb + dr))
-spread_lfc %<>% dplyr::mutate(diff_exp = (LFC_cb_1 + LFC_cb_2 + dr))
-#spread_lfc %<>% dplyr::mutate(flag = ifelse(diff < 1, 1, 0))
+spread_lfc %<>% dplyr::mutate(dr_diff = abs(LFC_cb + dr))
+spread_lfc %<>% dplyr::mutate(dr_diff_exp = (LFC_cb_1 + LFC_cb_2 + dr))
 
-#spread_lfc %<>% dplyr::filter(diff > 1)
-spread_lfc %>% ggplot() + geom_point(aes(x = diff_exp, y = diff))  + geom_abline()
+
+spread_lfc$S <- rowSums(spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')]) - spread_lfc$LFC_cb # adding individual lfc and subtracting by combined lfc (S formula)
+
+spread_lfc %<>% dplyr::mutate(flag = ifelse((dr_diff < 1 & S < 0), 1, 0)) # if LFC_cb values is within a range of 1 of dr and s < 0 assign flag value of 1 (could be noise)
 
 # bliss expected fold change (capped FCs at 1)
 B <- apply(2^spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')], 1, function(x) prod(pmin(x, 1))) # converting back to FC and multiplying cap at 1 
-spread_lfc$S <- rowSums(spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')]) - spread_lfc$LFC_cb # adding individual lfc and subtracting by combined lfc (S formula)
-
-spread_lfc %<>% dplyr::mutate(flag = ifelse((diff < 1 & S < 0), 1, 0))
-
 
 spread_lfc %<>%
   dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
@@ -238,7 +235,8 @@ combos <- spread_lfc %>%
 
 plots <- list()
 for (i in 1:nrow(combos)) {
-  synergy_plot <- highlight_key(spread_lfc %>% dplyr::inner_join(combos[i,]),
+  synergy_plot <- highlight_key(spread_lfc %>% dplyr::filter(flag == 0) 
+ %>% dplyr::inner_join(combos[i,]),
                                 ~ccle_name, group = "Synergy scores")
   p <- plot_ly(synergy_plot) %>%
     add_trace(x = ~S, y = ~-log10(q), type = "scatter", mode = "markers",
@@ -284,7 +282,8 @@ spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
 spread_lfc$B <- B
 
 # group by dose 2 to calculate AUC and expected for comp 1
-pseudo_auc_1 <- spread_lfc %>%
+pseudo_auc_1 <- spread_lfc %>% 
+  dplyr::filter(flag == 0) %>%
   dplyr::select(ccle_name, culture,
                 pert_iname_1, pert_dose_1, pert_dose_2, FC, B) %>%
   dplyr::rename(pert_iname = pert_iname_1) %>%
@@ -298,6 +297,7 @@ pseudo_auc_1 <- spread_lfc %>%
 
 # group by dose 1 to calculate AUC and expected for comp 2
 pseudo_auc_2 <- spread_lfc %>%
+  dplyr::filter(flag == 0) %>%
   dplyr::select(ccle_name, culture,
                 pert_iname_2, pert_dose_1, pert_dose_2,
                 FC, B) %>%
