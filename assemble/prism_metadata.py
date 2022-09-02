@@ -115,16 +115,6 @@ def read_prism_cell_from_file(row_metadata_file, items):
     logger.debug("header_map:  {}".format(header_map))
     return parse_data.parse_data(header_map, data, PrismCell)
 
-def _read_prism_cell_from_db(cell_set_name):
-    cell_set_def_url = API_URL + 'cell_set_definition_files/'
-    data = get_data_from_db(
-        cell_set_def_url,
-        where = {'davepool_id':cell_set_name},
-        fields= CELL_SET_DEFINITION_HEADERS,
-        user_key=API_KEY)
-
-    return parse_data.parse_json(data, PrismCell)
-
 def build_prism_cell_list(config_parser, cell_set_definition_file):
     '''
     read PRISM cell line metadata from file specified in config file, then associate with
@@ -143,7 +133,17 @@ def build_prism_cell_list(config_parser, cell_set_definition_file):
 
     return prism_cell_list
 
-def build_prism_cell_list_from_db(cell_set_name):
+def _read_prism_cell_from_db(cell_set_name, api_url):
+    cell_set_def_url = api_url + 'cell_set_definition_files/'
+    data = get_data_from_db(
+        cell_set_def_url,
+        where = {'davepool_id':cell_set_name},
+        fields= CELL_SET_DEFINITION_HEADERS,
+        user_key=API_KEY)
+
+    return parse_data.parse_json(data, PrismCell)
+
+def build_prism_cell_list_from_db(cell_set_name, api_url):
     '''
     read PRISM cell line metadata from file specified in config file, then associate with
     assay_plate based on pool ID, pulling out metadata based on config specifications.  Check for cell pools that are not associated with any assay plate
@@ -154,7 +154,10 @@ def build_prism_cell_list_from_db(cell_set_name):
     '''
 
     #read headers to pull from config and convert to tuple format expected by data parser
-    prism_cell_list = _read_prism_cell_from_db(cell_set_name)
+    prism_cell_list = _read_prism_cell_from_db(cell_set_name, api_url)
+
+    if not prism_cell_list:
+        raise ValueError("cell set name not found in db (davepool_id): {}".format(cell_set_name))
 
     return prism_cell_list
 
@@ -166,10 +169,13 @@ def build_perturbagens_from_file(filepath, pert_time):
 
     return perturbagens
 
-def build_perturbagens_from_db(map_src_name, pert_time):
+def build_perturbagens_from_db(map_src_name, pert_time, api_url):
 
-    perturbagens = _read_perturbagen_from_db(map_src_name, do_keep_all=True)
+    perturbagens = _read_perturbagen_from_db(map_src_name, api_url)
     _add_pert_time_info(perturbagens, pert_time)
+
+    if not perturbagens:
+        raise ValueError("Map Src name not found (pert_plate, replicate): {}".format(map_src_name))
 
     return perturbagens
 
@@ -187,11 +193,11 @@ def _read_perturbagen_from_file(filepath, do_keep_all):
 
     return parse_data.parse_data(header_map, data, Perturbagen)
 
-def _read_perturbagen_from_db(map_src_name, do_keep_all):
+def _read_perturbagen_from_db(map_src_name, api_url):
     tok = map_src_name.split('.')
-    pert_plate, replicate = tok[0],tok[1]
+    pert_plate, replicate = '.'.join(tok[:-1]),tok[-1]
 
-    map_src_url = API_URL + 'v_plate_map_src/'
+    map_src_url = api_url + 'v_plate_map_src/'
     data = get_data_from_db(
         map_src_url,
         user_key=API_KEY,

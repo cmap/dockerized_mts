@@ -11,6 +11,8 @@ import ast
 import json
 import logging
 import argparse
+import traceback
+
 import requests
 import ConfigParser
 import urllib2
@@ -31,6 +33,9 @@ logger = logging.getLogger(setup_logger.LOGGER_NAME)
 _prism_cell_config_file_section = "PrismCell column headers"
 _davepool_analyte_mapping_file_section = "DavepoolAnalyteMapping column headers"
 
+API_URL = 'https://api.clue.io/api/'
+DEV_API_URL = 'https://dev-api.clue.io/api/'
+API_KEY = os.environ['API_KEY']
 
 def build_parser():
 
@@ -44,12 +49,13 @@ def build_parser():
                         type=str, required=False)
     parser.add_argument("-plate_map_path", "-pmp",
                         help="path to file containing plate map describing perturbagens used", type=str, required=False)
-    parser.add_argument("-map_src_plate", "-pp",
+    parser.add_argument("-map_src_plate", "-map",
                         help="Pert Plate with replicate map name. Searches database, using API KEY environment variable",
                         type=str, required=False)
 
     # These arguments are optional. Some may be superfluous now and might be removed.
     parser.add_argument("-verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
+    parser.add_argument("--dev", help=argparse.SUPPRESS, action="store_true", default=False)
 
     parser.add_argument("-cell_set_definition_file", "-csdf",
                         help="file containing cell set definition to use, overriding config file",
@@ -90,15 +96,15 @@ def read_csv(csv_filepath, assay_type):
     pd.davepool_id = assay_type
     return pd
 
+'''
+There are some cases in which we are subsetting plates into different groups, ie. more than one gct per plate.
+This was the case for PPCN. As such, we need a function to truncate the data to match the plate map which is given.
+:param davepool_data_objects:
+:param all_perturbagens:
+:param truncate_to_platemap:
+:return:
+'''
 def truncate_data_objects_to_plate_map(davepool_data_objects, all_perturbagens, truncate_to_platemap):
-    '''
-    There are some cases in which we are subsetting plates into different groups, ie. more than one gct per plate.
-    This was the case for PPCN. As such, we need a function to truncate the data to match the plate map which is given.
-    :param davepool_data_objects:
-    :param all_perturbagens:
-    :param truncate_to_platemap:
-    :return:
-    '''
     platemap_well_list = set([p.pert_well for p in all_perturbagens])
     for davepool in davepool_data_objects:
         if platemap_well_list == set(davepool.median_data.keys()):
@@ -144,25 +150,21 @@ def setup_input_files(args):
 
 def main(args, all_perturbagens=None, assay_plates=None):
 
-    if args.csv_filepath is not None:
-        prism_replicate_name = os.path.basename(args.csv_filepath).rsplit(".", 1)[0]
-        (_, assay, tp, replicate_number, bead) = prism_replicate_name.rsplit("_")
+    prism_replicate_name = os.path.basename(args.csv_filepath).rsplit(".", 1)[0]
+    (_, assay, tp, replicate_number, bead) = prism_replicate_name.rsplit("_")
 
-        if bead is not None and args.assay_type is None:
-            api_call = os.path.join('https://api.clue.io/api', 'beadset', bead)
-            db_entry = requests.get(api_call)
-            args.assay_type = json.loads(db_entry.text)['assay_variant']
+    if bead is not None and args.assay_type is None:
+        api_call = os.path.join('https://api.clue.io/api', 'beadset', bead)
+        db_entry = requests.get(api_call)
+        args.assay_type = json.loads(db_entry.text)['assay_variant']
 
-        if args.assay_type == None:
-            msg = "No assay type found from beadset - must be specified in arg -assay_type"
-            raise merino_exception.NoAssayTypeFound(msg)
-
-
-        davepool_id_csv_list = args.csv_filepath
-        davepool_data_objects = []
-        davepool_data_objects.append(read_csv(davepool_id_csv_list, args.assay_type))
+    if args.assay_type == None:
+        msg = "No assay type found from beadset - must be specified in arg -assay_type"
+        raise merino_exception.NoAssayTypeFound(msg)
 
 
+    davepool_id_csv_list = args.csv_filepath
+    davepool_data_objects = [read_csv(davepool_id_csv_list, args.assay_type)]
 
     # Set up output directory
     if not os.path.exists(os.path.join(args.outfile, "assemble", prism_replicate_name)):
@@ -173,10 +175,11 @@ def main(args, all_perturbagens=None, assay_plates=None):
 
     (cp, cell_set_file, analyte_mapping_file) = setup_input_files(args)
 
+    #Select API
+    api_url = DEV_API_URL if args.dev else API_URL
+
     if args.map_src_plate is not None:
-        # TODO
-        #raise NotImplementedError
-        all_perturbagens = prism_metadata.build_perturbagens_from_db(args.map_src_plate, tp) # Read from DB
+        all_perturbagens = prism_metadata.build_perturbagens_from_db(args.map_src_plate, tp, api_url=api_url) # Read from DB
     elif args.plate_map_path is not None:
         all_perturbagens = prism_metadata.build_perturbagens_from_file(args.plate_map_path, tp)
     else:
@@ -186,7 +189,7 @@ def main(args, all_perturbagens=None, assay_plates=None):
         pert.validate_properties(ast.literal_eval(cp.get("required_metadata_fields", "column_metadata_fields")))
 
     #read actual data from relevant csv files, associate it with davepool ID
-    prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type)
+    prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type, api_url=api_url)
 
     #prism_cell_list = prism_metadata.build_prism_cell_list(cp, cell_set_file)
 
@@ -206,8 +209,11 @@ def main(args, all_perturbagens=None, assay_plates=None):
 
     except Exception as e:
         failure_path = os.path.join(args.outfile, "assemble", prism_replicate_name,  "failure.txt")
+        ex_type, ex, tb = sys.exc_info()
         with open(failure_path, "w") as file:
-            file.write("plate {} failed for reason: {}\n".format(prism_replicate_name, e))
+            file.write("plate {} failed for reason: {}: {}\n".format(prism_replicate_name, ex_type, ex))
+            file.write("\ntraceback:\n")
+            traceback.print_tb(tb, file=file)
         sys.exit(-1)
 
     success_path = os.path.join(args.outfile, "assemble", prism_replicate_name, "success.txt")
