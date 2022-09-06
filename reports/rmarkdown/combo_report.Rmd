@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: ~/Desktop/combination_compare/new_veneto/BRD-K62391742_BRD-K00005263
-  comp: BRD-K62391742_BRD-K00005263
-  qc_path: ~/Desktop/combination_compare/new_veneto/MTS016_VALIDATION_COMPOUND_INTERNAL_QC_TABLE.csv
+  data_dir: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS009/O6-BENZYLGUANINE_TEMOZOLOMIDE
+  comp: O6-BENZYLGUANINE_TEMOZOLOMIDE
+  qc_path: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/data/CPS06_VALIDATION_COMPOUNDS_QC_TABLE.csv
 output:
   html_document:
     toc: false
@@ -165,11 +165,27 @@ DT::datatable(summary_tab, style = "bootstrap",
 
 This section compares the activity of combination with constituents based on log-fold change and AUC.
 
-The first plot shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Large positive values indicate synergy while large negative values indicate antagonism. Significance metrics, $q$ values, are obtained by normalizing the synergy score to the variance of the cell line abundance in DMSO, calculating a $p$ value and correcting it for multiple hypothesis testing.
+**Synergy**
 
-The second plot shows the AUC of the combination versus the Bliss expected AUC. Each value is calculated by taking the mean fold-change across doses with a given anchor dose as a proxy for AUC. For example:
-$$AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$$
+The first plot shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). This expected value ($LFC_a + LFC_b$) is then subtracted by the observed ($LFC_c$) value to obtain the synergy score. Large positive values indicate synergy ($LFC_a + LFC_b$ < $LFC_c$) while large negative values ($LFC_a + LFC_b$ > $LFC_c$) indicate antagonism. 
+
+
+Significance metrics, $q$ values, are obtained by normalizing the synergy score to the variance of the cell line abundance in DMSO, calculating a $p$ value and correcting it for multiple hypothesis testing. The rough p-value is calculated assuming the standard error of the measured LMFI values for each cell line and plate pair is roughly the same across different perturbations and can be estimated using the DMSO replicates (greater number of samples). In determining the significance of synergy scores, we recommend focusing more on effect size after providing a generous threshold on the q-values (i.e. 0.05 or 0.01)
+
+**AUC**
+
+The second plot shows the AUC of the combination versus the Bliss expected AUC. The Bliss expected AUC assumes that independent effects are additive in log-scale or multiplicative in fold-change. Each value is calculated by taking the mean fold-change across doses with a given anchor dose as a proxy for AUC. This is a Riemann-Sum analysis where the area of each dose response is estimated as a rectangle with an area of $\approx \frac{1}{d_2-d_1}FC_{d_1}$ where $d_2$ is the higher dose (upper bound) and $d_1$ is the lower dose (lower bound) and $FC_{d_1}$ is the fold change for $d_1$. Because upper dose is always three times higher than the lower dose, $d_2$ - $d_1$ = $d_{n+1}$ - $d_n$ = 3 in log dose axis (x-axis of DRC), where n is the dose number. When the summation of these rectangles (across n doses) is taken, the approximate area under the DRC is:
+
+$$AUC \approx \frac{1}{n*(d_2 - d_1)}\sum_{i=1}^nFC_{d_i}(d_{i+1} - d_i) \approx \frac{1}{n}\sum_{i=1}^nFC_{d_i}$$
+
+Therefore, the AUC of the combination DRC is:
+
 $$AUC_{combo} \approx \frac{1}{n}\sum_{i=1}^nFC_{c_i}$$
+
+
+
+And the Bliss AUC is :
+$$AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$$
 The same is repeated for compound $b$ if there are more than 4 doses.
 
 ## Synergy by dose
