@@ -67,29 +67,6 @@ def build_parser():
 
     return parser
 
-# def filter_lod(lod, key, value):
-#     return [d for d in lod if d[key] == value]
-#
-# def make_request_url_filter(endpoint_url, filter_dict):
-#     if filter_dict:
-#         filter_clause = '{"where":{'
-#         for k,v in filter_dict.items():
-#             filter_clause += f'"{k}":"{v}",'
-#         filter_clause = filter_clause[:-1] + '}}'
-#
-#         return endpoint_url.rstrip("/") + '?filter=' +  requests.utils.quote(filter_clause)
-#     else:
-#         return endpoint_url
-#
-# def get_data_from_db(endpoint_url, filters, user_key):
-#     request_url = make_request_url_filter(endpoint_url, filters)
-#     print(request_url)
-#     response = requests.get(request_url, headers={'user_key': user_key})
-#     if response.ok:
-#         return response.json()
-#     else:
-#         response.raise_for_status()
-
 def read_csv(csv_filepath, assay_type):
 
     pd = davepool_data.read_data(csv_filepath)
