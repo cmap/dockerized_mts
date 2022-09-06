@@ -233,6 +233,8 @@ def _format_floats(fl, sig=4, max_precision=50):
 
 
 def process_pert_doses(el):
+    if pd.isna(el) or (el == 'nan'):
+        return el
     if type(el) == str:
         return '|'.join(map(_format_floats, map(float, el.split('|'))))
     else:
@@ -240,10 +242,9 @@ def process_pert_doses(el):
 
 
 def process_pert_idoses(el):
-    if el:
-        el = str(el)
+    if pd.isna(el) or (el=='nan') :
+        return el
     if type(el) == str:
-        #         print(el)
         idoses = el.split('|')
         idoses = [i.split(" ") for i in idoses]
         return "|".join(["{} {}".format(_format_floats(idose[0]), idose[1]) for idose in idoses])
@@ -263,6 +264,7 @@ def stringify_inst_doses(inst):
 
     inst['pert_dose'] = inst['pert_dose'].astype(str)
     return inst
+
 
 def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects, prism_cell_list):
     # Build one-to-many mapping between davepool ID and the multiple PRISM cell lines that are within that davepool
