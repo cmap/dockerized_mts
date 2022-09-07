@@ -157,6 +157,7 @@ colnames(summary_tab) <- stringr::str_replace_all(colnames(summary_tab), "_", " 
 DT::datatable(summary_tab, style = "bootstrap",
               options = list(dom = "t", ordering = TRUE,
                              lengthChange = FALSE, scrollY = "300px", paging = FALSE))
+
 ```
 
 # Sensitivity comparison {.tabset .tabset-pills}
@@ -165,16 +166,21 @@ DT::datatable(summary_tab, style = "bootstrap",
 
 This section compares the activity of combination with constituents based on log-fold change and AUC.
 
-**Synergy**
+**Synergy by Dose**
 
-The first plot shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). This expected value ($LFC_a + LFC_b$) is then subtracted by the observed ($LFC_c$) value to obtain the synergy score. Large positive values indicate synergy ($LFC_a + LFC_b$ < $LFC_c$) while large negative values ($LFC_a + LFC_b$ > $LFC_c$) indicate antagonism. 
+<center>
+![Synergy Template](/Users/shiker/Desktop/synergy_template.png){width=50%}
+</center>
 
 
-Significance metrics, $q$ values, are obtained by normalizing the synergy score to the variance of the cell line abundance in DMSO, calculating a $p$ value and correcting it for multiple hypothesis testing. The rough p-value is calculated assuming the standard error of the measured LMFI values for each cell line and plate pair is roughly the same across different perturbations and can be estimated using the DMSO replicates (greater number of samples). In determining the significance of synergy scores, we recommend focusing more on effect size after providing a generous threshold on the q-values (i.e. 0.05 or 0.01)
 
-**AUC**
+The first tab (Synergy by Dose) shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model, where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). The synergy score the expected value ($LFC_a + LFC_b$) subtracted by the observed ($LFC_c$) value. Large positive values indicate synergy ($LFC_a + LFC_b$ > $LFC_c$) while large negative values ($LFC_a + LFC_b$ < $LFC_c$) indicate antagonism. 
 
-The second plot shows the AUC of the combination versus the Bliss expected AUC. The Bliss expected AUC assumes that independent effects are additive in log-scale or multiplicative in fold-change. Each value is calculated by taking the mean fold-change across doses with a given anchor dose as a proxy for AUC. This is a Riemann-Sum analysis where the area of each dose response is estimated as a rectangle with an area of $\approx \frac{1}{d_2-d_1}FC_{d_1}$ where $d_2$ is the higher dose (upper bound) and $d_1$ is the lower dose (lower bound) and $FC_{d_1}$ is the fold change for $d_1$. Because upper dose is always three times higher than the lower dose, $d_2$ - $d_1$ = $d_{n+1}$ - $d_n$ = 3 in log dose axis (x-axis of DRC), where n is the dose number. When the summation of these rectangles (across n doses) is taken, the approximate area under the DRC is:
+The y axis represents the $q$ values of the synergy score, which are normalized to account for the variance of cell line abundance in DMSO and subsequently corrected to account for multiple hypothesis testing. The standard error of the measured LMFI values for each cell line and plate pair are assumed to be roughly the same across different perturbations and therefore can be estimated using the DMSO replicates. In interpreting the synergy scores, we recommend focusing more on effect size after providing a generous threshold on the q-values (i.e. 0.05 or 0.01)
+
+**AUC plots**
+
+The second tab (AUC plots) shows the AUC of the combination versus the Bliss expected AUC. The Bliss expected AUC assumes that independent effects are additive in log-scale or multiplicative in fold-change. Each value is calculated by taking the mean fold-change across doses with a given anchor dose as a proxy for AUC. This area can be approximated through Riemann-Sums, where the area of each dose response is estimated as a rectangle with an area of $\approx \frac{1}{d_2-d_1}FC_{d_1}$ where $d_2$ is the higher dose (upper bound) and $d_1$ is the lower dose (lower bound) and $FC_{d_1}$ is the fold change for $d_1$. Because upper dose is always three times higher than the lower dose, $d_2$ - $d_1$ = $d_{n+1}$ - $d_n$ = log(3) in log dose axis (x-axis of DRC), where n is the dose number. When the summation of these rectangles (across n doses) is taken, the approximate area under the DRC is:
 
 $$AUC \approx \frac{1}{n*(d_2 - d_1)}\sum_{i=1}^nFC_{d_i}(d_{i+1} - d_i) \approx \frac{1}{n}\sum_{i=1}^nFC_{d_i}$$
 
