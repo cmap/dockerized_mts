@@ -1,7 +1,12 @@
 ---
 params:
-  data_dir: ~/Desktop/veneto_test
-  comp: "BRD-K62391742_BRD-K00005263"
+  data_dir: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/O6-BENZYLGUANINE_TEMOZOLOMIDE
+  comp: O6-BENZYLGUANINE_TEMOZOLOMIDE
+  data_dir_b: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/O6-BENZYLGUANINE
+  comp_b: O6-BENZYLGUANINE
+  data_dir_a: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/TEMOZOLOMIDE
+  comp_a: TEMOZOLOMIDE
+  
 output:
   html_document:
     toc: false
@@ -111,6 +116,87 @@ drc_meta <- drc_plots %>%
 
 # indivual plots
 plot_meta <- drc_meta$varied_iname %>% unique()
+
+
+### Single Treatment 
+
+# file paths
+lfc_path_a <- list.files(params$data_dir_a, "LEVEL4_LFC_COMBAT", full.names = T)
+drc_path_a <- list.files(params$data_dir_a, "DRC_TABLE", full.names = T)
+
+# read in LFC
+if (length(lfc_path_a) == 1) {
+  lfc_a <- data.table::fread(lfc_path_a)
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+# read in DRC if available
+if (length(drc_path_a) == 1) {
+  DRC_a <- data.table::fread(drc_path_a)
+} else {
+  message("No DRC file found")
+  quit(save = "no")
+}
+
+pert_iname_a <- lfc_a$pert_iname %>% unique()
+
+# dose response
+drc_a <- data.table::fread(file.path(params$data_dir_a, "DRC_TABLE.csv"))
+
+# distinct conditions (cell lines)
+conditions_a <- drc_a %>%
+  dplyr::arrange(auc) %>%
+  dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "varied_iname", "added_compounds", "added_doses"))))
+
+# generate plots for each cell line
+drc_plots_a <- list()
+for (i in 1:nrow(conditions_a)) {
+  condition_a <- conditions_a[i,]
+  
+  d_a <- drc_a %>% dplyr::inner_join(condition_a)
+  xx_a = seq(log2(min(d_a$min_dose)), log2(max(d_a$max_dose)), length.out = 40)
+  res_a <- apply(d_a, 1, function(p) dr_func(p, xx_a))
+  func_tab_a <- cbind(xx_a, res_a)
+  func_tab_a %<>% as_tibble() %>%
+    dplyr::rename(x = 1, y = 2) %>%
+    dplyr::bind_cols(condition_a) %>%
+    dplyr::left_join(drc_a)
+  drc_plots_a[[i]] <- func_tab_a
+}
+drc_plots_a %<>% 
+  dplyr::bind_rows() %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"),
+                x = 2^x)
+
+# metadata for each row
+drc_meta_a <- drc_plots_a %>%
+  dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "pert_plate", "varied_iname", "added_compounds",
+                                  "added_doses", "ec50", "slope", "upper_limit", "lower_limit", "auc", "log2.ic50")))) %>%
+  dplyr::mutate(ic50 = 2^log2.ic50) %>%
+  dplyr::select(-log2.ic50) %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
+
+# indivual plots
+plot_meta_a <- drc_meta_a$varied_iname %>% unique()
+
+
+
+### Anchor Dose 
+lfc_path_b <- list.files(params$data_dir_b, "LEVEL5", full.names = T)
+
+# read in LFC
+if (length(lfc_path_b) == 1) {
+  lfc_b <- data.table::fread(lfc_path_b)
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+bliss_data <- lfc_b %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_a) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+
+
 ```
 
 ---
@@ -136,6 +222,7 @@ The table and plots are interactive. To highlight a cell line either search it u
 ```{r dummy plot, include=F}
 plot_ly()
 datatable(tibble(),style="bootstrap")
+datatable(tibble(),style="bootstrap")
 ```
 
 ```{r correlations, results='asis', include=T, fig.height=4}
@@ -147,18 +234,50 @@ for (comp in varied_comps) {
                                 dplyr::mutate(added_doses = factor(added_doses)) %>%
                                 dplyr::arrange(auc),
                               ~cell_id, group = comp)
+  
+  curves_all_a <- highlight_key(drc_plots_a %>%
+                              dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+                              dplyr::arrange(auc),
+                            ~cell_id, group = comp)
+  
+  curves_bliss <- highlight_key(bliss_data %>%
+                              dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+                              dplyr::arrange(auc),
+                            ~cell_id, group = comp)
+  
+  lfc_a <- highlight_key(lfc_a %>%
+                           dplyr::inner_join(drc_meta_a) %>%
+                           dplyr::rename(Dose = pert_dose) %>%
+                           dplyr::mutate(Viability = 2^LFC_cb,
+                                         Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
+                           dplyr::distinct(ccle_name, culture, cell_id, Dose, Viability, Replicate),
+                         ~cell_id, group = comp)
+  
+  lfc_comb <- highlight_key(lfc %>%
+                           dplyr::inner_join(drc_meta) %>%
+                           dplyr::rename(Dose = pert_dose) %>%
+                           dplyr::mutate(Viability = 2^LFC_cb,
+                                         Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
+                           dplyr::distinct(ccle_name, culture, cell_id, Dose, Viability, Replicate),
+                         ~cell_id, group = comp)
+  
+  
   p <- plot_ly() %>%
+    add_trace(data = curves_all_a,
+            x = ~x, y = ~y,
+            type = "scatter", mode = "lines", line = list(shape = "line"),
+            hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Single Treatment') %>%
     add_trace(data = curves_all,
-              x = ~x, y = ~y, color = ~added_doses,
+              x = ~x, y = ~y, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.1) %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Combination') %>%
+    add_trace(data = curves_bliss,
+              x = ~x, y = ~bliss, 
+              type = "scatter", mode = "lines", line = list(shape = "line"),
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'BLISS - No Interaction') %>%
     layout(xaxis = list(title = "Dose", type = "log"),
            yaxis = list(title = "Viability", range = c(0, 1.5)),
-           hovermode = "closest") %>%
-    highlight(on = "plotly_selected", off = "plotly_deselect",
-              dynamic = FALSE, selectize = TRUE, persistent = FALSE,
-              opacityDim = 1, defaultValues = "",
-              selected = attrs_selected(opacity = 1))
+           hovermode = "closest") 
 
   cat(htmltools::knit_print.shiny.tag(p))
 
@@ -175,9 +294,16 @@ for (comp in varied_comps) {
     DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50"), digits = 3)
 
   cat(htmltools::knit_print.shiny.tag(dt))
+  
+  
+  
+  
 }
 ```
 
 ```{r dummy table, include=F}
 dt
+
 ```
+
+

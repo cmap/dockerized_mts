@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/mts018_validation/MTS018_VALIDATION_COMPOUNDS/PMTS046/BRD-K05804044
-  comp: BRD-K05804044
+  data_dir: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/O6-BENZYLGUANINE_TEMOZOLOMIDE
+  comp: O6-BENZYLGUANINE_TEMOZOLOMIDE
 output:
   html_document:
     toc: false
