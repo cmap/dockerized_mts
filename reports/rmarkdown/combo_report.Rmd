@@ -203,6 +203,7 @@ for (i in 1:length(constituents)) {
   spread_lfc %<>% dplyr::left_join(df)
 }
 
+# computing actual difference between LFC of combination and dynamic range 
 spread_lfc %<>% dplyr::mutate(dr_diff = abs(LFC_cb + dr))
 spread_lfc %<>% dplyr::mutate(dr_diff_exp = (LFC_cb_1 + LFC_cb_2 + dr))
 
@@ -235,7 +236,7 @@ combos <- spread_lfc %>%
 
 plots <- list()
 for (i in 1:nrow(combos)) {
-  synergy_plot <- highlight_key(spread_lfc %>% dplyr::filter(flag == 0) 
+  synergy_plot <- highlight_key(spread_lfc %>% dplyr::filter(flag == 0) # filter for visualization only - not analysis 
  %>% dplyr::inner_join(combos[i,]),
                                 ~ccle_name, group = "Synergy scores")
   p <- plot_ly(synergy_plot) %>%
