@@ -6,6 +6,7 @@ params:
   comp_b: O6-BENZYLGUANINE
   data_dir_a: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/TEMOZOLOMIDE
   comp_a: TEMOZOLOMIDE
+  qc_path:  /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/data/CPS06_VALIDATION_COMPOUNDS_QC_TABLE.csv
   
 output:
   html_document:
@@ -197,6 +198,104 @@ if (length(lfc_path_b) == 1) {
 bliss_data <- lfc_b %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_a) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
 
+#### Synergy Scores
+
+lfc_path_combo <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+
+# read in LFC
+if (length(lfc_path_combo) == 1) {
+  LFC_table <- data.table::fread(lfc_path_combo)
+  combo_lfc <- LFC_table
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+
+n_combos = length(LFC_table$pert_dose %>% unique())
+synergy_height = ceiling(n_combos / 8) * 5
+
+# read in QC table
+plates <- LFC_table$pert_plate %>% unique()
+qc_table <- data.table::fread(params$qc_path) %>%
+  dplyr::filter(pert_plate %in% plates)
+
+# constituent compound info
+constituents <- stringr::str_split(params$comp, pattern = fixed("_"))[[1]]
+plate_dir <- dirname(params$data_dir)
+
+# read in constitutent compound data
+for (const in constituents) {
+  const_path <- file.path(plate_dir, const)
+  if (!dir.exists(const_path)) {
+    warning("No data directory for anchor or test compounds. Unable to generate combination report.")
+    quit(save = "no")
+  }
+  # DRC and LFC
+  const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
+  const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
+  if (length(const_lfc_path) == 1) {
+    LFC_table %<>% dplyr::bind_rows(
+      data.table::fread(const_lfc_path) %>%
+        dplyr::mutate(pert_dose = as.character(pert_dose))
+    )
+  }
+}
+
+
+
+# non-combination values
+solo_lfc <- dplyr::anti_join(LFC_table, combo_lfc)
+
+# split combination perts
+spread_lfc <- combo_lfc %>%
+  dplyr::inner_join(qc_table %>%
+                      dplyr::group_by(ccle_name, culture) %>%
+                      dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad),
+                                       .groups = "drop")) %>%  # QC info
+  dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
+  splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = F, type.convert = T)
+
+# add columns for constituents to spread table
+for (i in 1:length(constituents)) {
+  comp <- constituents[[i]]
+  df <- solo_lfc %>%
+    dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
+    dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
+    dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
+
+  new_cols <- paste(colnames(df), i, sep = "_")
+  colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
+
+  spread_lfc %<>% dplyr::left_join(df)
+}
+
+# bliss expected fold change (capped FCs at 1)
+B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
+spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+spread_lfc %<>%
+  dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
+  dplyr::mutate(p = 2*pnorm(abs(Z), lower.tail = F)) %>%
+  dplyr::mutate(q = p.adjust(p, method = "BH")) %>%
+  dplyr::arrange(pert_dose_1)
+
+if (all(is.na(spread_lfc$S))) {
+  warning("No matching data from combination constituents alone, unable to generate combination report.")
+  quit(save = "no")
+}
+
+max_s <- ceiling(max(spread_lfc$S))
+min_s <- floor(min(spread_lfc$S))
+max_q <- ceiling(max(-log10(spread_lfc$q)))
+
+combos <- spread_lfc %>%
+  dplyr::arrange(pert_dose_1, pert_dose_2) %>%
+  dplyr::distinct(pert_dose)
+
+spread_lfc %<>% dplyr::group_by(ccle_name) %>% dplyr::mutate(mean_S = round(log2(mean(2^S)), 3))
+
 ```
 
 ---
@@ -226,6 +325,10 @@ datatable(tibble(),style="bootstrap")
 ```
 
 ```{r correlations, results='asis', include=T, fig.height=4}
+
+drc_meta %<>% dplyr::left_join(spread_lfc %>% dplyr::select(ccle_name, mean_S) %>% dplyr::distinct(ccle_name, mean_S))
+
+
 for (comp in varied_comps) {
   cat(sprintf('\n\n### %s \n\n', comp, '\n\n'))
 
@@ -288,7 +391,7 @@ for (comp in varied_comps) {
   dt <- DT::datatable(compounds_all, style="bootstrap",
                       options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
                                      columnDefs = list(list(visible = FALSE, targets = c(11)))),
-                      colnames = c("Compound", "Cell Line", "Culture", "Added compounds", "Added doses", "a", "EC50", "s", "b", "AUC", "IC50", "ID"),
+                      colnames = c("Compound", "Cell Line", "Culture", "Added compounds", "Added doses", "a", "EC50", "s", "b", "AUC", "IC50", "ID", "Average Synergy Score"),
                       rownames = FALSE,
                       selection = "single", filter = "top") %>%
     DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50"), digits = 3)
