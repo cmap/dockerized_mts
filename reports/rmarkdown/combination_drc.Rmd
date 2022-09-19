@@ -313,6 +313,13 @@ $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
 
 These data, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. Some cell lines may be missing due to insensitivity and/or inability to fit a standard curve to the data (see a standard PRISM report for more information on curve fitting techniques).
 
+Additionally, the table includes a mean synergy score for each combination dose response curve. Synergy score is in terms of LFC, therefore the mean synergy score is as follows:
+
+$$log(\frac{1}{n}\sum_{i=1}^n2^{s_{i}}) $$ 
+
+where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose. 
+
+
 The table and plots are interactive. To highlight a cell line either search it using the search box or select it in the table.
 
 
