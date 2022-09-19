@@ -169,7 +169,7 @@ This section compares the activity of combination with constituents based on log
 **Synergy by Dose**
 
 <center>
-![Synergy Template](/Users/shiker/Desktop/synergy_template.png){width=50%}
+![](/Users/shiker/Desktop/synergy_template.png){width=50%}
 </center>
 
 
