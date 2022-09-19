@@ -313,9 +313,9 @@ $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
 
 These data, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. Some cell lines may be missing due to insensitivity and/or inability to fit a standard curve to the data (see a standard PRISM report for more information on curve fitting techniques).
 
-Additionally, the table includes a mean synergy score for each combination dose response curve. Synergy score is in terms of LFC, therefore the mean synergy score is as follows:
+Additionally, the table includes a mean synergy score for each combination dose response curve. Synergy score is in terms of LFC, therefore the mean synergy score (MSS) is as follows:
 
-$$log(\frac{1}{n}\sum_{i=1}^n2^{s_{i}}) $$ 
+$$MSS = log(\frac{1}{n}\sum_{i=1}^n2^{s_{i}}) $$ 
 
 where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose. 
 
@@ -398,7 +398,7 @@ for (comp in varied_comps) {
   dt <- DT::datatable(compounds_all, style="bootstrap",
                       options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
                                      columnDefs = list(list(visible = FALSE, targets = c(11)))),
-                      colnames = c("Compound", "Cell Line", "Culture", "Added compounds", "Added doses", "a", "EC50", "s", "b", "AUC", "IC50", "ID", "Average Synergy Score"),
+                      colnames = c("Compound", "Cell Line", "Culture", "Added compounds", "Added doses", "a", "EC50", "s", "b", "AUC", "IC50", "ID", "MSS"),
                       rownames = FALSE,
                       selection = "single", filter = "top") %>%
     DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50"), digits = 3)
