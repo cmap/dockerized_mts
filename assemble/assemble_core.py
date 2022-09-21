@@ -1,9 +1,10 @@
-import merino.setup_logger as setup_logger
+import setup_logger as setup_logger
 import logging
 import os
 import cmapPy.pandasGEXpress.GCToo as GCToo
 import prism_metadata
 import pandas
+import pandas as pd
 import cmapPy.pandasGEXpress.write_gct as write_gct
 import numpy as np
 from math import floor, log10

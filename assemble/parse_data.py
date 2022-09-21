@@ -1,8 +1,8 @@
 
-import urllib2
-import merino.setup_logger as setup_logger
+import urllib3
+import setup_logger as setup_logger
 import logging
-import merino.utils.path_utils as path_utils
+import utils.path_utils as path_utils
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
 
 def parse_data(header_map, data, BuildClass):
@@ -79,7 +79,7 @@ def generate_header_map(headers, internal_header_file_header_pairs, do_keep_all)
 def read_data(tsv_filepath):
     tsv_filepath = path_utils.validate_path_as_uri(tsv_filepath)
 
-    f = urllib2.urlopen(tsv_filepath)
+    f = urllib3.urlopen(tsv_filepath)
     raw_data = f.read().strip().split("\n")
     f.close()
 

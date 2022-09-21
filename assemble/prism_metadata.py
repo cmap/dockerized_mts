@@ -1,4 +1,4 @@
-import merino.setup_logger as setup_logger
+import setup_logger as setup_logger
 import os
 import ast
 import pandas
