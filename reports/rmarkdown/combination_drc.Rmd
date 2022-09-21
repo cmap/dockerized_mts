@@ -320,6 +320,47 @@ $$MSS = log(\frac{1}{n}\sum_{i=1}^n2^{s_{i}}) $$
 where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose. 
 
 
+This report displays the dose response curves fit for `r params$comp`. 
+The next tab shows DRC for single, combination, and BLISS ... 
+Please click row on table to highlight dose response curves for corr
+
+**How are the dose response curves fitted? What are the parameters for fitting?**
+Dose response curves are fitted using a robust 4-parameter (dr4pl). The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
+
+$$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
+The upper limit of viability is 1 (a) and lower limit of 0 (b). 
+
+**What are the three curves in the dose response graph?**
+Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself 
+Combination - Dose response curve the compound being varied with an anchor compound and dose 
+BLISS - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. In this case: 
+
+
+
+
+**What does each column of the table stand for?**
+Compound - Compound code 
+Cell Line - Cancer Cell Line 
+Culture - Either PR300P (suspension and adherent lines) or PR500 (suspension lines)
+Time - Time of incubation (120 hours - 5 days)
+a - upper viability limit 
+b - lower viability limit 
+s - slope 
+EC50 - Half maximal effective concentration
+AUC - Area under dose response curve (range from 0 to 1)
+Plate - Plate compound was run in 
+IC50 - The concentration at which the curve reaches 0.5 viability
+MSS - Mean synergy score across doses 
+
+
+How is the BLISS score calculated?
+How is the synergy score computed? 
+
+
+
+
+
+
 The table and plots are interactive. To highlight a cell line either search it using the search box or select it in the table.
 
 
