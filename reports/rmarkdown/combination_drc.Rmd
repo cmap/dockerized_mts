@@ -319,10 +319,12 @@ $$MSS = log(\frac{1}{n}\sum_{i=1}^n2^{s_{i}}) $$
 
 where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose. 
 
+NEW 
 
-This report displays the dose response curves fit for `r params$comp`. 
-The next tab shows DRC for single, combination, and BLISS ... 
-Please click row on table to highlight dose response curves for corr
+
+
+This report displays the dose response curves (DRC) fit for `r params$comp`. The next tab shows DRC for single treatment compounds (compound with varied dose), combination treatments (compound with varied dose and compound with anchor dose), and BLISS expected model. Below this graph is an interactive table where you may click a row on the table to highligh a particular cancer cell line of interest. 
+
 
 **How are the dose response curves fitted? What are the parameters for fitting?**
 Dose response curves are fitted using a robust 4-parameter (dr4pl). The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
@@ -333,9 +335,7 @@ The upper limit of viability is 1 (a) and lower limit of 0 (b).
 **What are the three curves in the dose response graph?**
 Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself 
 Combination - Dose response curve the compound being varied with an anchor compound and dose 
-BLISS - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. In this case: 
-
-
+BLISS - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. As such, the model assumes the log fold changes (LFCs) of the single compound and anchor compound for respective fixed doses is additive and their fold changes (FCs) are multiplicative. 
 
 
 **What does each column of the table stand for?**
@@ -350,11 +350,20 @@ EC50 - Half maximal effective concentration
 AUC - Area under dose response curve (range from 0 to 1)
 Plate - Plate compound was run in 
 IC50 - The concentration at which the curve reaches 0.5 viability
-MSS - Mean synergy score across doses 
+MSS - Mean synergy score across doses (higher scores suggest synergy and lower scores suggest antagonism) 
+
+**What is synergy score? How is the MSS calculated?**
+
+
+The means synergy score (MSS) is an average metric of synergy across doses for a given compound. Synergy score is in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}), therefore the mean synergy score (MSS) is as follows:
+
+$$MSS = log(\frac{1}{n}\sum_{i=1}^n2^{s_{i}}) $$ 
+
+where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose.
 
 
 How is the BLISS score calculated?
-How is the synergy score computed? 
+ 
 
 
 
