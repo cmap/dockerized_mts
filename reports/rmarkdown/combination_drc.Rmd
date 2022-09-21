@@ -326,51 +326,40 @@ NEW
 This report displays the dose response curves (DRC) fit for `r params$comp`. The next tab shows DRC for single treatment compounds (compound with varied dose), combination treatments (compound with varied dose and compound with anchor dose), and BLISS expected model. Below this graph is an interactive table where you may click a row on the table to highligh a particular cancer cell line of interest. 
 
 
-**How are the dose response curves fitted? What are the parameters for fitting?**
+**How are the dose response curves fitted? What are the parameters for fitting?** <br> 
 Dose response curves are fitted using a robust 4-parameter (dr4pl). The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
 
 $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
 The upper limit of viability is 1 (a) and lower limit of 0 (b). 
 
-**What are the three curves in the dose response graph?**
-Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself 
-Combination - Dose response curve the compound being varied with an anchor compound and dose 
+**What are the three curves in the dose response graph?** <br> 
+Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself <br> 
+Combination - Dose response curve the compound being varied with an anchor compound and dose  <br> 
 BLISS - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. As such, the model assumes the log fold changes (LFCs) of the single compound and anchor compound for respective fixed doses is additive and their fold changes (FCs) are multiplicative. 
 
 
-**What does each column of the table stand for?**
-Compound - Compound code 
-Cell Line - Cancer Cell Line 
-Culture - Either PR300P (suspension and adherent lines) or PR500 (suspension lines)
-Time - Time of incubation (120 hours - 5 days)
-a - upper viability limit 
-b - lower viability limit 
-s - slope 
-EC50 - Half maximal effective concentration
-AUC - Area under dose response curve (range from 0 to 1)
-Plate - Plate compound was run in 
-IC50 - The concentration at which the curve reaches 0.5 viability
+**What does each column of the table stand for?** <br>
+Compound - Compound code <br> 
+Cell Line - Cancer Cell Line <br> 
+Culture - Either PR300P (suspension and adherent lines) or PR500 (suspension lines) <br> 
+Time - Time of incubation (120 hours - 5 days) <br> 
+a - upper viability limit <br> 
+b - lower viability limit <br> 
+s - slope <br> 
+EC50 - Half maximal effective concentration <br> 
+AUC - Area under dose response curve (range from 0 to 1) <br> 
+Plate - Plate compound was run in <br> 
+IC50 - The concentration at which the curve reaches 0.5 viability <br> 
 MSS - Mean synergy score across doses (higher scores suggest synergy and lower scores suggest antagonism) 
 
-**What is synergy score? How is the MSS calculated?**
+**What is synergy score? How is the MSS calculated?** <br> 
+The first tab (Synergy by Dose) shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model, where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). The synergy score the expected value ($LFC_a + LFC_b$) subtracted by the observed ($LFC_c$) value. Large positive values indicate synergy ($LFC_a + LFC_b$ > $LFC_c$) while large negative values ($LFC_a + LFC_b$ < $LFC_c$) indicate antagonism. 
 
-
-The means synergy score (MSS) is an average metric of synergy across doses for a given compound. Synergy score is in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}), therefore the mean synergy score (MSS) is as follows:
+The means synergy score (MSS) is an average metric of synergy across doses for a given compound. Because synergy score is in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}), the mean synergy score (MSS) is as follows:
 
 $$MSS = log(\frac{1}{n}\sum_{i=1}^n2^{s_{i}}) $$ 
 
 where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose.
-
-
-How is the BLISS score calculated?
- 
-
-
-
-
-
-
-The table and plots are interactive. To highlight a cell line either search it using the search box or select it in the table.
 
 
 ## Plots {.tabset .tabset-fade}
