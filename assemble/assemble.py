@@ -9,19 +9,20 @@ import os
 import sys
 import ast
 import json
+import yaml
 import logging
 import argparse
 import traceback
 
-import requests
-import ConfigParser
-import urllib2
 
-import merino
-import merino.setup_logger as setup_logger
-import merino.utils.path_utils as path_utils
-import merino.utils.exceptions as merino_exception
-import merino.misc_tools.config_yaml as cyaml
+
+import requests
+import configparser
+from urllib.request import urlopen
+
+import setup_logger as setup_logger
+import utils.exceptions as assemble_exception
+import utils.path_utils as path_utils
 
 import davepool_data as davepool_data
 import prism_metadata as prism_metadata
@@ -36,6 +37,7 @@ _davepool_analyte_mapping_file_section = "DavepoolAnalyteMapping column headers"
 API_URL = 'https://api.clue.io/api/'
 DEV_API_URL = 'https://dev-api.clue.io/api/'
 API_KEY = os.environ['API_KEY']
+default_config_filepath = "https://s3.amazonaws.com/analysis.clue.io/vdb/merino/prism_pipeline.cfg"
 
 def build_parser():
 
@@ -43,7 +45,7 @@ def build_parser():
     # The following arguments are required. These are files that are necessary for assembly and which change
     # frequently between cohorts, replicates, etc.
     parser.add_argument("-config_filepath", "-cfg", help="path to the location of the configuration file", type=str,
-                        default=merino.default_config_filepath)
+                        default=default_config_filepath)
     parser.add_argument("-csv_filepath", "-csv", help="full path to csv", type=str,  required=True)
     parser.add_argument("-assay_type", "-at", help="assay data was profiled in",
                         type=str, required=False)
@@ -67,6 +69,11 @@ def build_parser():
 
     return parser
 
+def write_args_to_file(args, outfile):
+    with open(outfile, "w") as f:
+        print(vars(args))
+        yaml.dump(vars(args), f)
+
 def read_csv(csv_filepath, assay_type):
 
     pd = davepool_data.read_data(csv_filepath)
@@ -87,17 +94,17 @@ def truncate_data_objects_to_plate_map(davepool_data_objects, all_perturbagens, 
         if platemap_well_list == set(davepool.median_data.keys()):
             return davepool_data_objects
         elif truncate_to_platemap == True:
-            for d in davepool_data_objects[0].median_data.keys():
+            for d in list(davepool_data_objects[0].median_data):
                  if d not in platemap_well_list:
                      del davepool_data_objects[0].median_data[d]
 
-            for c in davepool_data_objects[0].count_data.keys():
+            for c in list(davepool_data_objects[0].count_data):
                 if c not in platemap_well_list:
                     del davepool_data_objects[0].count_data[c]
 
         else:
             msg = "Assemble truncate data objects to plate map: Well lists of platemap and csv do not match"
-            raise merino_exception.DataMappingMismatch(msg)
+            raise assemble_exception.DataMappingMismatch(msg)
 
     return davepool_data_objects
 
@@ -105,12 +112,12 @@ def setup_input_files(args):
     # Check args for over-riding files, i.e. use of -csdf and -amf to override config paths to mapping files
     # or, if not overridden, read PRISM cell line metadata from file specified in config file, and associate with assay_plate metadata
 
-    cp = ConfigParser.ConfigParser()
+    cp = configparser.ConfigParser()
 
     if args.config_filepath:
         config_path = path_utils.validate_path_as_uri(args.config_filepath)
-        page = urllib2.urlopen(config_path)
-        content = page.read()
+        page = urlopen(config_path)
+        content = page.read().decode('utf-8')
         f = open("local.cfg", "w")
         f.write(content)
         f.close()
@@ -137,7 +144,7 @@ def main(args, all_perturbagens=None, assay_plates=None):
 
     if args.assay_type == None:
         msg = "No assay type found from beadset - must be specified in arg -assay_type"
-        raise merino_exception.NoAssayTypeFound(msg)
+        raise assemble_exception.NoAssayTypeFound(msg)
 
 
     davepool_id_csv_list = args.csv_filepath
@@ -148,7 +155,7 @@ def main(args, all_perturbagens=None, assay_plates=None):
         os.makedirs(os.path.join(args.outfile, "assemble", prism_replicate_name))
 
     # Write args used to yaml file
-    cyaml.write_args_to_file(args, os.path.join(args.outfile, "assemble", prism_replicate_name, 'config.yaml'))
+    write_args_to_file(args, os.path.join(args.outfile, "assemble", prism_replicate_name, 'config.yaml'))
 
     (cp, cell_set_file, analyte_mapping_file) = setup_input_files(args)
 

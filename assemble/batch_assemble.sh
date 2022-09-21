@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 print_help () {
-  source activate merino
-  cd /cmap/merino/
-  python setup.py develop
+  source activate assemble
+#  cd /cmap/merino/
+#  python setup.py develop
   python /clue/bin/assemble/assemble.py --help
 }
 
@@ -43,6 +43,10 @@ while test $# -gt 0; do
   shift # past argument or value
 done
 
+source activate assemble
+
+python --version
+
 echo CONFIG_ROOT = "${CONFIG_ROOT}"
 echo PROJECT_CODE = "${PROJECT_CODE}"
 echo REPLICATE_MAP = "${REPLICATE_MAP}"
@@ -70,12 +74,6 @@ OUTFILE="${CONFIG_ROOT}${PROJECT_CODE}/${plate_token[0]}_${plate_token[1]}_${pla
 
 echo OUTFILE = "${OUTFILE}"
 # Activate conda environment
-
-source activate merino
-
-cd /cmap/merino/
-
-python setup.py develop
 
 CSV_FILEPATH="${CONFIG_ROOT}${PROJECT_CODE}/lxb/${PLATE}/${PLATE}.jcsv"
 echo CSV_FILEPATH = "${CSV_FILEPATH}"
