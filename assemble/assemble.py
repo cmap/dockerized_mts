@@ -9,17 +9,20 @@ import os
 import sys
 import ast
 import json
+import yaml
 import logging
 import argparse
-import requests
-import ConfigParser
-import urllib2
+import traceback
 
-import merino
-import merino.setup_logger as setup_logger
-import merino.utils.path_utils as path_utils
-import merino.utils.exceptions as merino_exception
-import merino.misc_tools.config_yaml as cyaml
+
+
+import requests
+import configparser
+from urllib.request import urlopen
+
+import setup_logger as setup_logger
+import utils.exceptions as assemble_exception
+import utils.path_utils as path_utils
 
 import davepool_data as davepool_data
 import prism_metadata as prism_metadata
@@ -31,6 +34,10 @@ logger = logging.getLogger(setup_logger.LOGGER_NAME)
 _prism_cell_config_file_section = "PrismCell column headers"
 _davepool_analyte_mapping_file_section = "DavepoolAnalyteMapping column headers"
 
+API_URL = 'https://api.clue.io/api/'
+DEV_API_URL = 'https://dev-api.clue.io/api/'
+API_KEY = os.environ['API_KEY']
+default_config_filepath = "https://s3.amazonaws.com/analysis.clue.io/vdb/merino/prism_pipeline.cfg"
 
 def build_parser():
 
@@ -38,15 +45,19 @@ def build_parser():
     # The following arguments are required. These are files that are necessary for assembly and which change
     # frequently between cohorts, replicates, etc.
     parser.add_argument("-config_filepath", "-cfg", help="path to the location of the configuration file", type=str,
-                        default=merino.default_config_filepath)
+                        default=default_config_filepath)
     parser.add_argument("-csv_filepath", "-csv", help="full path to csv", type=str,  required=True)
     parser.add_argument("-assay_type", "-at", help="assay data was profiled in",
                         type=str, required=False)
     parser.add_argument("-plate_map_path", "-pmp",
-                        help="path to file containing plate map describing perturbagens used", type=str, required=True)
+                        help="path to file containing plate map describing perturbagens used", type=str, required=False)
+    parser.add_argument("-map_src_plate", "-map",
+                        help="Pert Plate with replicate map name. Searches database, using API KEY environment variable",
+                        type=str, required=False)
 
     # These arguments are optional. Some may be superfluous now and might be removed.
     parser.add_argument("-verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
+    parser.add_argument("--dev", help=argparse.SUPPRESS, action="store_true", default=False)
 
     parser.add_argument("-cell_set_definition_file", "-csdf",
                         help="file containing cell set definition to use, overriding config file",
@@ -58,86 +69,42 @@ def build_parser():
 
     return parser
 
+def write_args_to_file(args, outfile):
+    with open(outfile, "w") as f:
+        print(vars(args))
+        yaml.dump(vars(args), f)
+
 def read_csv(csv_filepath, assay_type):
 
     pd = davepool_data.read_data(csv_filepath)
     pd.davepool_id = assay_type
     return pd
 
-def build_prism_cell_list(config_parser, cell_set_definition_file, analyte_mapping_file):
-    '''
-    read PRISM cell line metadata from file specified in config file, then associate with
-    assay_plate based on pool ID, pulling out metadata based on config specifications.  Check for cell pools that are not associated with any assay plate
-    :param config_parser: parser pre-loaded with config file
-    :param cell_set_definition_file:
-    :param analyte_mapping_file:
-    :return:
-    '''
-
-    #read headers to pull from config and convert to tuple format expected by data parser
-    prism_cell_list_items = config_parser.get("headers_to_pull", "cell_set_definition_headers")
-
-    prism_cell_list_items = [(x,x) for x in ast.literal_eval(prism_cell_list_items)]
-    prism_cell_list = prism_metadata.read_prism_cell_from_file(cell_set_definition_file, prism_cell_list_items)
-
-    analyte_mapping_items = config_parser.get("headers_to_pull", "analyte_mapping_headers")
-    analyte_mapping_items = [(x,x) for x in ast.literal_eval(analyte_mapping_items)]
-    analyte_mapping = prism_metadata.read_prism_cell_from_file(analyte_mapping_file, analyte_mapping_items)
-
-    cell_list_id_not_in_davepool_mapping = set()
-
-    # Assign davepool mapping info to respective cell feature IDs
-
-    cell_id_davepool_map = {}
-
-    for dp in analyte_mapping:
-        cell_id_davepool_map[dp.feature_id] = dp
-
-
-    for pc in prism_cell_list:
-        if pc.feature_id in cell_id_davepool_map.keys():
-            cell_davepool = cell_id_davepool_map[pc.feature_id]
-            pc.analyte_id = cell_davepool.analyte_id
-
-        else:
-            cell_list_id_not_in_davepool_mapping.add(pc.feature_id)
-
-    #TODO Deprecate analyte mapping file, appears to only be used to check against prism_cell_list
-
-    if len(cell_list_id_not_in_davepool_mapping) > 0:
-        cell_list_id_not_in_davepool_mapping = list(cell_list_id_not_in_davepool_mapping)
-        cell_list_id_not_in_davepool_mapping.sort()
-        msg = ("some cell ids were found in the cell set but not in the davepool mapping - IDs: {}".format(cell_list_id_not_in_davepool_mapping))
-        raise merino_exception.DataMappingMismatch(msg)
-
-    return prism_cell_list
-
-
+'''
+There are some cases in which we are subsetting plates into different groups, ie. more than one gct per plate.
+This was the case for PPCN. As such, we need a function to truncate the data to match the plate map which is given.
+:param davepool_data_objects:
+:param all_perturbagens:
+:param truncate_to_platemap:
+:return:
+'''
 def truncate_data_objects_to_plate_map(davepool_data_objects, all_perturbagens, truncate_to_platemap):
-    '''
-    There are some cases in which we are subsetting plates into different groups, ie. more than one gct per plate.
-    This was the case for PPCN. As such, we need a function to truncate the data to match the plate map which is given.
-    :param davepool_data_objects:
-    :param all_perturbagens:
-    :param truncate_to_platemap:
-    :return:
-    '''
     platemap_well_list = set([p.pert_well for p in all_perturbagens])
     for davepool in davepool_data_objects:
         if platemap_well_list == set(davepool.median_data.keys()):
             return davepool_data_objects
         elif truncate_to_platemap == True:
-            for d in davepool_data_objects[0].median_data.keys():
+            for d in list(davepool_data_objects[0].median_data):
                  if d not in platemap_well_list:
                      del davepool_data_objects[0].median_data[d]
 
-            for c in davepool_data_objects[0].count_data.keys():
+            for c in list(davepool_data_objects[0].count_data):
                 if c not in platemap_well_list:
                     del davepool_data_objects[0].count_data[c]
 
         else:
             msg = "Assemble truncate data objects to plate map: Well lists of platemap and csv do not match"
-            raise merino_exception.DataMappingMismatch(msg)
+            raise assemble_exception.DataMappingMismatch(msg)
 
     return davepool_data_objects
 
@@ -145,15 +112,15 @@ def setup_input_files(args):
     # Check args for over-riding files, i.e. use of -csdf and -amf to override config paths to mapping files
     # or, if not overridden, read PRISM cell line metadata from file specified in config file, and associate with assay_plate metadata
 
-    cp = ConfigParser.ConfigParser()
+    cp = configparser.ConfigParser()
 
     if args.config_filepath:
         config_path = path_utils.validate_path_as_uri(args.config_filepath)
-        page = urllib2.urlopen(config_path)
-        content = page.read()
-        #f = open("local.cfg", "w")
-        #f.write(content)
-        #f.close()
+        page = urlopen(config_path)
+        content = page.read().decode('utf-8')
+        f = open("local.cfg", "w")
+        f.write(content)
+        f.close()
         cp.read('local.cfg')
     else:
         #todo: download from s3 to overwrite local prism_pipeline.cfg
@@ -167,45 +134,48 @@ def setup_input_files(args):
 
 def main(args, all_perturbagens=None, assay_plates=None):
 
-    if args.csv_filepath is not None:
+    prism_replicate_name = os.path.basename(args.csv_filepath).rsplit(".", 1)[0]
+    (_, assay, tp, replicate_number, bead) = prism_replicate_name.rsplit("_")
 
-        pert_plate = os.path.basename(args.plate_map_path).rsplit(".", 1)[0].split('.')[0]
-        prism_replicate_name = os.path.basename(args.csv_filepath).rsplit(".", 1)[0]
-        (_, assay, tp, replicate_number, bead) = prism_replicate_name.rsplit("_")
+    if bead is not None and args.assay_type is None:
+        api_call = os.path.join('https://api.clue.io/api', 'beadset', bead)
+        db_entry = requests.get(api_call)
+        args.assay_type = json.loads(db_entry.text)['assay_variant']
 
-        if bead is not None and args.assay_type is None:
-            api_call = os.path.join('https://api.clue.io/api', 'beadset', bead)
-            db_entry = requests.get(api_call)
-            args.assay_type = json.loads(db_entry.text)['assay_variant']
-
-        if args.assay_type == None:
-            msg = "No assay type found from beadset - must be specified in arg -assay_type"
-            raise merino_exception.NoAssayTypeFound(msg)
+    if args.assay_type == None:
+        msg = "No assay type found from beadset - must be specified in arg -assay_type"
+        raise assemble_exception.NoAssayTypeFound(msg)
 
 
-        davepool_id_csv_list = args.csv_filepath
-        davepool_data_objects = []
-        davepool_data_objects.append(read_csv(davepool_id_csv_list, args.assay_type))
-
-
+    davepool_id_csv_list = args.csv_filepath
+    davepool_data_objects = [read_csv(davepool_id_csv_list, args.assay_type)]
 
     # Set up output directory
     if not os.path.exists(os.path.join(args.outfile, "assemble", prism_replicate_name)):
         os.makedirs(os.path.join(args.outfile, "assemble", prism_replicate_name))
 
     # Write args used to yaml file
-    cyaml.write_args_to_file(args, os.path.join(args.outfile, "assemble", prism_replicate_name, 'config.yaml'))
+    write_args_to_file(args, os.path.join(args.outfile, "assemble", prism_replicate_name, 'config.yaml'))
 
     (cp, cell_set_file, analyte_mapping_file) = setup_input_files(args)
 
-    if all_perturbagens is None:
+    #Select API
+    api_url = DEV_API_URL if args.dev else API_URL
+
+    if args.map_src_plate is not None:
+        all_perturbagens = prism_metadata.build_perturbagens_from_db(args.map_src_plate, tp, api_url=api_url) # Read from DB
+    elif args.plate_map_path is not None:
         all_perturbagens = prism_metadata.build_perturbagens_from_file(args.plate_map_path, tp)
+    else:
+        raise ValueError("One of -plate_map_path or -map_src_plate is required")
 
     for pert in all_perturbagens:
         pert.validate_properties(ast.literal_eval(cp.get("required_metadata_fields", "column_metadata_fields")))
 
     #read actual data from relevant csv files, associate it with davepool ID
-    prism_cell_list = build_prism_cell_list(cp, cell_set_file, analyte_mapping_file)
+    prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type, api_url=api_url)
+
+    #prism_cell_list = prism_metadata.build_prism_cell_list(cp, cell_set_file)
 
     logger.info("len(prism_cell_list):  {}".format(len(prism_cell_list)))
 
@@ -223,8 +193,11 @@ def main(args, all_perturbagens=None, assay_plates=None):
 
     except Exception as e:
         failure_path = os.path.join(args.outfile, "assemble", prism_replicate_name,  "failure.txt")
+        ex_type, ex, tb = sys.exc_info()
         with open(failure_path, "w") as file:
-            file.write("plate {} failed for reason: {}\n".format(prism_replicate_name, e))
+            file.write("plate {} failed for reason: {}: {}\n".format(prism_replicate_name, ex_type, ex))
+            file.write("\ntraceback:\n")
+            traceback.print_tb(tb, file=file)
         sys.exit(-1)
 
     success_path = os.path.join(args.outfile, "assemble", prism_replicate_name, "success.txt")
@@ -236,5 +209,8 @@ if __name__ == "__main__":
     setup_logger.setup(verbose=args.verbose)
 
     logger.info("args:  {}".format(args))
+
+    if not (args.map_src_plate or args.plate_map_path):
+        raise ValueError("One of -plate_map_path or -map_src_plate is required")
 
     main(args)
