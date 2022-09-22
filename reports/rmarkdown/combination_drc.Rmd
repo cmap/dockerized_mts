@@ -375,7 +375,7 @@ datatable(tibble(),style="bootstrap")
 
 drc_meta %<>% dplyr::left_join(spread_lfc %>% dplyr::select(ccle_name, mean_S) %>% dplyr::distinct(ccle_name, mean_S))
 
-drc_meta %<>% dplyr::left_join(bliss_data %>% dplyr::select(ccle_name, LFC_cb) %>% dplyr::distinct(ccle_name, LFC_cb))
+drc_meta %<>% dplyr::left_join(bliss_data %>% dplyr::select(ccle_name, FC_cb) %>% dplyr::distinct(ccle_name, FC_cb))
 
 for (comp in varied_comps) {
   cat(sprintf('\n\n### %s \n\n', comp, '\n\n'))
@@ -448,6 +448,19 @@ for (comp in varied_comps) {
   
   
   
+  
+  
+  
+  
+  
+  
+    q <- plot_ly() %>%
+    add_trace(data = compounds_all,
+            x = ~mean_S, y = ~auc,
+            type = "scatter", mode = "markers",
+            hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'CombinationTreatment') 
+    
+      cat(htmltools::knit_print.shiny.tag(q))
   
 }
 ```
