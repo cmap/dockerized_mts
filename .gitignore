@@ -66,3 +66,7 @@ biomarker_data/*.csv
 
 #debug notebooks
 #*.ipynb
+
+#scratch folder
+scratch/
+wkdir/*
