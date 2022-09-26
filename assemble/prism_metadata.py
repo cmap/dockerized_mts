@@ -95,6 +95,7 @@ def make_request_url_filter(endpoint_url, where=None, fields=None):
 
 def get_data_from_db(endpoint_url, user_key, where = None, fields=None):
     request_url = make_request_url_filter(endpoint_url, where = where, fields=fields)
+    logger.debug(request_url)
     # print(request_url)
     response = requests.get(request_url, headers={'user_key': user_key})
     if response.ok:
