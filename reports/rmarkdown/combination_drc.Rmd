@@ -294,8 +294,44 @@ combos <- spread_lfc %>%
   dplyr::arrange(pert_dose_1, pert_dose_2) %>%
   dplyr::distinct(pert_dose)
 
-spread_lfc %<>% dplyr::group_by(ccle_name) %>% dplyr::mutate(mean_S = round(log2(mean(2^S)), 3))
+#spread_lfc %<>% dplyr::group_by(ccle_name) %>% dplyr::mutate(mean_S = round(log2(mean(2^S)), 3))
+spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
+spread_lfc$B <- B
+spread_lfc %<>% dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
 
+
+# group by dose 2 to calculate AUC and expected for comp 1
+pseudo_auc_1 <- spread_lfc %>%
+  dplyr::select(ccle_name, culture,
+                pert_iname_1, pert_dose_1, pert_dose_2, FC, B) %>%
+  dplyr::rename(pert_iname = pert_iname_1) %>%
+  dplyr::group_by(ccle_name, culture, pert_iname, pert_dose_2) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::summarise_all(mean) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(-pert_dose_1) %>%
+  dplyr::rename(pert_dose = pert_dose_2) %>%
+  dplyr::filter(n >= 4)
+
+# group by dose 1 to calculate AUC and expected for comp 2
+pseudo_auc_2 <- spread_lfc %>%
+  dplyr::select(ccle_name, culture,
+                pert_iname_2, pert_dose_1, pert_dose_2,
+                FC, B) %>%
+  dplyr::rename(pert_iname = pert_iname_2) %>%
+  dplyr::group_by(ccle_name, culture, pert_iname, pert_dose_1) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::summarise_all(mean) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(-pert_dose_2) %>%
+  dplyr::rename(pert_dose = pert_dose_1) %>%
+  dplyr::filter(n >= 4)
+
+pseudo_auc <- dplyr::bind_rows(pseudo_auc_1, pseudo_auc_2) %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
+#comps <- pseudo_auc$pert_iname %>% unique()
+
+pseudo_auc
 ```
 
 ---
@@ -323,19 +359,33 @@ NEW
 
 
 
-This report displays the dose response curves (DRC) fit for `r params$comp`. The next tab shows DRC for single treatment compounds (compound with varied dose), combination treatments (compound with varied dose and compound with anchor dose), and BLISS expected model. Below this graph is an interactive table where you may click a row on the table to highligh a particular cancer cell line of interest. 
+This report displays the dose response curves (DRC) fit for `r params$comp` combination. The next tab shows DRC for single treatment compounds (screened with at least 4 distinct doses), observed combination effects, and inferred total effect under the assumption of no interaction between the compounds (assuming Bliss model of independent effects). The discrepancy between the observed and inferred curves implies synergistic or antagonistic effects.
+
+The second plot shows the AUC of the combination versus the Bliss expected AUC. Each value is calculated by taking the mean fold-change across doses with a given anchor dose as a proxy for AUC. Below this graph is an interactive table, where each row represents a cell line and an anchor pair along with its dose-response parameters for the observed effects and an overall interaction statistic (MSS). Please see below for the details of these parameters/metrics.
+
+
+
 
 
 **How are the dose response curves fitted? What are the parameters for fitting?** <br> 
-Dose response curves are fitted using a robust 4-parameter (dr4pl). The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
+Dose response curves are fitted using a robust 4-parameter. The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
 
 $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
-The upper limit of viability is 1 (a) and lower limit of 0 (b). 
+This is implemented using the R's dr4pl package, specifying an upper limit between 0.99-1.01 and a positive slope. 
 
 **What are the three curves in the dose response graph?** <br> 
 Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself <br> 
 Combination - Dose response curve the compound being varied with an anchor compound and dose  <br> 
 BLISS - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. As such, the model assumes the log fold changes (LFCs) of the single compound and anchor compound for respective fixed doses is additive and their fold changes (FCs) are multiplicative. 
+
+**How is AUC calculated for combination and expected Bliss?**
+
+$$AUC_{combo} \approx \frac{1}{n}\sum_{i=1}^nFC_{c_i}$$
+
+$$AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$$
+
+
+
 
 
 **What does each column of the table stand for?** <br>
@@ -353,14 +403,27 @@ IC50 - The concentration at which the curve reaches 0.5 viability <br>
 MSS - Mean synergy score across doses (higher scores suggest synergy and lower scores suggest antagonism) <br>
 Anchor Dose Viability - Viability of added dose 
 
+
+
+where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose.
+
+
+
 **What is synergy score? How is the MSS calculated?** <br> 
-The first tab (Synergy by Dose) shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model, where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). The synergy score the expected value ($LFC_a + LFC_b$) subtracted by the observed ($LFC_c$) value. Large positive values indicate synergy ($LFC_a + LFC_b$ > $LFC_c$) while large negative values ($LFC_a + LFC_b$ < $LFC_c$) indicate antagonism. 
+The first tab (Synergy by Dose) shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model, where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). The synergy score is the expected value ($LFC_a + LFC_b$) subtracted by the observed ($LFC_c$) value. Large positive values indicate synergy ($LFC_a + LFC_b$ > $LFC_c$) while large negative values ($LFC_a + LFC_b$ < $LFC_c$) indicate antagonism. 
 
 The means synergy score (MSS) is an average metric of synergy across doses for a given compound. Because synergy score is in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}), the mean synergy score (MSS) is as follows:
 
-$$MSS = log(\frac{1}{n}\sum_{i=1}^n2^{s_{i}}) $$ 
+$$MSS = log(\frac{AUC_{combo}}{AUC_{bliss}}) \approx log(\frac{ \frac{1}{n}\sum_{i=1}^nFC_{c_i}}{\frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b})  $$ 
 
-where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose.
+
+**What is the color scheme for the AUC graph?**
+
+The color scheme for the AUC scatter plot is by Mean Synergy Score (MSS), where a higher score represents synergestic interactions and a lower score represents antagonistic interactions. 
+
+
+
+
 
 
 ## Plots {.tabset .tabset-fade}
@@ -373,9 +436,12 @@ datatable(tibble(),style="bootstrap")
 
 ```{r correlations, results='asis', include=T, fig.height=4}
 
-drc_meta %<>% dplyr::left_join(spread_lfc %>% dplyr::select(ccle_name, mean_S) %>% dplyr::distinct(ccle_name, mean_S))
+pseudo_auc %<>% dplyr::mutate(MSS = log2(B/FC)) %>% rename(varied_iname = pert_iname)
+drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname) %>% dplyr::distinct(cell_id, MSS, varied_iname))
 
-drc_meta %<>% dplyr::left_join(bliss_data %>% dplyr::select(ccle_name, FC_cb) %>% dplyr::distinct(ccle_name, FC_cb))
+
+drc_meta %<>% dplyr::left_join(bliss_data %>% dplyr::select(cell_id, FC_cb, varied_iname) %>% dplyr::distinct(cell_id, FC_cb, varied_iname))
+
 
 for (comp in varied_comps) {
   cat(sprintf('\n\n### %s \n\n', comp, '\n\n'))
@@ -396,22 +462,22 @@ for (comp in varied_comps) {
                               dplyr::arrange(auc),
                             ~cell_id, group = comp)
   
-  lfc_a <- highlight_key(lfc_a %>%
-                           dplyr::inner_join(drc_meta_a) %>%
-                           dplyr::rename(Dose = pert_dose) %>%
-                           dplyr::mutate(Viability = 2^LFC_cb,
-                                         Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
-                           dplyr::distinct(ccle_name, culture, cell_id, Dose, Viability, Replicate),
-                         ~cell_id, group = comp)
-  
-  lfc_comb <- highlight_key(lfc %>%
-                           dplyr::inner_join(drc_meta) %>%
-                           dplyr::rename(Dose = pert_dose) %>%
-                           dplyr::mutate(Viability = 2^LFC_cb,
-                                         Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
-                           dplyr::distinct(ccle_name, culture, cell_id, Dose, Viability, Replicate),
-                         ~cell_id, group = comp)
-  
+  # lfc_a <- highlight_key(lfc_a %>%
+  #                          dplyr::inner_join(drc_meta_a) %>%
+  #                          dplyr::rename(Dose = pert_dose) %>%
+  #                          dplyr::mutate(Viability = 2^LFC_cb,
+  #                                        Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
+  #                          dplyr::distinct(ccle_name, culture, cell_id, Dose, Viability, Replicate),
+  #                        ~cell_id, group = comp)
+  # 
+  # lfc_comb <- highlight_key(lfc %>%
+  #                          dplyr::inner_join(drc_meta) %>%
+  #                          dplyr::rename(Dose = pert_dose) %>%
+  #                          dplyr::mutate(Viability = 2^LFC_cb,
+  #                                        Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
+  #                          dplyr::distinct(ccle_name, culture, cell_id, Dose, Viability, Replicate),
+  #                        ~cell_id, group = comp)
+  # 
   
   p <- plot_ly() %>%
     add_trace(data = curves_all_a,
@@ -436,34 +502,48 @@ for (comp in varied_comps) {
                                    dplyr::filter(is.finite(auc), varied_iname == comp) %>%
                                    dplyr::arrange(auc),
                                  ~cell_id, group = comp)
+  
+  pseudo_auc_comp <- highlight_key(pseudo_auc %>% dplyr::filter(varied_iname == comp), 
+                                    ~cell_id, group=comp)
+  
+  q <- plot_ly() %>%
+    add_trace(data = pseudo_auc_comp,
+            x = ~B, y = ~FC,
+            type = "scatter", mode = "markers", colors = 'RdYlGn' , color=~MSS,
+            hoverinfo = "text", text = ~ccle_name, opacity = 0.1, opacity = 0.1, name = 'CombinationTreatment', marker=list(colorbar=list(text = 'Mean Syngery Score'))) %>%
+    layout( legend = list(title = list(text = "MSS")),
+      xaxis = list(title = "Bliss expected AUC", range = c(0, 1)),
+            yaxis = list(title = "AUC", range = c(0, 1)), 
+          
+            hovermode = "closest",
+            shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
+                           line = list(dash = "dash", layer = "below"))) 
+  
+  
+  cat(htmltools::knit_print.shiny.tag(q))
+      
+      
+
   dt <- DT::datatable(compounds_all, style="bootstrap",
                       options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
                                      columnDefs = list(list(visible = FALSE, targets = c(11)))),
                       colnames = c("Compound", "Cell Line", "Culture", "Added compounds", "Added doses", "a", "EC50", "s", "b", "AUC", "IC50", "ID", "MSS", "Anchor Dose Viability"),
                       rownames = FALSE,
                       selection = "single", filter = "top") %>%
-    DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50"), digits = 3)
+    DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50", "MSS", "FC_cb"), digits = 3)
 
   cat(htmltools::knit_print.shiny.tag(dt))
   
+
   
-  
-  
-  
-  
-  
-  
-  
-    q <- plot_ly() %>%
-    add_trace(data = compounds_all,
-            x = ~mean_S, y = ~auc,
-            type = "scatter", mode = "markers",
-            hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'CombinationTreatment') 
     
-      cat(htmltools::knit_print.shiny.tag(q))
+
   
 }
+  
 ```
+  
+
 
 ```{r dummy table, include=F}
 dt
