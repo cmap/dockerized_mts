@@ -492,9 +492,14 @@ for (comp in varied_comps) {
               x = ~x, y = ~bliss, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
               hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'BLISS - No Interaction') %>%
+    config(doubleClick = "reset") %>%
     layout(xaxis = list(title = "Dose", type = "log"),
            yaxis = list(title = "Viability", range = c(0, 1.5)),
-           hovermode = "closest") 
+           hovermode = "closest") %>%
+    highlight(on = "plotly_click", off = "plotly_doubleclick",
+              dynamic = FALSE, selectize = TRUE, persistent = FALSE,
+              opacityDim = 1, defaultValues = "",
+              selected = attrs_selected(opacity = 1))
 
   cat(htmltools::knit_print.shiny.tag(p))
 
@@ -510,15 +515,18 @@ for (comp in varied_comps) {
     add_trace(data = pseudo_auc_comp,
             x = ~B, y = ~FC,
             type = "scatter", mode = "markers", colors = 'RdYlGn' , color=~MSS,
-            hoverinfo = "text", text = ~ccle_name, opacity = 0.1, opacity = 0.1, name = 'CombinationTreatment', marker=list(colorbar=list(text = 'Mean Syngery Score'))) %>%
+            hoverinfo = "text", text = ~ccle_name, name = 'CombinationTreatment', marker=list(colorbar=list(text = 'Mean Syngery Score'))) %>%
+    config(doubleClick = "reset") %>%
     layout( legend = list(title = list(text = "MSS")),
       xaxis = list(title = "Bliss expected AUC", range = c(0, 1)),
             yaxis = list(title = "AUC", range = c(0, 1)), 
-          
             hovermode = "closest",
             shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
-                           line = list(dash = "dash", layer = "below"))) 
-  
+                           line = list(dash = "dash", layer = "below"))) %>%
+      highlight(on = "plotly_click", off = "plotly_doubleclick",
+              dynamic = FALSE, selectize = TRUE, persistent = FALSE,
+              opacityDim = 0.1, defaultValues = "",
+              selected = attrs_selected(opacity = 1))
   
   cat(htmltools::knit_print.shiny.tag(q))
       
