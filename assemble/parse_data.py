@@ -36,12 +36,9 @@ def parse_raw_value(raw_value):
         val = None
     else:
         try:
-            val = int(val)
+            val = float(val)
         except ValueError:
-            try:
-                val = float(val)
-            except ValueError:
-                pass
+            pass
 
     return val
 
