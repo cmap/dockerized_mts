@@ -380,8 +380,7 @@ DT::datatable(p_table %>%
 
 ## Plots by mutation
 
-The AUC or log-fold change (when AUC is unavailable) of each cell line with the top 20 mutations is shown in the boxplots below. The black dashed line is the mean value across all cell lines.
-
+The AUC or log-fold change (when AUC is unavailable) of each cell line with the top 20 genes with mutations are shown in the boxplots below. The black dashed line is the mean value across all cell lines.
 
 ```{r, fig.height=10}
 if (!is.null(DRC)) {
