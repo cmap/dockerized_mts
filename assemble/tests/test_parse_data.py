@@ -1,7 +1,7 @@
 import merino.setup_logger as setup_logger
 import logging
 import unittest
-import ConfigParser
+import configparser
 import parse_data as pd
 
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
@@ -35,7 +35,7 @@ class TestParseData(unittest.TestCase):
         #happy path ignore extra field
         headers = ["pool_id", "analyte", "strippedname", "extra_header"]
 
-        cp = ConfigParser.RawConfigParser()
+        cp = configparser.Rawconfigparser()
         cp.read("prism_pipeline.cfg")
         internal_header_file_header_pairs = cp.items(_prism_cell_config_file_section)
 
@@ -55,7 +55,7 @@ class TestParseData(unittest.TestCase):
 
     def test__parse_data(self):
         headers = ["pool_id", "analyte", "strippedname"]
-        cp = ConfigParser.RawConfigParser()
+        cp = configparser.Rawconfigparser()
         cp.read("prism_pipeline.cfg")
 
         header_map = pd.generate_header_map(headers, cp.items(_prism_cell_config_file_section), False)
@@ -76,7 +76,7 @@ class TestParseData(unittest.TestCase):
         assert r[2].analyte_id is None
 
         headers = ["well_position", "compound_well_mmoles_per_liter", "dilution_factor"]
-        cp = ConfigParser.RawConfigParser()
+        cp = configparser.Rawconfigparser()
         cp.read("prism_pipeline.cfg")
         header_map = pd.generate_header_map(headers, cp.items(_perturbagen_CM_input_config_file_section), False)
 

@@ -2,7 +2,7 @@ import merino.setup_logger as setup_logger
 import logging
 import unittest
 import prism_metadata as pm
-import ConfigParser
+import configparser
 
 
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
@@ -17,7 +17,7 @@ class TestPrismMetadata(unittest.TestCase):
         assert hasattr(r, "analyte_id")
 
     def test_read_prism_cell_from_file(self):
-        cp = ConfigParser.RawConfigParser()
+        cp = configparser.Rawconfigparser()
         config_filepath = 'prism_pipeline.cfg'
         cp.read(config_filepath)
 
