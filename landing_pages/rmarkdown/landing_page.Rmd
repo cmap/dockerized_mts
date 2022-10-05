@@ -123,15 +123,6 @@ VI.  Finally, the replicates are collapsed to a treatment level profile by compu
 
 ### Points of contact
 
-People:
-
-* Melissa Ronan - Screening Lead
-* Matthew Rees - Scientific Lead
-* Jennifer Roth - Director, PRISM
-* Maggie LeMaitre - Project Coordinator
-* Brienne Engel - Alliance Manager
-* Andrew Boghossian - Associate Computational Biologist II
-
 For any questions please see our [FAQs](https://github.com/cmap/dockerized_mts/blob/master/info/FAQs.md) or reach out to prism@broadinstitute.org.
 
 All code used to process this data, as well as further information about the data processing and FAQs, is available on [GitHub](https://github.com/cmap/dockerized_mts).

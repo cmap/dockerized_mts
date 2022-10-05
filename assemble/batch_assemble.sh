@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 print_help () {
-  source activate merino
-  cd /cmap/merino/
-  python setup.py develop
-  python /cmap/merino/merino/assemble/assemble.py --help
+  source activate assemble
+#  cd /cmap/merino/
+#  python setup.py develop
+  python /clue/bin/assemble/assemble.py --help
 }
 
 while test $# -gt 0; do
@@ -32,6 +32,9 @@ while test $# -gt 0; do
     --default)
       DEFAULT=YES
       ;;
+    --dev)
+      DEV=TRUE
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -39,6 +42,10 @@ while test $# -gt 0; do
   esac
   shift # past argument or value
 done
+
+source activate assemble
+
+python --version
 
 echo CONFIG_ROOT = "${CONFIG_ROOT}"
 echo PROJECT_CODE = "${PROJECT_CODE}"
@@ -53,6 +60,8 @@ echo "PLATE IS: ${PLATE}"
 
 IFS='_' read -r -a plate_token <<< "${PLATE}";
 
+MAP_SRC_NAME=${plate_token[0]}.${plate_token[3]}
+
 if [ "${REPLICATE_MAP}" = "TRUE" ];
 then
     PLATE_MAP_PATH="${CONFIG_ROOT}${PROJECT_CODE}/map_src/${plate_token[0]}.${plate_token[3]}.src"
@@ -66,18 +75,26 @@ OUTFILE="${CONFIG_ROOT}${PROJECT_CODE}/${plate_token[0]}_${plate_token[1]}_${pla
 echo OUTFILE = "${OUTFILE}"
 # Activate conda environment
 
-source activate merino
-
-cd /cmap/merino/
-
-python setup.py develop
-
 CSV_FILEPATH="${CONFIG_ROOT}${PROJECT_CODE}/lxb/${PLATE}/${PLATE}.jcsv"
 echo CSV_FILEPATH = "${CSV_FILEPATH}"
-echo python /cmap/merino/merino/assemble/assemble.py -pmp ${PLATE_MAP_PATH} -csv ${CSV_FILEPATH} -out ${OUTFILE} -assay_type ${ASSAY_TYPE}
-python /cmap/merino/merino/assemble/assemble.py -pmp ${PLATE_MAP_PATH} -csv ${CSV_FILEPATH} -out ${OUTFILE} -assay_type ${ASSAY_TYPE}
+
+args=(
+  -map "${MAP_SRC_NAME} "
+  -csv "${CSV_FILEPATH}"
+  -out "${OUTFILE}"
+  -assay_type ${ASSAY_TYPE}
+)
+
+if [[ -n $DEV ]]
+then
+  args+=(--dev)
+fi
+
+echo python /clue/bin/assemble/assemble.py "${args[@]}"
+python /clue/bin/assemble/assemble.py "${args[@]}"
 exit_code=$?
 
 # Deactivate conda environment
 source deactivate
 exit $exit_code
+#
