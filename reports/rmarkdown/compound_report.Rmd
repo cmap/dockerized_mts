@@ -161,7 +161,7 @@ This compound was screened in the PRISM assay at `r n_doses`-point dose (3-fold 
 ```{r compound}
 DT::datatable(compounds,
               options = list(dom = "t", ordering = TRUE,
-                             lengthChange = FALSE, scrollY = "300px", paging = FALSE),
+                             lengthChange = FALSE, scrollY = "350px", paging = FALSE),
               colnames = c("Compound name", "Compound ID", "Dose", "Dose with units", "Plate"),
               rownames = FALSE)
 ```
@@ -516,7 +516,7 @@ if (!is.null(DRC)) {
 
 In this section, we explore the univariate associations between the PRISM sensitivity profiles and the genomic features or genetic dependencies. In particular, we compute the Pearson correlations and associated p-values.
 
-On each of the following tabs, the correlations and p-values for log-viability values at each dose, AUC scores and logIC50 values are shown. **Only the top 250 features, or top 25 negative and positive correlations based on q value, with a q value less than 0.1 at each dose are visualized**. Because correlations are done **at each dose and for AUC and logIC50**. Because correlations are done **at each dose and for AUC and logIC50** (in order to allow for analysis of relationships at particular doses and overall), the same feature may appear multiple times in the table. The dose or curve-level statistic used for correlation is noted in the "Dose" column. For each dataset, the q-values are computed from p-values using the Benjamini-Hochberg algorithm. Associations with q-values above 0.1 are filtered out. Also, the significant genes/features are illustrated on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. Data interpretation overviews are included above each plot.
+On each of the following tabs, the correlations and p-values for log-viability values at each dose, AUC scores and logIC50 values are shown. **Only the top 250 features, or top 25 negative and positive correlations based on q value, with a q value less than 0.1 at each dose are visualized**. Because correlations are done **at each dose and for AUC and logIC50** (in order to allow for analysis of relationships at particular doses and overall), the same feature may appear multiple times in the table. The dose or curve-level statistic used for correlation is noted in the "Dose" column. For each dataset, the q-values are computed from p-values using the Benjamini-Hochberg algorithm. Associations with q-values above 0.1 are filtered out. Also, the significant genes/features are illustrated on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. Data interpretation overviews are included above each plot.
 
 ```{r correlations, results='asis', include=T, fig.height=10}
 for (feat in corr_feats) {

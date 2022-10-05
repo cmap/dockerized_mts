@@ -1,9 +1,10 @@
-import merino.setup_logger as setup_logger
+import setup_logger as setup_logger
 import logging
 import os
 import cmapPy.pandasGEXpress.GCToo as GCToo
 import prism_metadata
 import pandas
+import pandas as pd
 import cmapPy.pandasGEXpress.write_gct as write_gct
 import numpy as np
 from math import floor, log10
@@ -55,7 +56,7 @@ def build_data_by_cell(cells, davepool_data_obj):
         cell_header_map = {}
         for c in cells:
             if c.ignore == False:
-                cell_header_map[c] = headers.index(c.analyte_id)
+                cell_header_map[c] = headers.index(str(c.analyte_id).capitalize())
             cell_data_map[c] = []
 
         for d in data.keys():
@@ -214,7 +215,10 @@ def float_to_str(f):
 rounds to significant figures
 """
 def _round_sig(x, sig=5):
-    return round(x, sig - int(floor(log10(abs(x)))) - 1)
+    if x == 0:
+        return 0
+    else:
+        return round(x, sig - int(floor(log10(abs(x)))) - 1)
 
 
 """
@@ -223,12 +227,15 @@ prints string as decimal value not scientific notation
 def _format_floats(fl, sig=4, max_precision=50):
     if type(fl) == str:
         fl = float(fl)
-    if np.isnan(fl):
-        return fl
+    if (fl is None) or np.isnan(fl):
+        return np.nan
     else:
         return float_to_str(round(_round_sig(fl, sig=sig), max_precision))
 
+
 def process_pert_doses(el):
+    if pd.isna(el) or (el == 'nan'):
+        return el
     if type(el) == str:
         return '|'.join(map(_format_floats, map(float, el.split('|'))))
     else:
@@ -236,8 +243,9 @@ def process_pert_doses(el):
 
 
 def process_pert_idoses(el):
+    if pd.isna(el) or (el=='nan') :
+        return el
     if type(el) == str:
-        #         print(el)
         idoses = el.split('|')
         idoses = [i.split(" ") for i in idoses]
         return "|".join(["{} {}".format(_format_floats(idose[0]), idose[1]) for idose in idoses])
@@ -249,6 +257,7 @@ def stringify_inst_doses(inst):
     inst['pert_dose'] = inst['pert_dose'].apply(
         lambda el: process_pert_doses(el)
     )
+
     if 'pert_idose' in inst.columns:
         inst['pert_idose'] = inst['pert_idose'].apply(
             lambda el: process_pert_idoses(el)
@@ -256,6 +265,7 @@ def stringify_inst_doses(inst):
 
     inst['pert_dose'] = inst['pert_dose'].astype(str)
     return inst
+
 
 def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects, prism_cell_list):
     # Build one-to-many mapping between davepool ID and the multiple PRISM cell lines that are within that davepool
@@ -268,19 +278,24 @@ def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects,
     median_outfile = os.path.join(outfile, "assemble", prism_replicate_name, prism_replicate_name + "_MEDIAN.gct")
     median_gctoo = build_gctoo(prism_replicate_name, all_perturbagens, all_median_data_by_cell)
 
+
     # enforce doses as strings
-    inst = median_gctoo.col_metadata_df
-    #inst = stringify_inst_doses(inst)
+    try:
+        logger.info("Attempting to convert doses to strings")
+        inst = stringify_inst_doses(median_gctoo.col_metadata_df)
+    except TypeError as e:
+        inst = median_gctoo.col_metadata_df
+        logger.warning("Could not stringify doses due to TypeError: {}".format(e))
     median_gctoo.col_metadata_df = inst
 
     write_gct.write(median_gctoo, median_outfile, data_null=_NaN, filler_null=_null)
 
     # Write Inst info file
     instinfo_outfile = os.path.join(outfile, "assemble", prism_replicate_name, prism_replicate_name + "_inst_info.txt")
-    inst.to_csv(instinfo_outfile, sep='\t')
+    inst.reset_index().rename(columns={'index':'profile_id'}).to_csv(instinfo_outfile, sep='\t', index=False)
     logger.info("Instinfo has been written to {}".format(instinfo_outfile))
 
     count_outfile = os.path.join(outfile, "assemble", prism_replicate_name, prism_replicate_name + "_COUNT.gct")
     count_gctoo = build_gctoo(prism_replicate_name, all_perturbagens, all_count_data_by_cell)
-    count_gctoo.col_metadata_df = stringify_inst_doses(inst)
+    count_gctoo.col_metadata_df = inst
     write_gct.write(count_gctoo, count_outfile, data_null=_NaN, filler_null=_null)
