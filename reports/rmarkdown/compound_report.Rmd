@@ -446,36 +446,7 @@ if (!is.null(DRC)) {
           axis.text.x = element_text(angle = 45)) +
     labs(x = "", y = "AUC")
   
-  # OLD CODE 
-  # m <- mean(DRC$auc)
-  # df <- DRC %>%
-  #   dplyr::inner_join(mutations, by = "ccle_name") %>%
-  #   dplyr::group_by(across(any_of(c("mutation", "varied_iname", "added_compounds", "added_doses")))) %>%
-  #   dplyr::mutate(n = n()) %>%
-  #   dplyr::ungroup() %>%
-  #   dplyr::filter(n >= 5)
-  # 
-  # top_muts <- MUT_table %>%
-  #   dplyr::inner_join(df %>% dplyr::distinct(mutation, n),
-  #                     by = c("feature" = "mutation")) %>%
-  #   dplyr::filter(pert_dose == "log2.auc") %>%
-  #   dplyr::arrange(q.value)
-  # 
-  # top_muts <- top_muts$feature[1:20]
-  # 
-  # df %<>%
-  #   dplyr::filter(mutation %in% top_muts)
-  # 
-  # p <- df %>%
-  #   ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
-  #              color = mutation)) +
-  #   geom_boxplot(outlier.alpha = 0) +
-  #   geom_vline(xintercept = m, linetype = "dashed") +
-  #   geom_jitter() +
-  #   theme(legend.position = "none") +
-  #   labs(x = "AUC", y = "Mutation")
-  # 
-  # p
+  
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
   df <- LFC %>%
