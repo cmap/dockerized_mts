@@ -380,40 +380,73 @@ DT::datatable(p_table %>%
 
 ## Plots by mutation
 
-The AUC or log-fold change (when AUC is unavailable) of each cell line with the top 20 mutations is shown in the boxplots below. The black dashed line is the mean value across all cell lines.
-
+The AUC or log-fold change (when AUC is unavailable) of each cell line with the top 20 genes with mutations are shown in the boxplots below. The black dashed line is the mean value across all cell lines.
 
 ```{r, fig.height=10}
 if (!is.null(DRC)) {
-  m <- mean(DRC$auc)
-  df <- DRC %>%
-    dplyr::inner_join(mutations, by = "ccle_name") %>%
-    dplyr::group_by(across(any_of(c("mutation", "varied_iname", "added_compounds", "added_doses")))) %>%
-    dplyr::mutate(n = n()) %>%
-    dplyr::ungroup() %>%
-    dplyr::filter(n >= 5)
   
-  top_muts <- MUT_table %>%
-    dplyr::inner_join(df %>% dplyr::distinct(mutation, n),
-                      by = c("feature" = "mutation")) %>%
-    dplyr::filter(pert_dose == "log2.auc") %>%
-    dplyr::arrange(q.value)
+
+# Mutation Plot 
+# Goal: Take most significant mutated genes (top 20) and examine the correlation between AUC
+# and type of gene mutation (dam, hs, other, wildtype) 
+
+
+  m <- mean(DRC$auc) # mean AUC for DRC for all CCLE treated with a specific compound 
   
-  top_muts <- top_muts$feature[1:20]
   
-  df %<>%
-    dplyr::filter(mutation %in% top_muts)
+  muts = mutations %>% 
+    dplyr::filter(ccle_name %in% DRC$ccle_name) %>% # filtering out mutations that pertain to CCLE in DRC
+    dplyr::count(mutation) %>% # count occurrence of mutation 
+    dplyr::filter(n > 4) %>% # if less than 5 filter out 
+    .$mutation
   
-  p <- df %>%
-    ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
-               color = mutation)) +
-    geom_boxplot(outlier.alpha = 0) +
-    geom_vline(xintercept = m, linetype = "dashed") +
-    geom_jitter() +
-    theme(legend.position = "none") +
-    labs(x = "AUC", y = "Mutation")
   
-  p
+  top_muts <- MUT_table %>% 
+    dplyr::filter(pert_dose == "log2.auc", feature %in% muts) %>% # picking dose of log2.auc and mutations within muts 
+    dplyr::mutate(gene = word(feature, 2, sep = fixed("_")), # creating gene column 
+                  mut.type = word(feature,1,-2, sep = fixed("_"))) # creating mutation type column 
+  
+  
+  top.genes = top_muts %>% 
+    dplyr::group_by(gene) %>% # grouping by gene 
+    dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
+    dplyr::top_n(20, -minq) # returning list of top 20 smallest q values 
+  
+  
+  top_muts <- mutations %>% 
+    dplyr::distinct(mutation)  %>% # determining unique mutations 
+    dplyr::mutate(gene = word(mutation, 2, sep = fixed("_")), # adding gene word
+                  mut.type = word(mutation,1,-2, sep = fixed("_"))) %>% # adding mutation type 
+    dplyr::filter(gene %in% top.genes$gene) %>% # filtering from all the genes to only top genes 
+    dplyr::left_join(mutations) %>% # adding corresponding CCLE names associated with top mutations (multiple per gene and mutation type)
+    dplyr::filter(ccle_name %in% DRC$ccle_name) %>% # filtering out CCLE within DRC data 
+    dplyr::mutate(ix = 1) %>% # denoting mutations the gene and mutation type present in a particular CCLE
+    reshape2::acast(ccle_name ~ gene + mut.type, value.var = "ix", fill = 0) %>% 
+    reshape2::melt() %>% # one-hot encoding presence of specific genes within a CCLE (0 not present, 1 means present)
+    dplyr::mutate(gene = word(Var2, 1, sep = fixed("_")), # creating gene column 
+                  mut.type = word(Var2,2,-1, sep = fixed("_"))) %>% # creating mutation type column
+    dplyr::mutate(mut.type = ifelse(value == 1, mut.type, "wild_type")) %>% # if CCLE has 0 for a specific gene mutation type, denote it wild type 
+    dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) %>% # renaming columns 
+    dplyr::left_join(top.genes) # adding minimum q values for top genes 
+  
+  
+  
+  
+  top_muts %>%
+    dplyr::left_join(DRC %>% dplyr::distinct(ccle_name, auc)) %>% 
+    dplyr::mutate(gene = reorder(gene, minq)) %>% 
+    ggplot(aes(y = auc, x = mut.type, #reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
+               color = mut.type)) +
+    geom_boxplot(outlier.alpha = 0, color = "black") +
+    geom_hline(yintercept = m, linetype = "dashed") +
+    geom_sina(size = 1.5, shape = 1, aes(alpha = mut.type != "wild_type")) +
+    facet_wrap(gene ~ ., scales = "free_x") +
+    #facet_wrap_paginate(gene ~ ., scales = "free_x", ncol = 3, nrow = 2) + # !!!!
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = 45)) +
+    labs(x = "", y = "AUC")
+  
+  
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
   df <- LFC %>%
