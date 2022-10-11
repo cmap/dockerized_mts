@@ -2,7 +2,7 @@
 
 ## Assemble overview
 
-Conversion from LXB files from Luminex bead scanners to measured fluorescent intensity (MFI) values 
+Collates information from JCSV files from scanners to capture measured fluorescent intensity (MFI) values.
 
 ## Docker image
 
