@@ -34,6 +34,10 @@ logger = logging.getLogger(setup_logger.LOGGER_NAME)
 _prism_cell_config_file_section = "PrismCell column headers"
 _davepool_analyte_mapping_file_section = "DavepoolAnalyteMapping column headers"
 
+pert_column_metadata_fields = ['pert_id', 'pert_dose', 'pert_type', 'pert_well', 'pert_dose_unit',
+                          'pert_iname']
+prismcell_row_metadata_fields = ['ccle_name', 'davepool_id', 'analyte_id', 'barcode_id', 'cell_iname', 'pool_id']
+
 API_URL = 'https://api.clue.io/api/'
 DEV_API_URL = 'https://dev-api.clue.io/api/'
 API_KEY = os.environ['API_KEY']
@@ -108,30 +112,6 @@ def truncate_data_objects_to_plate_map(davepool_data_objects, all_perturbagens, 
 
     return davepool_data_objects
 
-def setup_input_files(args):
-    # Check args for over-riding files, i.e. use of -csdf and -amf to override config paths to mapping files
-    # or, if not overridden, read PRISM cell line metadata from file specified in config file, and associate with assay_plate metadata
-
-    cp = configparser.ConfigParser()
-
-    if args.config_filepath:
-        config_path = path_utils.validate_path_as_uri(args.config_filepath)
-        page = urlopen(config_path)
-        content = page.read().decode('utf-8')
-        f = open("local.cfg", "w")
-        f.write(content)
-        f.close()
-        cp.read('local.cfg')
-    else:
-        #todo: download from s3 to overwrite local prism_pipeline.cfg
-        pass
-
-    cell_set_file_path = args.cell_set_definition_file if args.cell_set_definition_file else cp.get(args.assay_type, "cell_set_definition_file")
-    analyte_mapping_file_path = cp.get(args.assay_type, "analyte_mapping_file")
-
-    return (cp, cell_set_file_path, analyte_mapping_file_path)
-
-
 def main(args, all_perturbagens=None, assay_plates=None):
 
     prism_replicate_name = os.path.basename(args.csv_filepath).rsplit(".", 1)[0]
@@ -157,8 +137,6 @@ def main(args, all_perturbagens=None, assay_plates=None):
     # Write args used to yaml file
     write_args_to_file(args, os.path.join(args.outfile, "assemble", prism_replicate_name, 'config.yaml'))
 
-    (cp, cell_set_file, analyte_mapping_file) = setup_input_files(args)
-
     #Select API
     api_url = DEV_API_URL if args.dev else API_URL
 
@@ -170,7 +148,7 @@ def main(args, all_perturbagens=None, assay_plates=None):
         raise ValueError("One of -plate_map_path or -map_src_plate is required")
 
     for pert in all_perturbagens:
-        pert.validate_properties(ast.literal_eval(cp.get("required_metadata_fields", "column_metadata_fields")))
+        pert.validate_properties(pert_column_metadata_fields)
 
     #read actual data from relevant csv files, associate it with davepool ID
     prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type, api_url=api_url)
@@ -179,9 +157,9 @@ def main(args, all_perturbagens=None, assay_plates=None):
 
     logger.info("len(prism_cell_list):  {}".format(len(prism_cell_list)))
 
-    expected_prism_cell_metadata_fields = ast.literal_eval(cp.get("required_metadata_fields","row_metadata_fields"))
+    #expected_prism_cell_metadata_fields = prismcell_row_metadata_fields
     for cell in prism_cell_list:
-        cell.validate_properties(expected_prism_cell_metadata_fields)
+        cell.validate_properties(prismcell_row_metadata_fields)
 
     # truncate csv to plate map size if indicated by args.truncate_to_plate_map
     truncate_data_objects_to_plate_map(davepool_data_objects, all_perturbagens, args.truncate_to_plate_map)
