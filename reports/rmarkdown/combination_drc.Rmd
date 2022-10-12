@@ -343,22 +343,6 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 
 ## Curve fitting method
 
-Dose response curves fit for `r params$comp`.Robust 4-parameter dose-response curves (DRCs) are fit for each cell line using the viability metrics (see the Data Processing section). The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
-
-$$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
-
-These data, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. Some cell lines may be missing due to insensitivity and/or inability to fit a standard curve to the data (see a standard PRISM report for more information on curve fitting techniques).
-
-Additionally, the table includes a mean synergy score for each combination dose response curve. Synergy score is in terms of LFC, therefore the mean synergy score (MSS) is as follows:
-
-$$MSS = log(\frac{1}{n}\sum_{i=1}^n2^{s_{i}}) $$ 
-
-where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose. 
-
-NEW 
-
-
-
 This report displays the dose response curves (DRC) fit for `r params$comp` combination. The next tab shows DRC for single treatment compounds (screened with at least 4 distinct doses), observed combination effects, and inferred total effect under the assumption of no interaction between the compounds (assuming Bliss model of independent effects). The discrepancy between the observed and inferred curves implies synergistic or antagonistic effects.
 
 The second plot shows the AUC of the combination versus the Bliss expected AUC. Each value is calculated by taking the mean fold-change across doses with a given anchor dose as a proxy for AUC. Below this graph is an interactive table, where each row represents a cell line and an anchor pair along with its dose-response parameters for the observed effects and an overall interaction statistic (MSS). Please see below for the details of these parameters/metrics.
@@ -376,15 +360,13 @@ This is implemented using the R's dr4pl package, specifying an upper limit betwe
 **What are the three curves in the dose response graph?** <br> 
 Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself <br> 
 Combination - Dose response curve the compound being varied with an anchor compound and dose  <br> 
-BLISS - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. As such, the model assumes the log fold changes (LFCs) of the single compound and anchor compound for respective fixed doses is additive and their fold changes (FCs) are multiplicative. 
+Bliss - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. As such, the model assumes the log fold changes (LFCs) of the single compound and anchor compound for respective fixed doses is additive and their fold changes (FCs) are multiplicative. 
 
 **How is AUC calculated for combination and expected Bliss?**
 
 $$AUC_{combo} \approx \frac{1}{n}\sum_{i=1}^nFC_{c_i}$$
 
 $$AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$$
-
-
 
 
 
