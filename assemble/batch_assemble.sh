@@ -60,7 +60,9 @@ echo "PLATE IS: ${PLATE}"
 
 IFS='_' read -r -a plate_token <<< "${PLATE}";
 
-MAP_SRC_NAME=${plate_token[0]}.${plate_token[3]}
+IFS='.' read -r -a replicate_token <<< "${plate_token[3]}";
+
+MAP_SRC_NAME=${plate_token[0]}.${replicate_token[0]}
 
 if [ "${REPLICATE_MAP}" = "TRUE" ];
 then
