@@ -394,7 +394,7 @@ where $n$ is the total number of doses and $s_{i}$ is the synergy score for the 
 **What is synergy score? How is the MSS calculated?** <br> 
 The first tab (Synergy by Dose) shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model, where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). The synergy score is the expected value ($LFC_a + LFC_b$) subtracted by the observed ($LFC_c$) value. Large positive values indicate synergy ($LFC_a + LFC_b$ > $LFC_c$) while large negative values ($LFC_a + LFC_b$ < $LFC_c$) indicate antagonism. 
 
-The means synergy score (MSS) is an average metric of synergy across doses for a given compound. Because synergy score is in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}), the mean synergy score (MSS) is as follows:
+The means synergy score (MSS) is an average metric of synergy across doses for a given compound. Because synergy score is in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}$), the mean synergy score (MSS) is as follows:
 
 $$MSS = log(\frac{AUC_{combo}}{AUC_{bliss}}) \approx log(\frac{ \frac{1}{n}\sum_{i=1}^nFC_{c_i}}{\frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b})  $$ 
 
