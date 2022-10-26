@@ -69,4 +69,7 @@ biomarker_data/*.csv
 
 #scratch folder
 scratch/
+wkdir/
 wkdir/*
+
+.DS_Store
