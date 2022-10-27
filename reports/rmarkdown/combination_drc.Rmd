@@ -396,7 +396,7 @@ The first tab (Synergy by Dose) shows synergy score (x-axis) and the significanc
 
 The means synergy score (MSS) is an average metric of synergy across doses for a given compound. Because synergy score is in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}$), the mean synergy score (MSS) is as follows:
 
-$$MSS = log(\frac{AUC_{combo}}{AUC_{bliss}}) \approx log(\frac{ \frac{1}{n}\sum_{i=1}^nFC_{c_i}}{\frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b})  $$ 
+$$MSS = log(\frac{AUC_{bliss}}{AUC_{combo}}) \approx log(\frac{{\frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b}}{\frac{1}{n}\sum_{i=1}^nFC_{c_i}})  $$ 
 
 
 **What is the color scheme for the AUC graph?**
