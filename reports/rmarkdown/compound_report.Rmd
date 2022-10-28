@@ -2,6 +2,7 @@
 params:
   data_dir: "/Users/anup/work/1_Projects/Portal/mts019_validation_compounds_internal/MTS019_VALIDATION_COMPOUNDS_INTERNAL/PMTS051/BRD-A47706533"
   comp: "BRD-A47706533"
+  output_dir: "/Users/anup/work/1_Projects/Portal/report_files_by_plot_test"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -432,9 +433,11 @@ if (!is.null(DRC)) {
   
   
   
-  top_muts %>%
+  plot_data <- top_muts %>%
     dplyr::left_join(DRC %>% dplyr::distinct(ccle_name, auc)) %>% 
-    dplyr::mutate(gene = reorder(gene, minq)) %>% 
+    dplyr::mutate(gene = reorder(gene, minq)) 
+  
+  plot_data %>% 
     ggplot(aes(y = auc, x = mut.type, #reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
                color = mut.type)) +
     geom_boxplot(outlier.alpha = 0, color = "black") +
@@ -490,8 +493,11 @@ In this section, we explore the univariate associations between the PRISM sensit
 On each of the following tabs, the correlations and p-values for log-viability values at each dose, AUC scores and logIC50 values are shown. **Only the top 250 features, or top 25 negative and positive correlations based on q value, with a q value less than 0.1 at each dose are visualized**. Because correlations are done **at each dose and for AUC and logIC50** (in order to allow for analysis of relationships at particular doses and overall), the same feature may appear multiple times in the table. The dose or curve-level statistic used for correlation is noted in the "Dose" column. For each dataset, the q-values are computed from p-values using the Benjamini-Hochberg algorithm. Associations with q-values above 0.1 are filtered out. Also, the significant genes/features are illustrated on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. Data interpretation overviews are included above each plot.
 
 ```{r correlations, results='asis', include=T, fig.height=10}
+feat_plot_dfs = list()
+
+li = 1
 for (feat in corr_feats) {
-  cat(sprintf('\n\n## %s \n\n', feature_full[feat], '\n\n'))
+  cat(sprintf('\n\n## %s \n\n', feature_full[feat]))
   df <- corr_table %>%
     dplyr::filter(feature_type == feat)
   
@@ -504,39 +510,46 @@ for (feat in corr_feats) {
   
   print(paste("feature", feat, "length_q_lt0.1", nrow(plot_df)))
   
-  break
-  # if (nrow(plot_df) > 0) {
-  #   plot_df %<>%
-  #     dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
-  #     dplyr::arrange(q.val) %>%
-  #     dplyr::mutate(sign_rank = 1:n()) %>%
-  #     dplyr::ungroup() %>%
-  #     dplyr::filter(rank <= 250 | sign_rank <= 25)
-  #   
-  #   print(paste("feature", feat, "length_filtered", nrow(plot_df)))
+  if (nrow(plot_df) > 0) {
+    plot_df %<>%
+      dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
+      dplyr::arrange(q.val) %>%
+      dplyr::mutate(sign_rank = 1:n()) %>%
+      dplyr::ungroup() %>%
+      dplyr::filter(rank <= 250 | sign_rank <= 25)
     
-    # p <- plot_df %>%
-    #   ggplot() + geom_point(aes(x = coef, y = -log10(q.val),
-    #                             name = feature, color = pert_dose)) +
-    #   ylim(0, NA) +
-    #   labs(x = "Correlation", y = "-log10(q)", color = "Dose") +
-    #   geom_vline(aes(xintercept = 0), lty = 2, lwd =.5)
-    # p <- plotly::ggplotly(p)
+    # outpath = '/Users/anup/work/1_Projects/Portal/report_files_by_plot/correlation_analysis/'
+    # write.csv(plot_df, sprintf("%s%s_volcano_plot_data.csv", outpath, feat))
     
-    # cat(htmltools::knit_print.shiny.tag(p))
-  # }
-  
-  # dt <- DT::datatable(plot_df %>%
-  #                       dplyr::select(feature, coef, q.val, pert_iname, pert_dose) %>%
-  #                       dplyr::arrange(q.val) %>%
-  #                       dplyr::mutate(coef = signif(coef, 3),
-  #                                     q.val = signif(q.val, 3)),
-  #                     filter = "top", rownames = F, options = list(dom = "tp"),
-  #                     colnames = c("Feature", "Correlation", "q value", "Compound", "Dose")
-  # )
-  # 
-  # cat(htmltools::knit_print.shiny.tag(dt))
+    feat_plot_dfs[[li]] = plot_df
+    li = li + 1
+    
+    print(paste("feature", feat, "length_filtered", nrow(plot_df)))
+
+    p <- plot_df %>%
+      ggplot() + geom_point(aes(x = coef, y = -log10(q.val),
+                                name = feature, color = pert_dose)) +
+      ylim(0, NA) +
+      labs(x = "Correlation", y = "-log10(q)", color = "Dose") +
+      geom_vline(aes(xintercept = 0), lty = 2, lwd =.5)
+    p <- plotly::ggplotly(p)
+    #cat(htmltools::knit_print.shiny.tag(p))
+  }
+
+  dt <- DT::datatable(plot_df %>%
+                        dplyr::select(feature, coef, q.val, pert_iname, pert_dose) %>%
+                        dplyr::arrange(q.val) %>%
+                        dplyr::mutate(coef = signif(coef, 3),
+                                      q.val = signif(q.val, 3)),
+                      filter = "top", rownames = F, options = list(dom = "tp"),
+                      colnames = c("Feature", "Correlation", "q value", "Compound", "Dose")
+  )
+
+  #cat(htmltools::knit_print.shiny.tag(dt))
 }
+out = result %>% dplyr::bind_rows()
+
+write.csv()
 ```
 
 # Multivariate biomarker analysis{.tabset .tabset-fade .tabset-pills}
@@ -558,13 +571,15 @@ In each tab of the results section, we plot the R-squared value and the importan
 Please note that the feature importances are not directional quantities. For the directionality of the genomic features, refer to the univariate correlation analysis.
 
 ```{r, echo=F, message=F, warning=F}
-DT::datatable(model_table %>%
+dt = model_table %>%
                 dplyr::select(pert_iname, pert_dose, model, R2, PearsonScore) %>%
                 dplyr::mutate_at(vars(R2, PearsonScore),
                                  funs(signif(., 3))) %>%
-                dplyr::arrange(desc(R2)),
-              filter = "top", rownames = F,
-              colnames = c("Compound", "Dose", "Model", "R-squared", "Pearson Score"))
+                dplyr::arrange(desc(R2))
+            
+DT::datatable(dt, filter = "top", rownames = F,
+              colnames = c("Compound", "Dose", "Model", "R-squared", "Pearson Score")
+)
 ```
 
 ## Results {.tabset .tabset-fade}
@@ -578,9 +593,11 @@ df <- rf_table %>%
   dplyr::filter(model == "ccle") %>%
   dplyr::select(-model)
 
-p <- df %>%
+ccle_data <- df %>%
   dplyr::filter(rank == 1) %>%
-  dplyr::select(feature, R2, PearsonScore, RF.imp.mean, pert_iname, pert_dose) %>%
+  dplyr::select(feature, R2, PearsonScore, RF.imp.mean, pert_iname, pert_dose)
+
+p <- ccle_data %>%
   ggplot(aes(x = R2, y = RF.imp.mean, label = feature, color = pert_dose)) +
   geom_point() +
   labs(x = "Model R2", y = "Variable Importance", color = "Dose") +
@@ -588,12 +605,14 @@ p <- df %>%
 
 plotly::ggplotly(p)
 
-DT::datatable(df %>%
+ccle_dt = df %>%
                 dplyr::filter(rank <= 100) %>%
                 dplyr::select(feature, R2, rank, RF.imp.mean, RF.imp.stability, RF.imp.sd, pert_iname, pert_dose) %>%
                 dplyr::mutate_at(vars(RF.imp.mean, RF.imp.sd, RF.imp.stability, R2),
                                  funs(signif(., 3))) %>%
-                dplyr::arrange(rank),
+                dplyr::arrange(rank)
+
+DT::datatable(ccle_dt,
               filter = "top", rownames = F, options = list(dom = "tp"),
               colnames = c("Feature", "r-squared", "Rank", "Feature importance", "Feature stability",
                            "Feature importance SD", "Compound", "Dose"))
