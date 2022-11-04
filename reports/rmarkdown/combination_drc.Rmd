@@ -1,12 +1,12 @@
 ---
 params:
-  data_dir: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/O6-BENZYLGUANINE_TEMOZOLOMIDE
-  comp: O6-BENZYLGUANINE_TEMOZOLOMIDE
-  data_dir_b: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/O6-BENZYLGUANINE
-  comp_b: O6-BENZYLGUANINE
-  data_dir_a: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/TEMOZOLOMIDE
-  comp_a: TEMOZOLOMIDE
-  qc_path:  /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/data/CPS06_VALIDATION_COMPOUNDS_QC_TABLE.csv
+  data_dir: '/Users/shiker/Documents/reports/CPS05_Pfizer/CPS007/IBT-002_IBT-003'
+  comp: 'IBT-002_IBT-003'
+  data_dir_b: ''
+  comp_b: ''
+  data_dir_a: ''
+  comp_a: ''
+  qc_path:  /Users/shiker/Documents/reports/CPS05_Pfizer/data/CPS005_DMC_PFIZER_QC_TABLE.csv 
   
 output:
   html_document:
@@ -120,6 +120,29 @@ plot_meta <- drc_meta$varied_iname %>% unique()
 
 
 ### Single Treatment 
+
+
+constituents <- stringr::str_split(params$comp, pattern = fixed("_"))[[1]]
+plate_dir <- dirname(params$data_dir)
+
+const_a_path <-  file.path(plate_dir, const)
+
+
+
+# NEW CODE 
+drc_const <- list()
+for (const in constituents) {
+  const_path <- file.path(plate_dir, const)
+  const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
+  # read in DRC if available
+  if (length(const_drc_path) == 1) {
+    drc_const %<>% dplyr::bind_rows(
+      data.table::fread(const_drc_path))
+  } else {
+  message("No DRC file found")
+  quit(save = "no")
+}
+}
 
 # file paths
 lfc_path_a <- list.files(params$data_dir_a, "LEVEL4_LFC_COMBAT", full.names = T)
