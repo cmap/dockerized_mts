@@ -360,7 +360,7 @@ This is implemented using the R's dr4pl package, specifying an upper limit betwe
 **What are the three curves in the dose response graph?** <br> 
 Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself <br> 
 Combination - Dose response curve the compound being varied with an anchor compound and dose  <br> 
-Bliss - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. As such, the model assumes the log fold changes (LFCs) of the single compound and anchor compound for respective fixed doses is additive and their fold changes (FCs) are multiplicative. 
+Bliss - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. As such, the model assumes the log fold changes (LFCs) of the single compound and anchor compound for respective fixed doses are additive and their fold changes (FCs) are multiplicative. 
 
 **How is AUC calculated for combination and expected Bliss?**
 
@@ -369,6 +369,7 @@ $$AUC_{combo} \approx \frac{1}{n}\sum_{i=1}^nFC_{c_i}$$
 $$AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$$
 
 
+where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose.
 
 **What does each column of the table stand for?** <br>
 Compound - Compound code <br> 
@@ -387,14 +388,13 @@ Anchor Dose Viability - Viability of added dose
 
 
 
-where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose.
 
 
 
 **What is synergy score? How is the MSS calculated?** <br> 
 The first tab (Synergy by Dose) shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model, where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). The synergy score is the expected value ($LFC_a + LFC_b$) subtracted by the observed ($LFC_c$) value. Large positive values indicate synergy ($LFC_a + LFC_b$ > $LFC_c$) while large negative values ($LFC_a + LFC_b$ < $LFC_c$) indicate antagonism. 
 
-The means synergy score (MSS) is an average metric of synergy across doses for a given compound. Because synergy score is in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}$), the mean synergy score (MSS) is as follows:
+The mean synergy score (MSS) is an average metric of synergy across doses for a given compound. Because synergy score is in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}$), the mean synergy score (MSS) is as follows:
 
 $$MSS = log(\frac{AUC_{bliss}}{AUC_{combo}}) \approx log(\frac{{\frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b}}{\frac{1}{n}\sum_{i=1}^nFC_{c_i}})  $$ 
 
@@ -444,6 +444,13 @@ for (comp in varied_comps) {
                               dplyr::arrange(auc),
                             ~cell_id, group = comp)
   
+  anchor_FC_mark <- bliss_data %>% dplyr::filter(x == min(bliss_data$x))
+  
+  curves_anchor <- highlight_key(anchor_FC_mark %>%
+                              dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+                              dplyr::arrange(auc),
+                            ~cell_id, group = comp)
+  
   # lfc_a <- highlight_key(lfc_a %>%
   #                          dplyr::inner_join(drc_meta_a) %>%
   #                          dplyr::rename(Dose = pert_dose) %>%
@@ -461,6 +468,17 @@ for (comp in varied_comps) {
   #                        ~cell_id, group = comp)
   # 
   
+  annot <- list(x = anchor_FC_mark$x-1,
+                  y = anchor_FC_mark$bliss,
+                  text = 'ADV',
+                  xref = "x",
+                  yref = "y",
+                  showarrow = TRUE,
+                  arrowhead = 4,
+                  arrowsize = .5,
+                  ax = 20,
+                  ay = -40)
+  
   p <- plot_ly() %>%
     add_trace(data = curves_all_a,
             x = ~x, y = ~y,
@@ -474,6 +492,9 @@ for (comp in varied_comps) {
               x = ~x, y = ~bliss, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
               hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'BLISS - No Interaction') %>%
+    add_trace(data = curves_anchor,
+              x = ~x, y = ~bliss, 
+              type = "scatter", mode = "markers", opacity = 0.1, name = 'Anchor Dose Viability' ) %>%
     config(doubleClick = "reset") %>%
     layout(xaxis = list(title = "Dose", type = "log"),
            yaxis = list(title = "Viability", range = c(0, 1.5)),
@@ -482,6 +503,8 @@ for (comp in varied_comps) {
               dynamic = FALSE, selectize = TRUE, persistent = FALSE,
               opacityDim = 1, defaultValues = "",
               selected = attrs_selected(opacity = 1))
+    
+
 
   cat(htmltools::knit_print.shiny.tag(p))
 
