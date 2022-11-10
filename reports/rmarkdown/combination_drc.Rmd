@@ -60,6 +60,8 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 lfc_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
 drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
+
+lfc_path <- list.files(params$data_dir, "LEVEL5", full.names = T)
 # read in LFC
 if (length(lfc_path) == 1) {
   lfc <- data.table::fread(lfc_path)
@@ -125,7 +127,7 @@ plot_meta <- drc_meta$varied_iname %>% unique()
 constituents <- stringr::str_split(params$comp, pattern = fixed("_"))[[1]]
 plate_dir <- dirname(params$data_dir)
 
-const_a_path <-  file.path(plate_dir, const)
+# const_a_path <-  file.path(plate_dir, const)
 
 
 
@@ -144,58 +146,35 @@ for (const in constituents) {
 }
 }
 
-# file paths
-lfc_path_a <- list.files(params$data_dir_a, "LEVEL4_LFC_COMBAT", full.names = T)
-drc_path_a <- list.files(params$data_dir_a, "DRC_TABLE", full.names = T)
-
-# read in LFC
-if (length(lfc_path_a) == 1) {
-  lfc_a <- data.table::fread(lfc_path_a)
-} else {
-  message("No LFC file found")
-  quit(save = "no")
-}
-
-# read in DRC if available
-if (length(drc_path_a) == 1) {
-  DRC_a <- data.table::fread(drc_path_a)
-} else {
-  message("No DRC file found")
-  quit(save = "no")
-}
-
-pert_iname_a <- lfc_a$pert_iname %>% unique()
-
-# dose response
-drc_a <- data.table::fread(file.path(params$data_dir_a, "DRC_TABLE.csv"))
-
 # distinct conditions (cell lines)
-conditions_a <- drc_a %>%
+conditions_const <- drc_const %>%
   dplyr::arrange(auc) %>%
   dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "varied_iname", "added_compounds", "added_doses"))))
 
+
 # generate plots for each cell line
-drc_plots_a <- list()
-for (i in 1:nrow(conditions_a)) {
-  condition_a <- conditions_a[i,]
+drc_plots_const <- list()
+for (i in 1:nrow(conditions_const)) {
+  condition_const <- conditions_const[i,]
   
-  d_a <- drc_a %>% dplyr::inner_join(condition_a)
-  xx_a = seq(log2(min(d_a$min_dose)), log2(max(d_a$max_dose)), length.out = 40)
-  res_a <- apply(d_a, 1, function(p) dr_func(p, xx_a))
-  func_tab_a <- cbind(xx_a, res_a)
-  func_tab_a %<>% as_tibble() %>%
+  d_const <- drc_const %>% dplyr::inner_join(condition_const)
+  xx_const = seq(log2(min(d_const$min_dose)), log2(max(d_const$max_dose)), length.out = 40)
+  res_const <- apply(d_const, 1, function(p) dr_func(p, xx_const))
+  func_tab_const <- cbind(xx_const, res_const)
+  func_tab_const %<>% as_tibble() %>%
     dplyr::rename(x = 1, y = 2) %>%
-    dplyr::bind_cols(condition_a) %>%
-    dplyr::left_join(drc_a)
-  drc_plots_a[[i]] <- func_tab_a
+    dplyr::bind_cols(condition_const) %>%
+    dplyr::left_join(drc_const)
+  drc_plots_const[[i]] <- func_tab_const
 }
-drc_plots_a %<>% 
+drc_plots_const %<>% 
   dplyr::bind_rows() %>%
   dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"),
                 x = 2^x)
 
+
 # metadata for each row
-drc_meta_a <- drc_plots_a %>%
+drc_meta_const <- drc_plots_const %>%
   dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "pert_plate", "varied_iname", "added_compounds",
                                   "added_doses", "ec50", "slope", "upper_limit", "lower_limit", "auc", "log2.ic50")))) %>%
   dplyr::mutate(ic50 = 2^log2.ic50) %>%
@@ -203,22 +182,107 @@ drc_meta_a <- drc_plots_a %>%
   dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
 
 # indivual plots
-plot_meta_a <- drc_meta_a$varied_iname %>% unique()
+plot_meta_const <- drc_meta_const$varied_iname %>% unique()
 
 
+# 
+# # file paths
+# lfc_path_a <- list.files(params$data_dir_a, "LEVEL4_LFC_COMBAT", full.names = T)
+# drc_path_a <- list.files(params$data_dir_a, "DRC_TABLE", full.names = T)
+# 
+# # read in LFC
+# if (length(lfc_path_a) == 1) {
+#   lfc_a <- data.table::fread(lfc_path_a)
+# } else {
+#   message("No LFC file found")
+#   quit(save = "no")
+# }
+# 
+# # read in DRC if available
+# if (length(drc_path_a) == 1) {
+#   DRC_a <- data.table::fread(drc_path_a)
+# } else {
+#   message("No DRC file found")
+#   quit(save = "no")
+# }
+# 
+# pert_iname_a <- lfc_a$pert_iname %>% unique()
+# 
+# # dose response
+# drc_a <- data.table::fread(file.path(params$data_dir_a, "DRC_TABLE.csv"))
+# 
+# # distinct conditions (cell lines)
+# conditions_a <- drc_a %>%
+#   dplyr::arrange(auc) %>%
+#   dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "varied_iname", "added_compounds", "added_doses"))))
+# 
+# # generate plots for each cell line
+# drc_plots_a <- list()
+# for (i in 1:nrow(conditions_a)) {
+#   condition_a <- conditions_a[i,]
+#   
+#   d_a <- drc_a %>% dplyr::inner_join(condition_a)
+#   xx_a = seq(log2(min(d_a$min_dose)), log2(max(d_a$max_dose)), length.out = 40)
+#   res_a <- apply(d_a, 1, function(p) dr_func(p, xx_a))
+#   func_tab_a <- cbind(xx_a, res_a)
+#   func_tab_a %<>% as_tibble() %>%
+#     dplyr::rename(x = 1, y = 2) %>%
+#     dplyr::bind_cols(condition_a) %>%
+#     dplyr::left_join(drc_a)
+#   drc_plots_a[[i]] <- func_tab_a
+# }
+# drc_plots_a %<>% 
+#   dplyr::bind_rows() %>%
+#   dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"),
+#                 x = 2^x)
+# 
+# # metadata for each row
+# drc_meta_a <- drc_plots_a %>%
+#   dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "pert_plate", "varied_iname", "added_compounds",
+#                                   "added_doses", "ec50", "slope", "upper_limit", "lower_limit", "auc", "log2.ic50")))) %>%
+#   dplyr::mutate(ic50 = 2^log2.ic50) %>%
+#   dplyr::select(-log2.ic50) %>%
+#   dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
+# 
+# # indivual plots
+# plot_meta_a <- drc_meta_a$varied_iname %>% unique()
+# 
+# 
+# 
+# ### Anchor Dose 
+# lfc_path_b <- list.files(params$data_dir_b, "LEVEL5", full.names = T)
+# 
+# # read in LFC
+# if (length(lfc_path_b) == 1) {
+#   lfc_b <- data.table::fread(lfc_path_b)
+# } else {
+#   message("No LFC file found")
+#   quit(save = "no")
+# }
 
-### Anchor Dose 
-lfc_path_b <- list.files(params$data_dir_b, "LEVEL5", full.names = T)
-
-# read in LFC
-if (length(lfc_path_b) == 1) {
-  lfc_b <- data.table::fread(lfc_path_b)
-} else {
+lfc_const <- list()
+for (const in constituents) {
+  const_path <- file.path(plate_dir, const)
+  const_lfc_path <- list.files(const_path, "LEVEL5", full.names = T)
+  # read in DRC if available
+  if (length(const_lfc_path) == 1) {
+    lfc_const %<>% dplyr::bind_rows(
+      data.table::fread(const_lfc_path))
+  } else {
   message("No LFC file found")
   quit(save = "no")
 }
+}
 
-bliss_data <- lfc_b %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_a) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+
+bliss_data_const <- lfc_const %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_const) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+
+
+
+
+
+
+# bliss_data <- lfc_b %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_a) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
 
 #### Synergy Scores
@@ -355,6 +419,39 @@ pseudo_auc <- dplyr::bind_rows(pseudo_auc_1, pseudo_auc_2) %>%
 #comps <- pseudo_auc$pert_iname %>% unique()
 
 pseudo_auc
+
+
+# DETERMINING ANCHOR DOSES
+pert_dose_1_list <- combo_lfc %>% splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = F, type.convert = T) %>% dplyr::select(pert_dose_1) 
+
+const_1_doses <- pert_dose_1_list %>% dplyr::distinct() %>% dplyr::arrange(pert_dose_1)
+
+const_1_anchors <- const_1_doses[which(table(pert_dose_1_list) == max(table(pert_dose_1_list), na.rm = TRUE))]$pert_dose_1
+
+
+pert_dose_2_list <- combo_lfc %>% splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = F, type.convert = T) %>% dplyr::select(pert_dose_2) 
+
+const_2_doses <- pert_dose_2_list %>% dplyr::distinct() %>% dplyr::arrange(pert_dose_2)
+
+const_2_anchors <- const_2_doses[which(table(pert_dose_2_list) == max(table(pert_dose_2_list), na.rm = TRUE))]$pert_dose_2
+
+
+drc_plots_const_1 <- drc_plots_const %>% dplyr::filter(varied_iname == constituents[1])
+drc_plots_const_2 <- drc_plots_const %>% dplyr::filter(varied_iname == constituents[2])
+
+
+
+bliss_data_const_1 <- lfc_const %>% dplyr::filter(pert_iname == constituents[2]) %>% filter(pert_dose %in% const_2_anchors) %>% dplyr::inner_join(drc_plots_const_1) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+
+bliss_data_const_2 <- lfc_const %>% dplyr::filter(pert_iname == constituents[1]) %>% filter(pert_dose %in% const_1_anchors) %>% dplyr::inner_join(drc_plots_const_2) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+
+
+bliss_data_const <- lfc_const %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_const) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+
 ```
 
 ---
@@ -445,7 +542,7 @@ pseudo_auc %<>% dplyr::mutate(MSS = log2(B/FC)) %>% rename(varied_iname = pert_i
 drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname) %>% dplyr::distinct(cell_id, MSS, varied_iname))
 
 
-drc_meta %<>% dplyr::left_join(bliss_data %>% dplyr::select(cell_id, FC_cb, varied_iname) %>% dplyr::distinct(cell_id, FC_cb, varied_iname))
+drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::select(cell_id, FC_cb, varied_iname) %>% dplyr::distinct(cell_id, FC_cb, varied_iname))
 
 
 for (comp in varied_comps) {
@@ -457,22 +554,22 @@ for (comp in varied_comps) {
                                 dplyr::arrange(auc),
                               ~cell_id, group = comp)
   
-  curves_all_a <- highlight_key(drc_plots_a %>%
+  curves_all_a <- highlight_key(drc_plots_const %>%
                               dplyr::filter(is.finite(auc), varied_iname == comp) %>%
                               dplyr::arrange(auc),
                             ~cell_id, group = comp)
   
-  curves_bliss <- highlight_key(bliss_data %>%
+  curves_bliss <- highlight_key(bliss_data_const %>%
                               dplyr::filter(is.finite(auc), varied_iname == comp) %>%
                               dplyr::arrange(auc),
                             ~cell_id, group = comp)
   
-  anchor_FC_mark <- bliss_data %>% dplyr::filter(x == min(bliss_data$x))
-  
-  curves_anchor <- highlight_key(anchor_FC_mark %>%
-                              dplyr::filter(is.finite(auc), varied_iname == comp) %>%
-                              dplyr::arrange(auc),
-                            ~cell_id, group = comp)
+  # anchor_FC_mark <- bliss_data %>% dplyr::filter(x == min(bliss_data$x))
+  # 
+  # curves_anchor <- highlight_key(anchor_FC_mark %>%
+  #                             dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+  #                             dplyr::arrange(auc),
+  #                           ~cell_id, group = comp)
   
   # lfc_a <- highlight_key(lfc_a %>%
   #                          dplyr::inner_join(drc_meta_a) %>%
@@ -491,16 +588,16 @@ for (comp in varied_comps) {
   #                        ~cell_id, group = comp)
   # 
   
-  annot <- list(x = anchor_FC_mark$x-1,
-                  y = anchor_FC_mark$bliss,
-                  text = 'ADV',
-                  xref = "x",
-                  yref = "y",
-                  showarrow = TRUE,
-                  arrowhead = 4,
-                  arrowsize = .5,
-                  ax = 20,
-                  ay = -40)
+  # annot <- list(x = anchor_FC_mark$x-1,
+  #                 y = anchor_FC_mark$bliss,
+  #                 text = 'ADV',
+  #                 xref = "x",
+  #                 yref = "y",
+  #                 showarrow = TRUE,
+  #                 arrowhead = 4,
+  #                 arrowsize = .5,
+  #                 ax = 20,
+  #                 ay = -40)
   
   p <- plot_ly() %>%
     add_trace(data = curves_all_a,
@@ -515,9 +612,9 @@ for (comp in varied_comps) {
               x = ~x, y = ~bliss, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
               hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'BLISS - No Interaction') %>%
-    add_trace(data = curves_anchor,
-              x = ~x, y = ~bliss, 
-              type = "scatter", mode = "markers", opacity = 0.1, name = 'Anchor Dose Viability' ) %>%
+    # add_trace(data = curves_anchor,
+    #           x = ~x, y = ~bliss, 
+    #           type = "scatter", mode = "markers", opacity = 0.1, name = 'Anchor Dose Viability' ) %>%
     config(doubleClick = "reset") %>%
     layout(xaxis = list(title = "Dose", type = "log"),
            yaxis = list(title = "Viability", range = c(0, 1.5)),
