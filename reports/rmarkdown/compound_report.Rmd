@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: "~/Desktop/combination_compare/new_veneto/BRD-K62391742"
-  comp: "BRD-K62391742"
+  data_dir: "/Users/anup/work/1_Projects/Portal/mts019_validation_compounds_internal/MTS019_VALIDATION_COMPOUNDS_INTERNAL/PMTS051/BRD-A47706533"
+  comp: "BRD-A47706533"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -159,11 +159,20 @@ To navigate through the report please click on the blue tabs under each heading.
 This compound was screened in the PRISM assay at `r n_doses`-point dose (3-fold dilution) with a `r n_days` day treatment with `r n_lines` cancer cell lines passing QC. Two PRISM cell line collections were used in the assay: PR500 (including only adherent cell lines), and PR300+ (including adherent and suspension cell lines). Three benchmark compounds – included in the MTS Validation set – were also tested at dose to ensure high data quality. All compounds were run in triplicate, and each plate contained positive (Bortezomib, 20uM) and negative (DMSO) controls.
 
 ```{r compound}
+plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+dir.create(plot_files_dir, showWarnings = FALSE)
+
+
+
 DT::datatable(compounds,
               options = list(dom = "t", ordering = TRUE,
                              lengthChange = FALSE, scrollY = "350px", paging = FALSE),
               colnames = c("Compound name", "Compound ID", "Dose", "Dose with units", "Plate"),
               rownames = FALSE)
+
+exp_details_path = file.path(plot_files_dir, 'experimental_details')
+dir.create(exp_details_path, showWarnings = FALSE)
+write.csv(compounds, file.path(exp_details_path, 'experimental_details_table.csv'), row.names=FALSE)
 ```
 
 # Data {.tabset .tabset-fade .tabset-pills}
@@ -195,6 +204,11 @@ heatmaply::heatmaply(pmin(2^LFC_matrix, 1), Colv = F, Rowv = F,
                      plot_method = "plotly", limits = c(0, 1),
                      label_names = c("Cell line", "Dose", "Viability"),
                      key.title = "Viability")
+
+heatmap_path = file.path(plot_files_dir, 'heatmap')
+dir.create(heatmap_path, showWarnings = FALSE)
+write.csv(LFC_matrix, file.path(heatmap_path, 'heatmap_matrix.csv'), row.names=TRUE)
+
 ```
 
 ## Viability table
@@ -202,16 +216,23 @@ heatmaply::heatmaply(pmin(2^LFC_matrix, 1), Colv = F, Rowv = F,
 The $\log_2$ fold-change and viability values for each cell line at each dose are presented in the table below. Please note the same table is also available in `Compound Data > Replicate collapsed viability data`.
 
 ```{r viab table, echo=F, message=F, warning=F}
-DT::datatable(LFC %>%
+viability_table_dt = LFC %>%
                 dplyr::distinct(ccle_name, culture, pool_id, pert_dose,
                                 pert_vehicle, LFC_cb) %>%
                 dplyr::mutate(viab = signif(2^LFC_cb, 3),
                               LFC_cb = signif(LFC_cb, 3)) %>%
-                dplyr::arrange(viab),
+                dplyr::arrange(viab)
+
+DT::datatable(viability_table_dt,
               filter = "top", rownames = F,
               colnames = c("Cell line", "Culture", "Pool", "Dose",
                            "Vehicle", "log2-fold change", "Viability"),
               options = list(dom = "tp"))
+
+
+viability_path = file.path(plot_files_dir, 'viability')
+dir.create(viability_path, showWarnings = FALSE)
+write.csv(viability_table_dt, file.path(viability_path, 'viability_table.csv'), row.names=FALSE)
 
 ```
 
@@ -256,27 +277,36 @@ lin_tab <- plot_lineages %>%
 
 p_table <- lin_tab %>%
   distinct(lineage, effect_size, q.value, pert_iname, pert_dose) %>%
-  dplyr::filter(q.value < 0.1)
+  dplyr::filter(q.value < 0.1) %>%
+  dplyr::mutate(neg_log10_qval = -log10(q.value))
 
 if(nrow(p_table) > 0){
   p <- p_table %>%
-    ggplot() + geom_point(aes(x = effect_size, y =  -log10(q.value),
+    ggplot() + geom_point(aes(x = effect_size, y =  neg_log10_qval,
                               color = pert_dose, name = lineage)) +
     geom_vline(aes(xintercept = 0), lty = 2, lwd =.5) +
     labs(x = "Effect Size", color = "Dose")
   plotly::ggplotly(p)
 }
 
-DT::datatable(lin_tab %>%
+lin_tab_dt = lin_tab %>%
                 dplyr::inner_join(n_lines) %>%
                 dplyr::filter(n_lines >= 5) %>%
                 dplyr::distinct(lineage, lin_abbreviation, n_lines,
                                 effect_size, q.value, pert_iname, pert_dose) %>%
                 dplyr::arrange(q.value) %>%
                 dplyr::mutate(effect_size = signif(effect_size, 3),
-                              q.value = signif(q.value, 3)),
+                              q.value = signif(q.value, 3))
+DT::datatable(lin_tab_dt,
               filter = "top", rownames = F, options = list(dom = "tp"),
               colnames = c("Lineage", "Abbreviation", "Effect size", "q value", "Compound", "Dose", "# lines"))
+
+
+lineage_enrichment_path = file.path(plot_files_dir, 'lineage_enrichment')
+dir.create(lineage_enrichment_path, showWarnings = FALSE)
+write.csv(p_table, file.path(lineage_enrichment_path, 'lineage_enrichment_volcano_plot.csv'), row.names=FALSE)
+write.csv(lin_tab_dt, file.path(lineage_enrichment_path, 'lineage_enrichment_data_table.csv'), row.names=FALSE)
+
 ```
 
 ## Plots by lineage
@@ -321,6 +351,8 @@ if (!is.null(DRC)) {
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
 }
+
+write.csv(df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_dat.csv'), row.names=FALSE)
 ```
 
 # Mutation effect{.tabset .tabset-fade .tabset-pills}
@@ -355,12 +387,12 @@ if(nrow(p_table) > 0){
   p_table %<>%
     dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
     dplyr::arrange(q.value) %>%
-    dplyr::mutate(sign_rank = 1:n()) %>%
+    dplyr::mutate(sign_rank = 1:n(), neg_log10_qval = -log10(q.value)) %>%
     dplyr::ungroup() %>%
     dplyr::filter(rank <= 250 | sign_rank <= 25)
   
   p <- p_table %>%
-    ggplot() + geom_point(aes(x = effect_size, y =  -log10(q.value),
+    ggplot() + geom_point(aes(x = effect_size, y =  neg_log10_qval,
                               color = pert_dose, name = feature)) +
     ylim(0, NA) +
     labs(x = "Effect Size", color = "Dose") +
@@ -376,47 +408,88 @@ DT::datatable(p_table %>%
               filter = "top", rownames = F, options = list(dom = "tp"),
               colnames = c("Mutation", "Effect size", "q value", "Compound", "Dose", "# lines")
 )
+
+mutations_path = file.path(plot_files_dir, 'mutation_effect')
+dir.create(mutations_path, showWarnings = FALSE)
+write.csv(p_table, file.path(mutations_path, 'mutations_volcano_plot_data.csv'), row.names=FALSE)
+write.csv(p_table, file.path(mutations_path, 'mutations_data_table.csv'), row.names=FALSE)
+
 ```
 
 ## Plots by mutation
 
-The AUC or log-fold change (when AUC is unavailable) of each cell line with the top 20 mutations is shown in the boxplots below. The black dashed line is the mean value across all cell lines.
-
+The AUC or log-fold change (when AUC is unavailable) of each cell line with the top 20 genes with mutations are shown in the boxplots below. The black dashed line is the mean value across all cell lines.
 
 ```{r, fig.height=10}
 if (!is.null(DRC)) {
-  m <- mean(DRC$auc)
-  df <- DRC %>%
-    dplyr::inner_join(mutations, by = "ccle_name") %>%
-    dplyr::group_by(across(any_of(c("mutation", "varied_iname", "added_compounds", "added_doses")))) %>%
-    dplyr::mutate(n = n()) %>%
-    dplyr::ungroup() %>%
-    dplyr::filter(n >= 5)
   
-  top_muts <- MUT_table %>%
-    dplyr::inner_join(df %>% dplyr::distinct(mutation, n),
-                      by = c("feature" = "mutation")) %>%
-    dplyr::filter(pert_dose == "log2.auc") %>%
-    dplyr::arrange(q.value)
+
+# Mutation Plot 
+# Goal: Take most significant mutated genes (top 20) and examine the correlation between AUC
+# and type of gene mutation (dam, hs, other, wildtype) 
+
+
+  m <- mean(DRC$auc) # mean AUC for DRC for all CCLE treated with a specific compound 
   
-  top_muts <- top_muts$feature[1:20]
   
-  df %<>%
-    dplyr::filter(mutation %in% top_muts)
+  muts = mutations %>% 
+    dplyr::filter(ccle_name %in% DRC$ccle_name) %>% # filtering out mutations that pertain to CCLE in DRC
+    dplyr::count(mutation) %>% # count occurrence of mutation 
+    dplyr::filter(n > 4) %>% # if less than 5 filter out 
+    .$mutation
   
-  p <- df %>%
-    ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
-               color = mutation)) +
-    geom_boxplot(outlier.alpha = 0) +
-    geom_vline(xintercept = m, linetype = "dashed") +
-    geom_jitter() +
-    theme(legend.position = "none") +
-    labs(x = "AUC", y = "Mutation")
   
-  p
+  top_muts <- MUT_table %>% 
+    dplyr::filter(pert_dose == "log2.auc", feature %in% muts) %>% # picking dose of log2.auc and mutations within muts 
+    dplyr::mutate(gene = word(feature, 2, sep = fixed("_")), # creating gene column 
+                  mut.type = word(feature,1,-2, sep = fixed("_"))) # creating mutation type column 
+  
+  
+  top.genes = top_muts %>% 
+    dplyr::group_by(gene) %>% # grouping by gene 
+    dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
+    dplyr::top_n(20, -minq) # returning list of top 20 smallest q values 
+  
+  
+  top_muts <- mutations %>% 
+    dplyr::distinct(mutation)  %>% # determining unique mutations 
+    dplyr::mutate(gene = word(mutation, 2, sep = fixed("_")), # adding gene word
+                  mut.type = word(mutation,1,-2, sep = fixed("_"))) %>% # adding mutation type 
+    dplyr::filter(gene %in% top.genes$gene) %>% # filtering from all the genes to only top genes 
+    dplyr::left_join(mutations) %>% # adding corresponding CCLE names associated with top mutations (multiple per gene and mutation type)
+    dplyr::filter(ccle_name %in% DRC$ccle_name) %>% # filtering out CCLE within DRC data 
+    dplyr::mutate(ix = 1) %>% # denoting mutations the gene and mutation type present in a particular CCLE
+    reshape2::acast(ccle_name ~ gene + mut.type, value.var = "ix", fill = 0) %>% 
+    reshape2::melt() %>% # one-hot encoding presence of specific genes within a CCLE (0 not present, 1 means present)
+    dplyr::mutate(gene = word(Var2, 1, sep = fixed("_")), # creating gene column 
+                  mut.type = word(Var2,2,-1, sep = fixed("_"))) %>% # creating mutation type column
+    dplyr::mutate(mut.type = ifelse(value == 1, mut.type, "wild_type")) %>% # if CCLE has 0 for a specific gene mutation type, denote it wild type 
+    dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) %>% # renaming columns 
+    dplyr::left_join(top.genes) # adding minimum q values for top genes 
+  
+  
+  
+  
+  plot_data <- top_muts %>%
+    dplyr::left_join(DRC %>% dplyr::distinct(ccle_name, auc)) %>% 
+    dplyr::mutate(gene = reorder(gene, minq)) 
+  
+  plot_data %>% 
+    ggplot(aes(y = auc, x = mut.type, #reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
+               color = mut.type)) +
+    geom_boxplot(outlier.alpha = 0, color = "black") +
+    geom_hline(yintercept = m, linetype = "dashed") +
+    geom_sina(size = 1.5, shape = 1, aes(alpha = mut.type != "wild_type")) +
+    facet_wrap(gene ~ ., scales = "free_x") +
+    #facet_wrap_paginate(gene ~ ., scales = "free_x", ncol = 3, nrow = 2) + # !!!!
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = 45)) +
+    labs(x = "", y = "AUC")
+  
+  
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
-  df <- LFC %>%
+  plot_data <- LFC %>%
     dplyr::inner_join(mutations, by = "ccle_name") %>%
     dplyr::group_by(across(any_of(c("mutation", "pert_dose", "pert_name")))) %>%
     dplyr::mutate(n = n()) %>%
@@ -430,10 +503,10 @@ if (!is.null(DRC)) {
   
   top_muts <- top_muts$feature[1:20]
   
-  df %<>%
+  plot_data %<>%
     dplyr::filter(mutation %in% top_muts)
   
-  p <- df %>%
+  p <- plot_data %>%
     ggplot(aes(x = LFC_cb, y = reorder(mutation, LFC_cb, function(x) -mean(x, na.rm = T)),
                color = mutation)) +
     geom_boxplot(outlier.alpha = 0) +
@@ -446,6 +519,9 @@ if (!is.null(DRC)) {
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
 }
+
+write.csv(plot_data, file.path(mutations_path, 'mutations_box_plot_data.csv'), row.names=FALSE)
+
 ```
 
 # Correlation analysis{.tabset .tabset-fade .tabset-pills}
@@ -457,35 +533,49 @@ In this section, we explore the univariate associations between the PRISM sensit
 On each of the following tabs, the correlations and p-values for log-viability values at each dose, AUC scores and logIC50 values are shown. **Only the top 250 features, or top 25 negative and positive correlations based on q value, with a q value less than 0.1 at each dose are visualized**. Because correlations are done **at each dose and for AUC and logIC50** (in order to allow for analysis of relationships at particular doses and overall), the same feature may appear multiple times in the table. The dose or curve-level statistic used for correlation is noted in the "Dose" column. For each dataset, the q-values are computed from p-values using the Benjamini-Hochberg algorithm. Associations with q-values above 0.1 are filtered out. Also, the significant genes/features are illustrated on interactive volcano plots. Please hover the mouse over the points in order to see the gene/feature IDs. Data interpretation overviews are included above each plot.
 
 ```{r correlations, results='asis', include=T, fig.height=10}
+feat_plot_dfs = list()
+
+li = 1
 for (feat in corr_feats) {
-  cat(sprintf('\n\n## %s \n\n', feature_full[feat], '\n\n'))
+  cat(sprintf('\n\n## %s \n\n', feature_full[feat]))
   df <- corr_table %>%
     dplyr::filter(feature_type == feat)
+  
+  print(paste("feature", feat, "length", nrow(df)))
   
   plot_df <- df %>%
     dplyr::filter(q.val < 0.1) %>%
     dplyr::mutate(is_positive = coef > 0) %>%
     dplyr::ungroup()
   
+  print(paste("feature", feat, "length_q_lt0.1", nrow(plot_df)))
+  
   if (nrow(plot_df) > 0) {
     plot_df %<>%
       dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
       dplyr::arrange(q.val) %>%
-      dplyr::mutate(sign_rank = 1:n()) %>%
+      dplyr::mutate(sign_rank = 1:n(), neg_log10_qval=-log10(q.val)) %>%
       dplyr::ungroup() %>%
       dplyr::filter(rank <= 250 | sign_rank <= 25)
     
+    # outpath = '/Users/anup/work/1_Projects/Portal/report_files_by_plot/correlation_analysis/'
+    # write.csv(plot_df, sprintf("%s%s_volcano_plot_data.csv", outpath, feat))
+    
+    feat_plot_dfs[[li]] = plot_df
+    li = li + 1
+    
+    print(paste("feature", feat, "length_filtered", nrow(plot_df)))
+
     p <- plot_df %>%
-      ggplot() + geom_point(aes(x = coef, y = -log10(q.val),
+      ggplot() + geom_point(aes(x = coef, y = neg_log10_qval,
                                 name = feature, color = pert_dose)) +
       ylim(0, NA) +
       labs(x = "Correlation", y = "-log10(q)", color = "Dose") +
       geom_vline(aes(xintercept = 0), lty = 2, lwd =.5)
     p <- plotly::ggplotly(p)
-    
-    cat(htmltools::knit_print.shiny.tag(p))
+    #cat(htmltools::knit_print.shiny.tag(p))
   }
-  
+
   dt <- DT::datatable(plot_df %>%
                         dplyr::select(feature, coef, q.val, pert_iname, pert_dose) %>%
                         dplyr::arrange(q.val) %>%
@@ -494,9 +584,15 @@ for (feat in corr_feats) {
                       filter = "top", rownames = F, options = list(dom = "tp"),
                       colnames = c("Feature", "Correlation", "q value", "Compound", "Dose")
   )
-  
-  cat(htmltools::knit_print.shiny.tag(dt))
+
+  #cat(htmltools::knit_print.shiny.tag(dt))
 }
+feat_plot_df = feat_plot_dfs %>% dplyr::bind_rows()
+
+correlation_analysis_path = file.path(plot_files_dir, 'correlation_analysis')
+dir.create(correlation_analysis_path, showWarnings = FALSE)
+#both volcano plot and data table use same data
+write.csv(feat_plot_df, file.path(correlation_analysis_path, 'correlation_analysis_data.csv'), row.names=FALSE)
 ```
 
 # Multivariate biomarker analysis{.tabset .tabset-fade .tabset-pills}
@@ -518,13 +614,20 @@ In each tab of the results section, we plot the R-squared value and the importan
 Please note that the feature importances are not directional quantities. For the directionality of the genomic features, refer to the univariate correlation analysis.
 
 ```{r, echo=F, message=F, warning=F}
-DT::datatable(model_table %>%
+mv_biomarker_path = file.path(plot_files_dir, 'multivariate_biomarker')
+dir.create(mv_biomarker_path, showWarnings = FALSE)
+
+dt = model_table %>%
                 dplyr::select(pert_iname, pert_dose, model, R2, PearsonScore) %>%
                 dplyr::mutate_at(vars(R2, PearsonScore),
                                  funs(signif(., 3))) %>%
-                dplyr::arrange(desc(R2)),
-              filter = "top", rownames = F,
-              colnames = c("Compound", "Dose", "Model", "R-squared", "Pearson Score"))
+                dplyr::arrange(desc(R2))
+            
+DT::datatable(dt, filter = "top", rownames = F,
+              colnames = c("Compound", "Dose", "Model", "R-squared", "Pearson Score")
+)
+
+write.csv(dt, file.path(mv_biomarker_path, 'multivariate_biomarker_info_table.csv'), row.names=FALSE)
 ```
 
 ## Results {.tabset .tabset-fade}
@@ -538,9 +641,11 @@ df <- rf_table %>%
   dplyr::filter(model == "ccle") %>%
   dplyr::select(-model)
 
-p <- df %>%
+ccle_data <- df %>%
   dplyr::filter(rank == 1) %>%
-  dplyr::select(feature, R2, PearsonScore, RF.imp.mean, pert_iname, pert_dose) %>%
+  dplyr::select(feature, R2, PearsonScore, RF.imp.mean, pert_iname, pert_dose)
+
+p <- ccle_data %>%
   ggplot(aes(x = R2, y = RF.imp.mean, label = feature, color = pert_dose)) +
   geom_point() +
   labs(x = "Model R2", y = "Variable Importance", color = "Dose") +
@@ -548,15 +653,21 @@ p <- df %>%
 
 plotly::ggplotly(p)
 
-DT::datatable(df %>%
+ccle_dt = df %>%
                 dplyr::filter(rank <= 100) %>%
                 dplyr::select(feature, R2, rank, RF.imp.mean, RF.imp.stability, RF.imp.sd, pert_iname, pert_dose) %>%
                 dplyr::mutate_at(vars(RF.imp.mean, RF.imp.sd, RF.imp.stability, R2),
                                  funs(signif(., 3))) %>%
-                dplyr::arrange(rank),
+                dplyr::arrange(rank)
+
+DT::datatable(ccle_dt,
               filter = "top", rownames = F, options = list(dom = "tp"),
               colnames = c("Feature", "r-squared", "Rank", "Feature importance", "Feature stability",
                            "Feature importance SD", "Compound", "Dose"))
+
+write.csv(ccle_data, file.path(mv_biomarker_path, 'multivariate_biomarker_ccle_volcano.csv'), row.names=FALSE)
+write.csv(ccle_dt, file.path(mv_biomarker_path, 'multivariate_biomarker_ccle_data_table.csv'), row.names=FALSE)
+
 ```
 
 ### Complete model (LIN + GE + MUT + CNA + CRISPR + RPPA + miRNA + MET)
@@ -568,9 +679,11 @@ df <- rf_table %>%
   dplyr::filter(model == "all") %>%
   dplyr::select(-model)
 
-p <- df %>%
+complete_model_data = df %>%
   dplyr::filter(rank == 1) %>%
-  dplyr::select(feature, R2, PearsonScore, RF.imp.mean, pert_iname, pert_dose) %>%
+  dplyr::select(feature, R2, PearsonScore, RF.imp.mean, pert_iname, pert_dose)
+
+p <- complete_model_data %>%
   ggplot(aes(x = R2, y = RF.imp.mean, label = feature, color = pert_dose)) +
   geom_point() +
   labs(x = "Model R2", y = "Variable Importance", color = "Dose") +
@@ -578,13 +691,18 @@ p <- df %>%
 
 plotly::ggplotly(p)
 
-DT::datatable(df %>%
+complete_model_dt = df %>%
                 dplyr::filter(rank <= 100) %>%
                 dplyr::select(feature, R2, rank, RF.imp.mean, RF.imp.stability, RF.imp.sd, pert_iname, pert_dose) %>%
                 dplyr::mutate_at(vars(RF.imp.mean, RF.imp.sd, RF.imp.stability, R2),
                                  funs(signif(., 3))) %>%
-                dplyr::arrange(rank),
+                dplyr::arrange(rank)
+
+DT::datatable(complete_model_dt,
               filter = "top", rownames = F, options = list(dom = "tp"),
               colnames = c("Feature", "r-squared", "Rank", "Feature importance", "Feature stability",
                            "Feature importance SD", "Compound", "Dose"))
+
+write.csv(complete_model_data, file.path(mv_biomarker_path, 'multivariate_biomarker_ccle_volcano.csv'), row.names=FALSE)
+write.csv(complete_model_dt, file.path(mv_biomarker_path, 'multivariate_biomarker_ccle_data_table.csv'), row.names=FALSE)
 ```
