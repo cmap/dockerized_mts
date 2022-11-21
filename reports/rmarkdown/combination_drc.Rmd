@@ -120,6 +120,9 @@ drc_meta <- drc_plots %>%
 # indivual plots
 plot_meta <- drc_meta$varied_iname %>% unique()
 
+# anchor doses 
+anchor_doses <- drc_plots %>% dplyr::select(added_compounds, added_doses) %>% dplyr::distinct()
+
 
 ### Single Treatment 
 
@@ -422,22 +425,27 @@ pseudo_auc
 
 
 # DETERMINING ANCHOR DOSES
-pert_dose_1_list <- combo_lfc %>% splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
-                          sep = "|", fixed = T,
-                          direction = "wide", drop = F, type.convert = T) %>% dplyr::select(pert_dose_1) 
+# pert_dose_1_list <- combo_lfc %>% splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
+#                           sep = "|", fixed = T,
+#                           direction = "wide", drop = F, type.convert = T) %>% dplyr::select(pert_dose_1) 
+# 
+# const_1_doses <- pert_dose_1_list %>% dplyr::distinct() %>% dplyr::arrange(pert_dose_1)
+# 
+# const_1_anchors <- const_1_doses[which(table(pert_dose_1_list) == max(table(pert_dose_1_list), na.rm = TRUE))]$pert_dose_1
+# 
+# 
+# pert_dose_2_list <- combo_lfc %>% splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
+#                           sep = "|", fixed = T,
+#                           direction = "wide", drop = F, type.convert = T) %>% dplyr::select(pert_dose_2) 
+# 
+# const_2_doses <- pert_dose_2_list %>% dplyr::distinct() %>% dplyr::arrange(pert_dose_2)
+# 
+# const_2_anchors <- const_2_doses[which(table(pert_dose_2_list) == max(table(pert_dose_2_list), na.rm = TRUE))]$pert_dose_2
 
-const_1_doses <- pert_dose_1_list %>% dplyr::distinct() %>% dplyr::arrange(pert_dose_1)
-
-const_1_anchors <- const_1_doses[which(table(pert_dose_1_list) == max(table(pert_dose_1_list), na.rm = TRUE))]$pert_dose_1
-
-
-pert_dose_2_list <- combo_lfc %>% splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
-                          sep = "|", fixed = T,
-                          direction = "wide", drop = F, type.convert = T) %>% dplyr::select(pert_dose_2) 
-
-const_2_doses <- pert_dose_2_list %>% dplyr::distinct() %>% dplyr::arrange(pert_dose_2)
-
-const_2_anchors <- const_2_doses[which(table(pert_dose_2_list) == max(table(pert_dose_2_list), na.rm = TRUE))]$pert_dose_2
+anchor_1_doses <- anchor_doses %>% dplyr::filter(added_compounds == constituents[1]) %>% dplyr::select(added_doses)
+anchor_1_doses <- round(anchor_1_doses$added_doses, 10)
+anchor_2_doses <- anchor_doses %>% dplyr::filter(added_compounds == constituents[2]) %>% dplyr::select(added_doses)
+anchor_2_doses <- round(anchor_2_doses$added_doses, 10)
 
 
 drc_plots_const_1 <- drc_plots_const %>% dplyr::filter(varied_iname == constituents[1])
@@ -445,12 +453,12 @@ drc_plots_const_2 <- drc_plots_const %>% dplyr::filter(varied_iname == constitue
 
 
 
-bliss_data_const_1 <- lfc_const %>% dplyr::filter(pert_iname == constituents[2]) %>% filter(pert_dose %in% const_2_anchors) %>% dplyr::inner_join(drc_plots_const_1) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+bliss_data_const_1 <- lfc_const %>% dplyr::filter(pert_iname == constituents[2]) %>% filter(round(pert_dose, 10) %in% anchor_2_doses) %>% dplyr::inner_join(drc_plots_const_1) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
-bliss_data_const_2 <- lfc_const %>% dplyr::filter(pert_iname == constituents[1]) %>% filter(pert_dose %in% const_1_anchors) %>% dplyr::inner_join(drc_plots_const_2) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+bliss_data_const_2 <- lfc_const %>% dplyr::filter(pert_iname == constituents[1]) %>% filter(round(pert_dose, 10) %in% anchor_1_doses) %>% dplyr::inner_join(drc_plots_const_2) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
 
-bliss_data_const <- lfc_const %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_const) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+bliss_data_const <- rbind(bliss_data_const_1, bliss_data_const_2)
 
 ```
 
