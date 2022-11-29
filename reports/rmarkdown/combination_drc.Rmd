@@ -1,12 +1,12 @@
 ---
 params:
-  data_dir: '/Users/shiker/Documents/reports/CPS04_KRONOS/KB-00130742-012_KB-00282115-002'
-  comp: 'KB-00130742-012_KB-00282115-002'
+  data_dir: '/Users/shiker/Documents/reports/CPS05_Pfizer/CPS007/IBT-004_IBT-005'
+  comp: 'IBT-004_IBT-005'
   data_dir_b: ''
   comp_b: ''
   data_dir_a: ''
   comp_a: ''
-  qc_path: /Users/shiker/Documents/reports/CPS04_KRONOS/data/CPS04_KRONOS_QC_TABLE.csv 
+  qc_path: /Users/shiker/Documents/reports/CPS05_Pfizer/data/CPS005_DMC_PFIZER_QC_TABLE.csv
   
 output:
   html_document:
@@ -145,7 +145,7 @@ for (const in constituents) {
       data.table::fread(const_drc_path))
   } else {
   message("No DRC file found")
-  quit(save = "no")
+  #quit(save = "no")
 }
 }
 
