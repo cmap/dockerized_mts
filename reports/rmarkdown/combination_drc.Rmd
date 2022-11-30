@@ -1,12 +1,12 @@
 ---
 params:
-  data_dir: '/Users/shiker/Documents/reports/CPS05_Pfizer/CPS007/IBT-004_IBT-005'
-  comp: 'IBT-004_IBT-005'
+  data_dir: '/Users/shiker/Documents/reports/CPS04_KRONOS/KB-00130742-012_KB-00282115-002'
+  comp: 'KB-00130742-012_KB-00282115-002'
   data_dir_b: ''
   comp_b: ''
   data_dir_a: ''
   comp_a: ''
-  qc_path: /Users/shiker/Documents/reports/CPS05_Pfizer/data/CPS005_DMC_PFIZER_QC_TABLE.csv
+  qc_path: '/Users/shiker/Documents/reports/CPS04_KRONOS/data/CPS04_KRONOS_QC_TABLE.csv'
   
 output:
   html_document:
@@ -612,14 +612,15 @@ for (comp in varied_comps) {
             x = ~x, y = ~y,
             type = "scatter", mode = "lines", line = list(shape = "line"),
             hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Single Treatment') %>%
+    
     add_trace(data = curves_all,
               x = ~x, y = ~y, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Combination') %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Combination', split = ~as.factor(added_doses)) %>%
     add_trace(data = curves_bliss,
               x = ~x, y = ~bliss, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'BLISS - No Interaction') %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'BLISS - No Interaction', split = ~as.factor(pert_dose)) %>%
     # add_trace(data = curves_anchor,
     #           x = ~x, y = ~bliss, 
     #           type = "scatter", mode = "markers", opacity = 0.1, name = 'Anchor Dose Viability' ) %>%
