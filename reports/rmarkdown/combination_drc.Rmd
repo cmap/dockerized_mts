@@ -546,11 +546,11 @@ datatable(tibble(),style="bootstrap")
 
 ```{r correlations, results='asis', include=T, fig.height=4}
 
-pseudo_auc %<>% dplyr::mutate(MSS = log2(B/FC)) %>% rename(varied_iname = pert_iname)
-drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname) %>% dplyr::distinct(cell_id, MSS, varied_iname))
+pseudo_auc %<>% dplyr::mutate(MSS = log2(B/FC)) %>% rename(varied_iname = pert_iname, added_doses = pert_dose)
+drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname, added_doses) %>% dplyr::distinct(cell_id, MSS, varied_iname, added_doses))
 
 
-drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::select(cell_id, FC_cb, varied_iname) %>% dplyr::distinct(cell_id, FC_cb, varied_iname))
+drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::rename(added_doses = pert_dose) %>% dplyr::select(cell_id, FC_cb, varied_iname, added_doses) %>% dplyr::distinct(cell_id, FC_cb, varied_iname, added_doses))
 
 
 for (comp in varied_comps) {
@@ -611,16 +611,16 @@ for (comp in varied_comps) {
     add_trace(data = curves_all_a,
             x = ~x, y = ~y,
             type = "scatter", mode = "lines", line = list(shape = "line"),
-            hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Single Treatment') %>%
+            hoverinfo = "text", text = ~ccle_name, opacity = 0.01, name = 'Single Treatment') %>%
     
     add_trace(data = curves_all,
               x = ~x, y = ~y, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Combination', split = ~as.factor(added_doses)) %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.01, name = 'Combination', split = ~as.factor(added_doses)) %>%
     add_trace(data = curves_bliss,
               x = ~x, y = ~bliss, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'BLISS - No Interaction', split = ~as.factor(pert_dose)) %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.01, name = 'BLISS - No Interaction', split = ~as.factor(pert_dose)) %>%
     # add_trace(data = curves_anchor,
     #           x = ~x, y = ~bliss, 
     #           type = "scatter", mode = "markers", opacity = 0.1, name = 'Anchor Dose Viability' ) %>%
