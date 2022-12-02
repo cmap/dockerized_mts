@@ -32,6 +32,7 @@ optional arguments:
   -a ASSAY, --assay ASSAY
                         Assay string (e.g. PR500)
   -n NAME, --name NAME  Build name. Default is none
+  -x LIST, --exclude_bcids LIST  Comma separated List of barcode_ids to exclude
 ```
 
 ### Example usage with R

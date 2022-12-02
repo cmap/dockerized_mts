@@ -12,6 +12,7 @@ parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
 parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
 parser$add_argument("-n", "--name", default="", help="Build name. Default is none")
+parser$add_argument("-x", "--exclude_bcids", default=NULL, help="comma separated values of control barcode ids to exclude from normalization")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
@@ -31,6 +32,7 @@ path_inst_info <- list.files(base_dir, pattern = "*_inst_info*", full.names = T)
 #---- Load the data ----
 
 # read in logMFI data
+print(path_data)
 raw_matrix <- read_hdf5(path_data)
 rownames(raw_matrix) <- paste0(rownames(raw_matrix), "_", assay)
 
@@ -59,9 +61,16 @@ master_logMFI <- log2(raw_matrix) %>%
   dplyr::inner_join(cell_info) %>%
   dplyr::inner_join(inst_info)
 
+if (!is.null(args$exclude_bcids)){
+    exclude_bcids = unlist(strsplit(args$exclude_bcids, ","))
+    master_logMFI %<>% dplyr::filter(!(barcode_id %in% exclude_bcids))
+}
+
 # create barcode tables
 barcodes <- master_logMFI %>%
   dplyr::filter(pool_id == "CTLBC")
+
+
 
 if (nrow(barcodes) == 0) stop("No control barcodes detected. Unable to normalize")
 
