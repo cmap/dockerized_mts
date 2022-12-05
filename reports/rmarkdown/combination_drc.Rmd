@@ -614,7 +614,6 @@ for (comp in varied_comps) {
             x = ~x, y = ~y,
             type = "scatter", mode = "lines", line = list(shape = "line"),
             hoverinfo = "text", text = ~ccle_name, opacity = 0.01, name = 'Single Treatment') %>%
-    
     add_trace(data = curves_all,
               x = ~x, y = ~y, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
@@ -625,7 +624,7 @@ for (comp in varied_comps) {
               hoverinfo = "text", text = ~ccle_name, opacity = 0.01, name = 'BLISS - No Interaction', split = ~as.factor(pert_dose)) %>%
     add_trace(data = curves_anchor,
               x = ~pert_dose, y = ~FC_cb, 
-              type = "scatter", mode = "markers", opacity = 0.1, name = 'Anchor Dose Viability', split = ~as.factor(pert_dose)) %>%
+              type = "scatter", mode = "markers", opacity = 0.01, name = 'Anchor Dose Viability', split = ~as.factor(pert_dose)) %>%
     config(doubleClick = "reset") %>%
     layout(xaxis = list(title = "Dose", type = "log"),
            yaxis = list(title = "Viability", range = c(0, 1.5)),
