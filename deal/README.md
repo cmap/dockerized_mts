@@ -2,7 +2,7 @@
 
 ## Deal Module Overview
 
-Distributes files to make build for each project (DEAL)
+Distributes files to make build for each project
 
 ## Docker image
 
