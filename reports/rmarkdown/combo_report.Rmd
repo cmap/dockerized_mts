@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/CPS008/O6-BENZYLGUANINE_TEMOZOLOMIDE
-  comp: O6-BENZYLGUANINE_TEMOZOLOMIDE
-  qc_path: /Users/shiker/Documents/reports/CPS/CPS06_VALIDATION_COMPOUNDS/data/CPS06_VALIDATION_COMPOUNDS_QC_TABLE.csv
+  data_dir: '/Users/shiker/Documents/reports/CPS06_CORSELLO/CPS06_CORSELLO/CPS008/BAY-204_LCL-161'
+  comp: 'BAY-204_LCL-161'
+  qc_path: '/Users/shiker/Documents/reports/CPS06_CORSELLO/CPS06_CORSELLO/data/CPS06_CORSELLO_QC_TABLE.csv'
 output:
   html_document:
     toc: false
@@ -178,6 +178,7 @@ The first tab (Synergy by Dose) shows synergy score (x-axis) and the significanc
 
 The y-axis represents the significance values of the synergy scores, where each score is normalized to its estimated standard error and the resulting calculated z-score is used to compute a q value (under the assumption of a standard normal null and corrected for multiple hypothesis testing using Benjamini-Hochberg method). The standard error of the measured LMFI values for each cell line and plate pair are assumed to be roughly the same across different perturbations and therefore can be estimated using the DMSO replicates. In particular, the standard errors are calculated for each cell line by multiplying the standard deviation across negative control samples (~32 replicates) by an appropriate constant (C) . In interpreting the synergy scores, we recommend focusing more on effect size after providing a generous threshold on the q-values (i.e. 0.05 or 0.01).
 
+Cases where the observed combination LFC is below the dynamic range of the assay can result in a misleading antagonistic interaction between the two compounds (artificial antagonism). These points are flagged as an 'x' on the synergy by dose plot and labeled as 1 in the synergy table. 
 
 
 **AUC plots**
@@ -198,6 +199,8 @@ The same is repeated for compound $b$ if there are more than 4 doses.
 
 ## Synergy by dose
 
+Below are synergy plots by dose. Points flagged for potential 'artificial antagonism' (described in the Overview section) are displayed as an x and have a flag value of 1 in the synergy table below. 
+
 ```{r synergy scoring, fig.height=synergy_height}
 # non-combination values
 solo_lfc <- dplyr::anti_join(LFC, combo_lfc)
@@ -205,10 +208,10 @@ solo_lfc <- dplyr::anti_join(LFC, combo_lfc)
 # split combination perts
 spread_lfc <- combo_lfc %>%
   dplyr::inner_join(qc_table %>%
-                      dplyr::group_by(ccle_name, culture) %>%
-                      dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad),
+                      dplyr::group_by(ccle_name, culture, pert_plate) %>%
+                      dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad), dr = median(dr), 
                                        .groups = "drop")) %>%  # QC info
-  dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
+  dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad, dr) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
                           sep = "|", fixed = T,
                           direction = "wide", drop = F, type.convert = T)
@@ -220,12 +223,15 @@ for (i in 1:length(constituents)) {
     dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
-
+  
   new_cols <- paste(colnames(df), i, sep = "_")
   colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
-
+  
   spread_lfc %<>% dplyr::left_join(df)
 }
+
+# flagging artificial antagonism 
+spread_lfc %<>% dplyr::mutate(S = LFC_cb_1 + LFC_cb_2 - LFC_cb, flag = (LFC_cb + dr < 1) * (S < 0) ) 
 
 # bliss expected fold change (capped FCs at 1)
 B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
@@ -251,13 +257,14 @@ combos <- spread_lfc %>%
 
 plots <- list()
 for (i in 1:nrow(combos)) {
-  synergy_plot <- highlight_key(spread_lfc %>% dplyr::inner_join(combos[i,]),
+  synergy_plot <- highlight_key(spread_lfc # filter for visualization only - not analysis 
+                                %>% dplyr::inner_join(combos[i,]),
                                 ~ccle_name, group = "Synergy scores")
   p <- plot_ly(synergy_plot) %>%
     add_trace(x = ~S, y = ~-log10(q), type = "scatter", mode = "markers",
-              marker = list(color = "rgba(0, 0, 0, 0)",
+              marker = list(symbol = ~flag*-66+100,
                             line = list(width = 1)),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.5) %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.9) %>%
     layout(xaxis = list(range = c(min_s, max_s)),
            yaxis = list(range = c(0, max_q)),
            annotations = list(x = 0.5, y = 1,
@@ -271,6 +278,7 @@ for (i in 1:nrow(combos)) {
               defaultValues = "", selected = attrs_selected(opacity = 1))
   plots[[i]] <- p
 }
+
 subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F) %>%
   layout(title = pert_iname,
          annotations = list(
@@ -285,6 +293,17 @@ subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F)
                 showarrow = F, xref='paper', yref='paper',
                 size = 48)
          ))
+
+
+spread_lfc_table <- highlight_key(spread_lfc %>% dplyr::select(ccle_name, culture, pert_iname, pert_dose, S, dr, flag, q), ~ccle_name, group = "Synergy scores")
+
+
+dt <- DT::datatable(spread_lfc_table, style="bootstrap", options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp"), colnames = c("Cell Line", "Culture", "Varied Compound | Anchor Compound", "Varied Dose | Anchor Dose", "Synergy", "Dynamic Range", "Artificial Antagonism Flag", "q"), selection = "single", filter = "top")%>%
+  DT::formatSignif(columns = c("S", "dr", "q"), digits = 3)
+
+
+dt
+
 ```
 
 ## AUC plots {.tabset .tabset-fade}
