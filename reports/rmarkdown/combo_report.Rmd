@@ -169,7 +169,7 @@ This section compares the activity of combination with constituents based on log
 **Synergy by Dose**
 
 <center>
-![](/Users/shiker/Desktop/synergy_template.png){width=50%}
+![](misc/synergy_template.png){width=50%}
 </center>
 
 
@@ -230,15 +230,9 @@ for (i in 1:length(constituents)) {
   spread_lfc %<>% dplyr::left_join(df)
 }
 
-# computing actual difference between LFC of combination and dynamic range 
-#spread_lfc %<>% dplyr::mutate(dr_diff = LFC_cb + dr)
-#spread_lfc %<>% dplyr::mutate(dr_diff_exp = (LFC_cb_1 + LFC_cb_2 + dr))
 
+# flagging artificial antagonism 
 spread_lfc %<>% dplyr::mutate(S = LFC_cb_1 + LFC_cb_2 - LFC_cb, flag = (LFC_cb + dr < 1) * (S < 0) ) 
-
-#spread_lfc$S <- rowSums(spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')]) - spread_lfc$LFC_cb # adding individual lfc and subtracting by combined lfc (S formula)
-
-#spread_lfc %<>% dplyr::mutate(flag = (dr_diff < 1) & (S < 0)) # ifelse((dr_diff < 1 & S < 0), 1, 0)) # if LFC_cb values is within a range of 1 of dr and s < 0 assign flag value of 1 (could be noise)
 
 
 
