@@ -1,0 +1,83 @@
+/**
+* Copy of the jenkins job that creates and tags dockers for production
+* Tags are production, latest and the short git hash
+*/
+
+import groovy.json.JsonSlurper
+
+REPO="prismcmap"
+PROD_TAG="production"
+LATEST_TAG="latest"
+GIT_FOLDER = "/ci-data/jenkins/workspace/RELEASE-PIPELINE-DOCKERS/.git/"
+
+def getCheckedOutGitCommitHash() {
+
+    def takeFromHash = 12
+    /*
+     * '.git/HEAD' contains either
+     *      in case of detached head: the currently checked out commit hash
+     *      otherwise: a reference to a file containing the current commit hash
+     */
+    def head = new File("${GIT_FOLDER}" + "HEAD").text.split(":") // .git/HEAD
+    def isCommit = head.length == 1 // e5a7c79edabbf7dd39888442df081b1c9d8e88fd
+    // def isRef = head.length > 1     // ref: refs/heads/master
+
+    if(isCommit) return head[0].trim().take(takeFromHash) // e5a7c79edabb
+
+    def refHead = new File("${GIT_FOLDER}" + head[1].trim()) // .git/refs/heads/master
+    refHead.text.trim().take takeFromHash
+}
+
+def parallelStagesMap(DIRS){
+  println "DIRS"
+  GIT_COMMIT_HASH = getCheckedOutGitCommitHash()
+  def mp = [:]
+   for( String DIR : DIRS ){
+    DIR = DIR.replace("/","")
+     mp.put("${DIR}",generateStage(DIR,GIT_COMMIT_HASH))
+   }
+    return mp
+}
+
+def generateStage(job,HASH_TAG) {
+    return {
+        stage("stage: ${job}") {
+          dir("${job}") {
+            sh script: "docker build -t ${REPO}/${job}:${LATEST_TAG} -t ${REPO}/${job}:${PROD_TAG} -t ${REPO}/${job}:${HASH_TAG} --rm=true ."
+            sh script: "docker push ${REPO}/${job}:${LATEST_TAG}"
+            sh script: "docker push ${REPO}/${job}:${PROD_TAG}"
+            sh script: "docker push ${REPO}/${job}:${HASH_TAG}"
+        }
+      }
+    }
+}
+pipeline{
+    agent any
+    environment {
+        DOCKERHUB_CREDENTIALS= credentials('dockerhub-cred-jasiedu')
+    }
+    stages {
+      stage('Login to Docker Hub') {
+           steps{
+             sh 'echo $DOCKERHUB_CREDENTIALS_PSW | sudo docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+             echo 'Login Completed'
+           }
+       }
+        stage("Git Checkout"){
+            steps{
+	            git credentialsId: '4c3bd279-468f-4837-a095-3366964ae937', url: 'https://github.com/cmap/dockerized_mts.git' ,branch: 'dev'
+	            echo 'Git Checkout Completed'
+            }
+        }
+        stage('Build Dockers') {
+            steps {
+                script {
+                    DIRS=sh(returnStdout: true, script: "ls -d -- */").trim()
+                    DIR_PATHS = DIRS.split("\n")
+                    println DIR_PATHS
+                    parallel parallelStagesMap(DIR_PATHS)
+                }
+            }
+        }
+    }
+}

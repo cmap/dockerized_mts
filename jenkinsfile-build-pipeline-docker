@@ -1,0 +1,77 @@
+/**
+* Copy of the jenkins job that creates and tags dockers for dev
+* Tags are develop
+*/
+
+import groovy.json.JsonSlurper
+
+REPO="prismcmap"
+DEV_TAG="develop"
+WORKSPACE_DIR="/ci-data/jenkins/workspace/BUILD-PIPELINE-DOCKER/"
+def parallelStagesMap(DIRS,GIT_PREVIOUS_COMMIT,GIT_COMMIT){
+  def mp = [:]
+   for( String DIR : DIRS ){
+    DIR = DIR.replace("/","")
+    CHANGED=sh(returnStdout: true, script: "git diff --name-only ${GIT_PREVIOUS_COMMIT} ${GIT_COMMIT} ${DIR}").trim()
+    echo "CHANGED=${CHANGED}"
+    if(CHANGED){
+      mp.put("${DIR}",generateStage(DIR))
+    }
+   }
+    return mp
+}
+
+def generateStage(job) {
+    return {
+        stage("stage: ${job}") {
+          dir("${job}") {
+            sh script: "pwd"
+            sh script: "docker build -t ${REPO}/${job}:${DEV_TAG} --rm=true ."
+            sh script: "docker push ${REPO}/${job}:${DEV_TAG}"
+        }
+      }
+    }
+}
+pipeline{
+    agent any
+    environment {
+        DOCKERHUB_CREDENTIALS= credentials('dockerhub-cred-jasiedu')
+        GIT_PREVIOUS_COMMIT=''
+        GIT_COMMIT=''
+    }
+    stages {
+        stage('Login to Docker Hub') {
+           steps{
+             sh 'echo $DOCKERHUB_CREDENTIALS_PSW | sudo docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+             echo 'Login Completed'
+           }
+       }
+        stage("Git Checkout"){
+            steps{
+	            git credentialsId: '4c3bd279-468f-4837-a095-3366964ae937', url: 'https://github.com/cmap/dockerized_mts.git' ,branch: 'dev'
+	            echo 'Git Checkout Completed'
+            }
+        }
+        stage('Configure') {
+            steps {
+                script {
+                    GIT_PREVIOUS_COMMIT = sh(returnStdout: true, script: "git rev-parse --short 'HEAD^'").trim()
+                    GIT_COMMIT=sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
+                }
+            }
+        }
+        stage('Checkout code') {
+            steps {
+                script {
+                    DIRS=sh(returnStdout: true, script: "ls -d -- */").trim()
+                    DIR_PATHS = DIRS.split("\n")
+                    mp = parallelStagesMap(DIR_PATHS,GIT_PREVIOUS_COMMIT,GIT_COMMIT)
+                    if(mp.size() > 0){
+                      parallel mp
+                    }
+                }
+            }
+        }
+    }
+}
+
