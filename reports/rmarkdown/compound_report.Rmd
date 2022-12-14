@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: "/Users/anup/work/1_Projects/Portal/mts019_validation_compounds_internal/MTS019_VALIDATION_COMPOUNDS_INTERNAL/PMTS051/BRD-A47706533"
-  comp: "BRD-A47706533"
+  data_dir: "/Users/shiker/Documents/trouble_shoot/cps007_dmc_bms/CPS007_DMC_BMS/CPS011/BMS-I1"
+  comp: "BMS-I1"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -489,35 +489,64 @@ if (!is.null(DRC)) {
   
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
-  plot_data <- LFC %>%
-    dplyr::inner_join(mutations, by = "ccle_name") %>%
-    dplyr::group_by(across(any_of(c("mutation", "pert_dose", "pert_name")))) %>%
-    dplyr::mutate(n = n()) %>%
-    dplyr::ungroup() %>%
-    dplyr::filter(n >= 5)
   
-  top_muts <- MUT_table %>%
-    dplyr::inner_join(df %>% dplyr::distinct(mutation, n),
-                      by = c("feature" = "mutation")) %>%
-    dplyr::arrange(q.value)
+  dose <- LFC %>% dplyr::distinct(pert_dose) %>% pull()
   
-  top_muts <- top_muts$feature[1:20]
+  muts = mutations %>% 
+    dplyr::filter(ccle_name %in% LFC$ccle_name) %>% # filtering out mutations that pertain to CCLE in LFC
+    dplyr::count(mutation) %>% # count occurrence of mutation 
+    dplyr::filter(n > 4) %>% # if less than 5 filter out 
+    .$mutation
   
-  plot_data %<>%
-    dplyr::filter(mutation %in% top_muts)
   
-  p <- plot_data %>%
-    ggplot(aes(x = LFC_cb, y = reorder(mutation, LFC_cb, function(x) -mean(x, na.rm = T)),
-               color = mutation)) +
-    geom_boxplot(outlier.alpha = 0) +
-    geom_vline(xintercept = m, linetype = "dashed") +
-    geom_jitter() +
-    theme(legend.position = "none") +
-    labs(x = "Log-fold change", y = "Mutation")
+  top_muts <- MUT_table %>% 
+    dplyr::filter(pert_dose == dose, feature %in% muts) %>% # picking single dose  and mutations within muts 
+    dplyr::mutate(gene = word(feature, 2, sep = fixed("_")), # creating gene column 
+                  mut.type = word(feature,1,-2, sep = fixed("_"))) # creating mutation type column 
   
-  p
+  
+  top.genes = top_muts %>% 
+    dplyr::group_by(gene) %>% # grouping by gene 
+    dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
+    dplyr::top_n(20, -minq) # returning list of top 20 smallest q values 
+  
+  
+  top_muts <- mutations %>% 
+    dplyr::distinct(mutation)  %>% # determining unique mutations 
+    dplyr::mutate(gene = word(mutation, 2, sep = fixed("_")), # adding gene word
+                  mut.type = word(mutation,1,-2, sep = fixed("_"))) %>% # adding mutation type 
+    dplyr::filter(gene %in% top.genes$gene) %>% # filtering from all the genes to only top genes 
+    dplyr::left_join(mutations) %>% # adding corresponding CCLE names associated with top mutations (multiple per gene and mutation type)
+    dplyr::filter(ccle_name %in% LFC$ccle_name) %>% # filtering out CCLE within DRC data 
+    dplyr::mutate(ix = 1) %>% # denoting mutations the gene and mutation type present in a particular CCLE
+    reshape2::acast(ccle_name ~ gene + mut.type, value.var = "ix", fill = 0) %>% 
+    reshape2::melt() %>% # one-hot encoding presence of specific genes within a CCLE (0 not present, 1 means present)
+    dplyr::mutate(gene = word(Var2, 1, sep = fixed("_")), # creating gene column 
+                  mut.type = word(Var2,2,-1, sep = fixed("_"))) %>% # creating mutation type column
+    dplyr::mutate(mut.type = ifelse(value == 1, mut.type, "wild_type")) %>% # if CCLE has 0 for a specific gene mutation type, denote it wild type 
+    dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) %>% # renaming columns 
+    dplyr::left_join(top.genes) # adding minimum q values for top genes 
+  
+  
+  plot_data <- top_muts %>%
+    dplyr::left_join(LFC %>% dplyr::distinct(ccle_name, LFC_cb)) %>% 
+    dplyr::mutate(gene = reorder(gene, minq)) 
+  
+  
+  plot_data %>% 
+    ggplot(aes(y = LFC_cb, x = mut.type, #reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
+               color = mut.type)) +
+    geom_boxplot(outlier.alpha = 0, color = "black") +
+    geom_hline(yintercept = m, linetype = "dashed") +
+    geom_sina(size = 1.5, shape = 1, aes(alpha = mut.type != "wild_type")) +
+    facet_wrap(gene ~ ., scales = "free_x") +
+    #facet_wrap_paginate(gene ~ ., scales = "free_x", ncol = 3, nrow = 2) + # !!!!
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = 45)) +
+    labs(x = "", y = "LFC")
+  
 } else {
-  print("Unable to show plots by lineage for AUC or a single dose.")
+  print("Unable to show plots by mutation for AUC or a single dose.")
 }
 
 write.csv(plot_data, file.path(mutations_path, 'mutations_box_plot_data.csv'), row.names=FALSE)
