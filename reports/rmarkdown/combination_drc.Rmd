@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: '/Users/shiker/Documents/reports/CPS05_Pfizer/CPS007/IBT-004_IBT-005'
-  comp: 'IBT-004_IBT-005'
-  qc_path: '/Users/shiker/Documents/reports/CPS05_Pfizer/data/CPS005_DMC_PFIZER_QC_TABLE.csv'
+  data_dir: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_repare/CPS007_DMC_REPARE/CPS011/COMPOUND-Y_COMPOUND-Z'
+  comp: 'COMPOUND-Y_COMPOUND-Z'
+  qc_path: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_repare/CPS007_DMC_REPARE/data/CPS007_DMC_REPARE_QC_TABLE.csv'
   
 output:
   html_document:
@@ -134,7 +134,7 @@ for (const in constituents) {
   # read in DRC if available
   if (length(const_drc_path) == 1) {
     drc_const %<>% dplyr::bind_rows(
-      data.table::fread(const_drc_path))
+      data.table::fread(const_drc_path) %>% dplyr::mutate(ec50 = as.double(ec50)))
   } else {
   message("No DRC file found")
   #quit(save = "no")

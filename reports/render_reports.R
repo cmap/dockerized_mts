@@ -36,7 +36,8 @@ if (as.numeric(args$combination) == 0) {
                     output_file = paste0(args$compound, "_drc.html"),
                     output_dir = args$data_dir,
                     params = list(data_dir = args$data_dir,
-                                  comp = args$compound))
+                                  comp = args$compound,
+                                  qc_path = args$qc_path))
   rmarkdown::render("rmarkdown/combo_report.Rmd",
                     output_file = paste0(args$compound, "_combination_report.html"),
                     output_dir = args$data_dir,
