@@ -570,15 +570,12 @@ for (feat in corr_feats) {
   df <- corr_table %>%
     dplyr::filter(feature_type == feat)
   
-  print(paste("feature", feat, "length", nrow(df)))
-  
+
   plot_df <- df %>%
     dplyr::filter(q.val < 0.1) %>%
     dplyr::mutate(is_positive = coef > 0) %>%
     dplyr::ungroup()
-  
-  print(paste("feature", feat, "length_q_lt0.1", nrow(plot_df)))
-  
+
   if (nrow(plot_df) > 0) {
     plot_df %<>%
       dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
@@ -587,13 +584,8 @@ for (feat in corr_feats) {
       dplyr::ungroup() %>%
       dplyr::filter(rank <= 250 | sign_rank <= 25)
     
-    # outpath = '/Users/anup/work/1_Projects/Portal/report_files_by_plot/correlation_analysis/'
-    # write.csv(plot_df, sprintf("%s%s_volcano_plot_data.csv", outpath, feat))
-    
     feat_plot_dfs[[li]] = plot_df
     li = li + 1
-    
-    print(paste("feature", feat, "length_filtered", nrow(plot_df)))
 
     p <- plot_df %>%
       ggplot() + geom_point(aes(x = coef, y = neg_log10_qval,
@@ -602,7 +594,7 @@ for (feat in corr_feats) {
       labs(x = "Correlation", y = "-log10(q)", color = "Dose") +
       geom_vline(aes(xintercept = 0), lty = 2, lwd =.5)
     p <- plotly::ggplotly(p)
-    #cat(htmltools::knit_print.shiny.tag(p))
+    cat(htmltools::knit_print.shiny.tag(p))
   }
 
   dt <- DT::datatable(plot_df %>%
@@ -614,7 +606,7 @@ for (feat in corr_feats) {
                       colnames = c("Feature", "Correlation", "q value", "Compound", "Dose")
   )
 
-  #cat(htmltools::knit_print.shiny.tag(dt))
+  cat(htmltools::knit_print.shiny.tag(dt))
 }
 feat_plot_df = feat_plot_dfs %>% dplyr::bind_rows()
 
