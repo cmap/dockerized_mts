@@ -336,6 +336,8 @@ pseudo_auc <- dplyr::bind_rows(pseudo_auc_1, pseudo_auc_2) %>%
 
 pseudo_auc
 
+# renaming constituents to referred name in dataframe rather than folder parameter
+constituents <- stringr::str_split(pert_iname, pattern = fixed("|"))[[1]]
 
 anchor_1_doses <- anchor_doses %>% dplyr::filter(added_compounds == constituents[1]) %>% dplyr::select(added_doses)
 anchor_1_doses <- round(anchor_1_doses$added_doses, 10)
@@ -442,8 +444,15 @@ datatable(tibble(),style="bootstrap")
 ```{r correlations, results='asis', include=T, fig.height=4}
 
 pseudo_auc %<>% dplyr::mutate(MSS = log2(B/FC)) %>% rename(varied_iname = pert_iname, added_doses = pert_dose)
+
+# round to the 10th place because R saves added_doses values differently in different dataframes 
+drc_meta %<>% dplyr::mutate(added_doses = round(added_doses, 10))
+pseudo_auc %<>% dplyr::mutate(added_doses = round(added_doses, 10))
+
 drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname, added_doses) %>% dplyr::distinct(cell_id, MSS, varied_iname, added_doses))
 
+# round to the 10th place because R saves added_doses (pert_dose in this case) values differently in different dataframes 
+bliss_data_const %<>% dplyr::mutate(pert_dose = round(pert_dose, 10))
 
 drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::rename(added_doses = pert_dose) %>% dplyr::select(cell_id, FC_cb, varied_iname, added_doses) %>% dplyr::distinct(cell_id, FC_cb, varied_iname, added_doses))
 
