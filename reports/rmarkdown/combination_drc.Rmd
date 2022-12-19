@@ -456,6 +456,11 @@ bliss_data_const %<>% dplyr::mutate(pert_dose = round(pert_dose, 10))
 
 drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::rename(added_doses = pert_dose) %>% dplyr::select(cell_id, FC_cb, varied_iname, added_doses) %>% dplyr::distinct(cell_id, FC_cb, varied_iname, added_doses))
 
+# creating titles for legend per trace per anchor dose 
+drc_plots %<>% dplyr::mutate(combination_string = 'Combo ') %>% dplyr::mutate(combo_title = paste0(combination_string, added_doses))
+bliss_data_const %<>% dplyr::mutate(bliss_string = 'BLISS ') %>% dplyr::mutate(bliss_title = paste0(bliss_string, pert_dose))
+bliss_data_const %<>% dplyr::mutate(anchor_string = ' Viability') %>% dplyr::mutate(anchor_title = paste0(pert_dose, anchor_string))
+
 
 for (comp in varied_comps) {
   cat(sprintf('\n\n### %s \n\n', comp, '\n\n'))
@@ -478,7 +483,7 @@ for (comp in varied_comps) {
   
   
   curves_anchor <- highlight_key(bliss_data_const %>% dplyr::filter(is.finite(auc), varied_iname == comp) %>%
-     dplyr::arrange(auc) %>% dplyr::select(ccle_name, pert_id, pert_dose, FC_cb, cell_id) %>% dplyr::distinct(ccle_name, pert_id, pert_dose, FC_cb, cell_id),
+     dplyr::arrange(auc) %>% dplyr::select(ccle_name, pert_id, pert_dose, FC_cb, cell_id, anchor_title) %>% dplyr::distinct(ccle_name, pert_id, pert_dose, FC_cb, cell_id, anchor_title),
                             ~cell_id, group = comp)
 
   
@@ -490,14 +495,14 @@ for (comp in varied_comps) {
     add_trace(data = curves_all,
               x = ~x, y = ~y, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = 'Combination', split = ~as.factor(added_doses)) %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = ~combo_title, split = ~as.factor(added_doses)) %>%
     add_trace(data = curves_bliss,
               x = ~x, y = ~bliss, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = 'BLISS - No Interaction', split = ~as.factor(pert_dose)) %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = ~bliss_title, split = ~as.factor(pert_dose)) %>%
     add_trace(data = curves_anchor,
               x = ~pert_dose, y = ~FC_cb, 
-              type = "scatter", mode = "markers", opacity = 0.05, name = 'Anchor Dose Viability', split = ~as.factor(pert_dose)) %>%
+              type = "scatter", mode = "markers", opacity = 0.05, name = ~anchor_title, split = ~as.factor(pert_dose)) %>%
     config(doubleClick = "reset") %>%
     layout(xaxis = list(title = "Dose", type = "log"),
            yaxis = list(title = "Viability", range = c(0, 1.5)),
@@ -523,9 +528,10 @@ for (comp in varied_comps) {
     add_trace(data = pseudo_auc_comp,
             x = ~B, y = ~FC,
             type = "scatter", mode = "markers", colors = 'RdYlGn' , color=~MSS,
-            hoverinfo = "text", text = ~ccle_name, name = 'CombinationTreatment', marker=list(colorbar=list(text = 'Mean Syngery Score'))) %>%
+            hoverinfo = "text", text = ~ccle_name, symbol = ~as.factor(added_doses), 
+            marker=list(colorbar=list(text = 'Mean Syngery Score'))) %>%
     config(doubleClick = "reset") %>%
-    layout( legend = list(title = list(text = "MSS")),
+    layout( legend = list(title = list(text = "Anchor Dose")),
       xaxis = list(title = "Bliss expected AUC", range = c(0, 1)),
             yaxis = list(title = "AUC", range = c(0, 1.05)), 
             hovermode = "closest",
