@@ -485,24 +485,39 @@ for (comp in varied_comps) {
   curves_anchor <- highlight_key(bliss_data_const %>% dplyr::filter(is.finite(auc), varied_iname == comp) %>%
      dplyr::arrange(auc) %>% dplyr::select(ccle_name, pert_id, pert_dose, FC_cb, cell_id, anchor_title) %>% dplyr::distinct(ccle_name, pert_id, pert_dose, FC_cb, cell_id, anchor_title),
                             ~cell_id, group = comp)
-
+  
+  
+  group_combo <- list()
+  group_bliss <- list()
+  group_anchor <- list()
+  
+  n_anchor_doses = length(anchor_doses)
+  
+  for(i in 2:(n_anchor_doses+1)) { 
+    group_combo <- append(group_combo, paste0('group', i))
+    group_bliss <- append(group_bliss, paste0('group', i+n_anchor_doses))
+    group_anchor <- append(group_anchor, paste0('group', (i+(n_anchor_doses*2))))
+  }
+  
+  
+  
   
   p <- plot_ly() %>%
     add_trace(data = curves_all_a,
-            x = ~x, y = ~y,
-            type = "scatter", mode = "lines", line = list(shape = "line"),
-            hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Single Treatment') %>%
+              x = ~x, y = ~y,
+              type = "scatter", mode = "lines", line = list(shape = "line"),
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Single Treatment', legendgroup = 'group1') %>%
     add_trace(data = curves_all,
               x = ~x, y = ~y, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = ~combo_title, split = ~as.factor(added_doses)) %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = ~combo_title, split = ~as.factor(added_doses), legendgroup = group_combo) %>%
     add_trace(data = curves_bliss,
               x = ~x, y = ~bliss, 
               type = "scatter", mode = "lines", line = list(shape = "line"),
-              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = ~bliss_title, split = ~as.factor(pert_dose)) %>%
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = ~bliss_title, split = ~as.factor(pert_dose), legendgroup = group_bliss) %>%
     add_trace(data = curves_anchor,
               x = ~pert_dose, y = ~FC_cb, 
-              type = "scatter", mode = "markers", opacity = 0.05, name = ~anchor_title, split = ~as.factor(pert_dose)) %>%
+              type = "scatter", mode = "markers", opacity = 0.05, name = ~anchor_title, split = ~as.factor(pert_dose), legendgroup = group_anchor) %>%
     config(doubleClick = "reset") %>%
     layout(xaxis = list(title = "Dose", type = "log"),
            yaxis = list(title = "Viability", range = c(0, 1.5)),
@@ -511,7 +526,7 @@ for (comp in varied_comps) {
               dynamic = FALSE, selectize = TRUE, persistent = FALSE,
               opacityDim = 1, defaultValues = "",
               selected = attrs_selected(opacity = 1))
-    
+  
 
 
   cat(htmltools::knit_print.shiny.tag(p))
