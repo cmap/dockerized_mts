@@ -8,10 +8,10 @@ We fit a robust four-parameter logistic curve to the response of each cell line 
 
 ## Docker image
 
-To install the docker image from [Docker Hub](https://hub.docker.com/repository/docker/cmap/drc-module) run:
+To install the docker image from [Docker Hub](https://hub.docker.com/repository/docker/prismcmap/drc-module) run:
 
 ```
-docker pull cmap/drc-module:latest
+docker pull prismcmap/drc-module:latest
 ```
 
 To get a specific version replace `latest` with the version desired.
@@ -48,7 +48,7 @@ docker run \
   -it \
   -v ~/Desktop/clue_data/project/compound_1:/in_data \
   -v ~/Desktop/mts_results/project/compound_1:/out_data \
-  cmap/drc-module:latest \
+  prismcmap/drc-module:latest \
   -i /in_data \
   -o /out_data
 ```
