@@ -32,15 +32,13 @@ def parallelStagesMap(DIRS){
   GIT_COMMIT_HASH = getCheckedOutGitCommitHash()
   def mp = [:]
    for( String DIR : DIRS ){
-   DIR = DIR.replace("/","")
-   if(!DIR.equals("docker_base" )){
-    DOCKER_FILE_EXISTS=sh(returnStdout: true, script: "test -f ${DIR}/Dockerfile && echo FILE exists.").trim()
-
-    if(DOCKER_FILE_EXISTS){
-
-        mp.put("${DIR}",generateStage(DIR,GIT_COMMIT_HASH))
-    }
-   }
+       DIR = DIR.replace("/","")
+       if(!DIR.equals("docker_base" ) && !DIR.equals("biomarker_files" ) && !DIR.equals("info" )){
+        DOCKER_FILE_EXISTS=sh(returnStdout: true, script: "test -f ${DIR}/Dockerfile && echo FILE exists.").trim()
+        if(DOCKER_FILE_EXISTS){
+            mp.put("${DIR}",generateStage(DIR,GIT_COMMIT_HASH))
+        }
+       }
    }
     return mp
 }
