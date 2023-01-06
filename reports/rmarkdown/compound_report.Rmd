@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: "/Users/shiker/Documents/trouble_shoot/cps007_dmc_bms/CPS007_DMC_BMS/CPS011/BMS-I1"
-  comp: "BMS-I1"
+  data_dir: "/Users/shiker/Documents/trouble_shoot/cps007_vib/VIB-001927-01-03"
+  comp: "VIB-001927-01-03"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -316,12 +316,12 @@ The AUC or log-fold change (when AUC is unavailable) of each cell line is shown 
 ```{r, fig.height=14}
 if (!is.null(DRC)) {
   m <- mean(DRC$auc)
-  df <- DRC %>%
+  lineage_df <- DRC %>%
     dplyr::inner_join(lineages, by = "ccle_name") %>%
     dplyr::filter(lineage != "") %>%
     dplyr::distinct()
   
-  p <- df %>%
+  p <- lineage_df %>%
     ggplot(aes(y = auc, x = reorder(lin_sub_abbreviation, auc, function(x) mean(x, na.rm = T)),
                color = lin_sub_abbreviation)) +
     geom_boxplot(outlier.alpha = 0) +
@@ -331,14 +331,15 @@ if (!is.null(DRC)) {
     theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
     labs(x = "Lineage", y = "AUC")
   p
+  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_dat.csv'), row.names=FALSE)
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
-  df <- LFC %>%
+  lineage_df <- LFC %>%
     dplyr::inner_join(lineages, by = "ccle_name") %>%
     dplyr::filter(lineage != "") %>%
     dplyr::distinct()
   
-  p <- df %>%
+  p <- lineage_df %>%
     ggplot(aes(y = LFC_cb, x = reorder(lin_sub_abbreviation, LFC_cb, function(x) mean(x, na.rm = T)),
                color = lin_sub_abbreviation)) +
     geom_boxplot(outlier.alpha = 0) +
@@ -348,11 +349,12 @@ if (!is.null(DRC)) {
     theme(legend.position = "none") +
     labs(x = "Lineage", y = "Log-fold change")
   p
+  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_dat.csv'), row.names=FALSE)
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
 }
 
-write.csv(df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_dat.csv'), row.names=FALSE)
+
 ```
 
 # Mutation effect{.tabset .tabset-fade .tabset-pills}
@@ -486,6 +488,7 @@ if (!is.null(DRC)) {
           axis.text.x = element_text(angle = 45)) +
     labs(x = "", y = "AUC")
   
+  write.csv(plot_data, file.path(mutations_path, 'mutations_box_plot_data.csv'), row.names=FALSE)
   
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
@@ -545,11 +548,13 @@ if (!is.null(DRC)) {
           axis.text.x = element_text(angle = 45)) +
     labs(x = "", y = "LFC")
   
+  write.csv(plot_data, file.path(mutations_path, 'mutations_box_plot_data.csv'), row.names=FALSE)
+  
 } else {
   print("Unable to show plots by mutation for AUC or a single dose.")
 }
 
-write.csv(plot_data, file.path(mutations_path, 'mutations_box_plot_data.csv'), row.names=FALSE)
+
 
 ```
 
