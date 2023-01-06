@@ -33,12 +33,14 @@ def parallelStagesMap(DIRS){
   def mp = [:]
    for( String DIR : DIRS ){
    DIR = DIR.replace("/","")
-    DOCKER_FILE_EXISTS=sh(returnStdout: true, script: "test -f ${DIR}/Dockerfile && echo "FILE exists.").trim()
+   if(!DIR.equals("docker_base" )){
+    DOCKER_FILE_EXISTS=sh(returnStdout: true, script: "test -f ${DIR}/Dockerfile && echo FILE exists.").trim()
 
     if(DOCKER_FILE_EXISTS){
 
         mp.put("${DIR}",generateStage(DIR,GIT_COMMIT_HASH))
     }
+   }
    }
     return mp
 }
@@ -69,7 +71,7 @@ pipeline{
        }
         stage("Git Checkout"){
             steps{
-	            git credentialsId: '4c3bd279-468f-4837-a095-3366964ae937', url: 'https://github.com/cmap/dockerized_mts.git' ,branch: 'dev'
+	            git credentialsId: '4c3bd279-468f-4837-a095-3366964ae937', url: 'https://github.com/cmap/dockerized_mts.git' ,branch: 'master'
 	            echo 'Git Checkout Completed'
             }
         }
@@ -78,7 +80,6 @@ pipeline{
                 script {
                     DIRS=sh(returnStdout: true, script: "ls -d -- */").trim()
                     DIR_PATHS = DIRS.split("\n")
-                    println DIR_PATHS
                     parallel parallelStagesMap(DIR_PATHS)
                 }
             }
