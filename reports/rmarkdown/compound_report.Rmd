@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: "/Users/shiker/Documents/trouble_shoot/cps007_vib/VIB-001927-01-03"
-  comp: "VIB-001927-01-03"
+  data_dir: "//Users/shiker/Documents/trouble_shoot/PSELL/BRD-K00003416"
+  comp: "BRD-K00003416"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -330,8 +330,8 @@ if (!is.null(DRC)) {
     facet_wrap(lineage ~ ., scales = "free_x") +
     theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
     labs(x = "Lineage", y = "AUC")
-  p
   write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_dat.csv'), row.names=FALSE)
+  p
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
   lineage_df <- LFC %>%
@@ -348,8 +348,8 @@ if (!is.null(DRC)) {
     facet_wrap(lineage ~ ., scales = "free_x") +
     theme(legend.position = "none") +
     labs(x = "Lineage", y = "Log-fold change")
-  p
   write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_dat.csv'), row.names=FALSE)
+  p
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
 }
@@ -452,6 +452,7 @@ if (!is.null(DRC)) {
     dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
     dplyr::top_n(20, -minq) # returning list of top 20 smallest q values 
   
+  top.genes = top.genes[1:20,]
   
   top_muts <- mutations %>% 
     dplyr::distinct(mutation)  %>% # determining unique mutations 
@@ -476,7 +477,7 @@ if (!is.null(DRC)) {
     dplyr::left_join(DRC %>% dplyr::distinct(ccle_name, auc)) %>% 
     dplyr::mutate(gene = reorder(gene, minq)) 
   
-  plot_data %>% 
+  p <- plot_data %>% 
     ggplot(aes(y = auc, x = mut.type, #reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
                color = mut.type)) +
     geom_boxplot(outlier.alpha = 0, color = "black") +
@@ -489,7 +490,7 @@ if (!is.null(DRC)) {
     labs(x = "", y = "AUC")
   
   write.csv(plot_data, file.path(mutations_path, 'mutations_box_plot_data.csv'), row.names=FALSE)
-  
+  p
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
   
@@ -513,6 +514,7 @@ if (!is.null(DRC)) {
     dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
     dplyr::top_n(20, -minq) # returning list of top 20 smallest q values 
   
+  top.genes = top.genes[1:20,]
   
   top_muts <- mutations %>% 
     dplyr::distinct(mutation)  %>% # determining unique mutations 
@@ -536,7 +538,7 @@ if (!is.null(DRC)) {
     dplyr::mutate(gene = reorder(gene, minq)) 
   
   
-  plot_data %>% 
+  p <- plot_data %>% 
     ggplot(aes(y = LFC_cb, x = mut.type, #reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
                color = mut.type)) +
     geom_boxplot(outlier.alpha = 0, color = "black") +
@@ -549,7 +551,7 @@ if (!is.null(DRC)) {
     labs(x = "", y = "LFC")
   
   write.csv(plot_data, file.path(mutations_path, 'mutations_box_plot_data.csv'), row.names=FALSE)
-  
+  p
 } else {
   print("Unable to show plots by mutation for AUC or a single dose.")
 }
