@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: "//Users/shiker/Documents/trouble_shoot/PSELL/BRD-K00003416"
-  comp: "BRD-K00003416"
+  data_dir: "/Users/anup/work/1_Projects/PRISM_Portal/BRD-A47706533"
+  comp: "BRD-A47706533"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -731,6 +731,6 @@ DT::datatable(complete_model_dt,
               colnames = c("Feature", "r-squared", "Rank", "Feature importance", "Feature stability",
                            "Feature importance SD", "Compound", "Dose"))
 
-write.csv(complete_model_data, file.path(mv_biomarker_path, 'multivariate_biomarker_ccle_volcano.csv'), row.names=FALSE)
-write.csv(complete_model_dt, file.path(mv_biomarker_path, 'multivariate_biomarker_ccle_data_table.csv'), row.names=FALSE)
+write.csv(complete_model_data, file.path(mv_biomarker_path, 'multivariate_biomarker_complete_volcano.csv'), row.names=FALSE)
+write.csv(complete_model_dt, file.path(mv_biomarker_path, 'multivariate_biomarker_complete_data_table.csv'), row.names=FALSE)
 ```
