@@ -9,6 +9,7 @@ import cmapPy.pandasGEXpress.concat as cg
 import cmapPy.pandasGEXpress.parse as pe
 import cmapPy.pandasGEXpress.write_gct as wg
 import cmapPy.pandasGEXpress.write_gctx as wgx
+import cmapPy.pandasGEXpress.subset_gctoo as sgt
 import merino.build_summary.ssmd_analysis as ssmd
 import merino.misc_tools.cut_to_l2 as cut_to_l2
 import merino.setup_logger as setup_logger
@@ -34,12 +35,16 @@ def build_parser():
                         help="Search for this string in the directory, only run plates which contain it. "
                              "Default is wildcard",
                         type=str, default='*', required=False)
+    parser.add_argument("--exclude_bcids", "-x",
+                        help="Barcode Ids to include (LUAS or CTLBC) as comma-separated string"
+                             "Default is none",
+                        type=str, default=None, required=False)
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
 
 
     return parser
 
-def build(search_pattern, outfile, file_suffix, cut=True, check_size=False):
+def build(search_pattern, cut=True, check_size=False):
     gct_list = glob.glob(search_pattern)
     old_len = len(gct_list)
 
@@ -75,9 +80,7 @@ def build(search_pattern, outfile, file_suffix, cut=True, check_size=False):
     concat_gct_wo_meta = GCToo.GCToo(data_df = concat_gct.data_df, row_metadata_df = pd.DataFrame(index=concat_gct.data_df.index),
                                      col_metadata_df=pd.DataFrame(index=concat_gct.col_metadata_df.index))
 
-    logger.debug("gct shape without metadata: {}".format(concat_gct_wo_meta.data_df.shape))
 #    logger.debug(outfile + 'n{}x{}'.format(concat_gct.data_df.shape[1], concat_gct.data_df.shape[0]) + file_suffix)
-    wgx.write(concat_gct_wo_meta, outfile + 'n{}x{}'.format(concat_gct.data_df.shape[1], concat_gct.data_df.shape[0]) + file_suffix)
 
     return concat_gct, failure_list
 
@@ -133,6 +136,34 @@ def mk_inst_info(inst_data, args=None):
     inst_info.to_csv(os.path.join(args.build_dir, args.cohort_name + '_inst_info.txt'), sep='\t')
 
 
+def write_gctx_with_dims(data, outfile):
+    logger.info("gct shape: {}".format(data.data_df.shape))
+    logger.info("gct shape: {}".format(data.data_df.shape))
+    path = outfile.rstrip('_')+'_n{}x{}'.format(data.data_df.shape[1], data.data_df.shape[0]) + '.gctx'
+    wgx.write(data, path)
+
+
+def remove_metadata_from_gctoo(gctoo):
+    return GCToo.GCToo(
+        data_df=gctoo.data_df,
+        row_metadata_df=pd.DataFrame(index=gctoo.data_df.index),
+        col_metadata_df=pd.DataFrame(index=gctoo.col_metadata_df.index)
+    )
+
+def remove_bcids(ds, bcids_to_remove):
+    rmeta = ds.row_metadata_df
+
+    rm_indexes = rmeta.loc[
+        rmeta.barcode_id.isin(bcids_to_remove)
+    ].index
+
+    print("removing BCIDS:" + ','.join(bcids_to_remove))
+    print("removing indexes:" + ','.join(rm_indexes))
+
+    return sgt.subset_gctoo(ds, exclude_rid=rm_indexes)
+
+
+
 def main(args):
     search_pattern_dict = {
         '*MEDIAN.gct': ['assemble', '_LEVEL2_MFI_'],
@@ -149,12 +180,17 @@ def main(args):
 
         logger.info("working on {}".format(path))
 
-        if 'MODZ' in key:
-            data, _ = build(path, out_path, '.gctx', cut=False)
-        elif 'NORM' in key:
-            data, failure_list = build(path, out_path, '.gctx', cut=True, check_size=True)
-        else:
-            data, _ = build(path, out_path, '.gctx', cut=True)
+        data, _ = build(path, cut=True)
+        # exclude things here
+
+        if args.exclude_bcids:
+            bcids_to_remove = args.exclude_bcids.split(',')
+            logger.info("removing following barcode_ids: " + ",".join(bcids_to_remove))
+            data = remove_bcids(data, bcids_to_remove)
+
+        data_no_meta = remove_metadata_from_gctoo(data)
+        write_gctx_with_dims(data_no_meta, out_path)
+
         data_dict[key] = data
 
     mk_inst_info(data_dict['*MEDIAN.gct'], args=args)
@@ -163,6 +199,7 @@ def main(args):
         mk_cell_metadata(args, failure_list)
     except Exception as e:
         mk_cell_metadata(args)
+
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])
