@@ -6,6 +6,7 @@ print_help () {
   printf -- "\t-bd, --build_dir \t Output folder for build files (required) \n"
   printf -- "\t-cn, --cohort_name \t String designating the prefix to each build file (required)\n"
   printf -- "\t-sp, --search_pattern \t Search string in proj_dir, only run matching plates, default is wildcard '*' \n"
+  printf -- "\t-x, --exclude_bcids \t Barcode Ids to include (LUAS or CTLBC) as comma-separated string. Default is none \n"
   printf -- "\t-v, --verbose \t\t Verbose flag, print additional output \n"
   printf -- "\t-h, --help \t\t Print this help text\n"
 }
@@ -37,6 +38,10 @@ while test $# -gt 0; do
     -sp| --search_pattern)
       shift
       SEARCH_PATTERN=$1
+      ;;
+    -x| --exclude_bcids)
+      shift
+      EXCLUDE_BCIDS=$1
       ;;
     -v| --verbose)
       shift
@@ -73,6 +78,11 @@ args=(
 if [[ ! -z $SEARCH_PATTERN ]]
 then
   args+=(-sp "$SEARCH_PATTERN")
+fi
+
+if [[ ! -z $EXCLUDE_BCIDS ]]
+then
+  args+=(-x "$EXCLUDE_BCIDS")
 fi
 
 if [[ ! -z $VERBOSE ]]

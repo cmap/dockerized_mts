@@ -2,7 +2,7 @@
 REPO="prismcmap"
 NAME="collate"
 
-VERSION="v0.2.0" #change the version number for each new build
+VERSION="v0.3.0" #change the version number for each new build
 TAG="latest"
 
 #change the version number for each new build
