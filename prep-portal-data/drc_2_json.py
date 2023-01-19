@@ -26,7 +26,6 @@ def main(drc_file, l4_file, out_file):
     out = {"result":[]}
     print(drc)
 
-
     for i,row in drc.iterrows():
         out["result"].append(dict(row))
 
