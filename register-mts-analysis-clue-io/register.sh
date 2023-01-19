@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-ROLE_ID="cmap_core"
+ROLE_ID=("cmap_core")
 APPROVED="false"
 
 while test $# -gt 0; do
@@ -22,7 +22,7 @@ while test $# -gt 0; do
       ;;
     -r|--role_id)
       shift
-      ROLE_ID=$1
+      ROLE_ID+=("$1")
       APPROVED="true"
       ;;
     *)
@@ -50,7 +50,7 @@ then
             project=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
             role=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].role')
             PROJECT_NAME="${project}"
-            ROLE_ID="${role}"
+            ROLE_ID+=("${role}")
             APPROVED="true"
             INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
          else
@@ -66,7 +66,7 @@ then
         else
             project=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
             role=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].role')
-            ROLE_ID="${role}"
+            ROLE_ID+=("${role}")
             APPROVED="true"
         fi
         PROJECT_NAME="${project}"
