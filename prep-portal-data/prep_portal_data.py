@@ -59,19 +59,22 @@ def char_to_number(char):
     char_val = ord(char) - ord('A')
     return char_val
 
+def hash_project_code(project, modulo):
+    parti_col = ""
+    for char in project:
+        parti_col += "{:02d}".format(char_to_number(char))
+
+    return int(parti_col) % modulo
 
 """
 Hash function to convert screen code to partition column.
 
 Max number of partitions is 4000
 Convention:
-MTS
-CPS
-
-
-
-
-
+MTS - 1-1000 (use the MTS number. Mod by 1000 add 1 if zero)
+APS - 1001-2000 (use the APS number. Add 1001 mod 2000)
+CPS- 2001-3000 (And so on)
+OTHERS - 3001-3999
 Calculate based on max code of "ZZZZZZ999"
 """
 def screen_to_parti_col(screen):
@@ -81,25 +84,33 @@ def screen_to_parti_col(screen):
     project = mo[1]
     numbers = mo[2]
 
-    parti_col = ""
-    for char in project:
-        parti_col += "{:02d}".format(char_to_number(char))
-
-    #max 3 characters
-    parti_col += "{:03d}".format(int(numbers))[-3:]
-
-
-    return int(parti_col)
+    if project == "MTS":
+        return int(numbers) % 1000 + 1
+    elif project == "CPS":
+        return int(numbers) % 1000 + 1 + 1000
+    elif project == "APS":
+        return int(numbers) % 1000 + 1 + 2000
+    else:
+        return hash_project_code(project, 1000) #will assign based on assay series
 
 def add_required_cols(df):
     if not 'screen' in df.columns:
+        pass
 
+    if not 'pert_plate' in df.columns:
+        pass
 
-    'pert_plate',
-    'pert_id',
-    'project',
-    'parti_col',
-    'insertionDate'
+    if not 'pert_id' in df.columns:
+        pass
+
+    if not 'project' in df.columns:
+        pass
+
+    if not 'parti_col' in df.columns:
+        pass
+
+    if not 'insertionDate' in df.columns:
+        pass
 
 
 
