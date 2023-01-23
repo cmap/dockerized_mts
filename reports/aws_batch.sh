@@ -4,7 +4,7 @@ while test $# -gt 0; do
   case "$1" in
     -f| --compound_key_path)
       shift
-      projects=$1
+      compound_key=$1
       ;;
     -d| --data_dir)
       shift
@@ -40,14 +40,14 @@ echo $combination
 
 batch_index=0
 sanitized_pert_id=""
-if [[ ! -z $projects ]]
+if [[ ! -z $compound_key ]]
 then
     if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
       batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
     fi
-    pert_id=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
-    project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-    plate=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    pert_id=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+    project=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    plate=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
     cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
     sanitized_pert_id="${cleaned_pert_id^^}"
     project_dir="${data_dir}"/"${project,,}"/"${project^^}"

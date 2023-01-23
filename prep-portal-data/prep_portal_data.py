@@ -4,9 +4,11 @@ Prepare data for upload to Data Warehouse
 import logging
 import os
 import re
-import json
-import simplejson
 import sys
+import glob
+import json
+import datetime
+import simplejson
 import argparse
 import numpy as np
 import pandas as pd
@@ -25,12 +27,12 @@ REQUIRED_COLUMNS = [
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--drc', '-d', help='DRC_TABLE file')
-    parser.add_argument('--out', '-o', help='Output file')
-    parser.add_argument('--screen', '-sc', help='Screen')
-    parser.add_argument('--pert_plate', '-pp', help='Pert Plate')
-    parser.add_argument('--pert_id', '-id', help='Pert ID')
-    parser.add_argument('--project', '-pj', help='Pert ID')
+    parser.add_argument('--data_dir', '-d', help='Compound Data Directory', required=True)
+    parser.add_argument('--out', '-o', help='Output file', default=None)
+    parser.add_argument('--screen', '-sc', help='Screen', required=True)
+    parser.add_argument('--pert_plate', '-pp', help='Pert Plate', required=True)
+    parser.add_argument('--pert_id', '-id', help='Pert ID', required=True)
+    parser.add_argument('--project', '-pj', help='Pert ID', required=True)
 
     parser.add_argument(
         "--verbose", '-v',
@@ -47,9 +49,10 @@ def build_parser():
 def calc_drc_points(row, n):
     xx = np.linspace(log2(row['min_dose']), log2(row['max_dose']), 40)
     yy = [round(dr_func(row, x), 10) for x in xx]
-    points = {}
-    points['x'] = list(xx)
-    points['y'] = list(yy)
+    points = {
+        'x': list(xx),
+        'y': list(yy)
+    }
     return points
 
 def dr_func(d, x):
@@ -78,57 +81,87 @@ OTHERS - 3001-3999
 Calculate based on max code of "ZZZZZZ999"
 """
 def screen_to_parti_col(screen):
-    MAX_PARTITION_VALUE = 3*(10**15) #greater than "ZZZZZZ999"
-
     mo = re.match("([A-Z]+)([0-9]+)", screen.upper())
     project = mo[1]
     numbers = mo[2]
 
     if project == "MTS":
-        return int(numbers) % 1000 + 1
+        return int(numbers) % 1000
     elif project == "CPS":
         return int(numbers) % 1000 + 1 + 1000
     elif project == "APS":
         return int(numbers) % 1000 + 1 + 2000
     else:
-        return hash_project_code(project, 1000) #will assign based on assay series
+        return hash_project_code(project, 1000) + 3000 #will assign based on assay series
 
-def add_required_cols(df):
+def get_current_datetime():
+    return datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+
+def add_required_cols(args, df, insertionDate):
     if not 'screen' in df.columns:
-        pass
-
+        df['screen'] = args.screen
     if not 'pert_plate' in df.columns:
-        pass
-
+        df['pert_plate'] = args.pert_plate
     if not 'pert_id' in df.columns:
-        pass
-
+        df['pert_id'] = args.pert_plate
     if not 'project' in df.columns:
-        pass
-
+        df['project'] = args.pert_plate
     if not 'parti_col' in df.columns:
-        pass
-
+        df['parti_col'] = screen_to_parti_col(args.screen)
     if not 'insertionDate' in df.columns:
-        pass
+        df['insertionDate'] = insertionDate
+
+    return df
 
 
-
-def prep_drc(args):
-    drc = pd.read_csv(args.drc)
+def prep_and_write_drc(args, drc, insertionDate):
     drc['points'] = drc.apply(lambda row: calc_drc_points(row, 40), axis=1)
+    drc = add_required_cols(args, drc, insertionDate)
     out = drc.to_dict('records')
+
     # write to json
-    with open(args.out, 'w') as fp:
-        simplejson.dump(out, fp, ignore_nan=True)
+    drc_filepath = os.path.join(args.out, 'drc', 'drc.json')
+    os.makedirs(os.path.dirname(drc_filepath), exist_ok=True)
+    with open(drc_filepath, 'w') as fp:
+        simplejson.dump(out, fp, ignore_nan=True, indent=4*' ')
+
     logging.info("DRC JSON complete: " + args.out)
+    return
+
+def read_write_files_with_required_columns(args, file, insertionDate):
+    logging.info("Reading File from: " + file)
+    df = pd.read_csv(file)
+    df = add_required_cols(args, df, insertionDate=insertionDate)
+
+    file_outpath = os.path.join(
+        args.out,
+        os.path.basename(os.path.dirname(file)),
+        os.path.basename(file)
+    )
+    os.makedirs(os.path.dirname(file_outpath), exist_ok=True)
+    df.to_csv(file_outpath, index=False)
+    logging.info("File created: " + file_outpath)
     return
 
 def main(args):
     #prep_drc(args)
+    os.makedirs(args.out, exist_ok=True)
+    CURRENT_TIME = get_current_datetime()
 
-    parti_col = screen_to_parti_col(args.screen)
-    print(parti_col)
+    report_files = glob.glob(
+        os.path.join(args.data_dir, "reports_files_by_plot", "*", "*.csv")
+    )
+    for file in report_files:
+        read_write_files_with_required_columns(args, file, insertionDate=CURRENT_TIME)
+
+
+    drc_fp = glob.glob(os.path.join(args.data_dir, "DRC_TABLE*.csv"))
+    assert len(drc_fp) == 1, "Incorrect number of DRC_TABLE files found, expected 1 found: {}".format(len(drc_fp))
+    drc = pd.read_csv(drc_fp[0])
+
+    prep_and_write_drc(args, drc, insertionDate=CURRENT_TIME)
+
+    logging.info("done")
     return
 
 
@@ -138,5 +171,6 @@ if __name__ == "__main__":
     level = (logging.DEBUG if args.verbose else logging.INFO)
     logging.basicConfig(level=level)
     logger.info("args:  \n{}".format(args))
-
+    if args.out is None:
+        args.out = os.path.join(args.data_dir, "data-warehouse")
     main(args)
