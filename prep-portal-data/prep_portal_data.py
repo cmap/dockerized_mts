@@ -28,6 +28,8 @@ REQUIRED_COLUMNS = [
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data_dir', '-d', help='Compound Data Directory', required=True)
+    parser.add_argument('--file', '-f', help='Individual file, adds required columns.', required=False, default=None)
+    parser.add_argument('--drc', help='Individual file, DRC file. Adds points and required columns.', required=False, default=None)
     parser.add_argument('--out', '-o', help='Output file', default=None)
     parser.add_argument('--screen', '-sc', help='Screen', required=True)
     parser.add_argument('--pert_plate', '-pp', help='Pert Plate', required=True)
@@ -114,7 +116,8 @@ def add_required_cols(args, df, insertionDate):
     return df
 
 
-def prep_and_write_drc(args, drc, insertionDate):
+def prep_and_write_drc(args, drc_fp, insertionDate):
+    drc = pd.read_csv(drc_fp)
     drc['points'] = drc.apply(lambda row: calc_drc_points(row, 40), axis=1)
     drc = add_required_cols(args, drc, insertionDate)
     out = drc.to_dict('records')
@@ -148,6 +151,14 @@ def main(args):
     os.makedirs(args.out, exist_ok=True)
     CURRENT_TIME = get_current_datetime()
 
+    if args.file:
+        read_write_files_with_required_columns(args, args.file, insertionDate=CURRENT_TIME)
+        return
+
+    if args.drc:
+        prep_and_write_drc(args, args.drc, insertionDate=CURRENT_TIME)
+        return
+
     report_files = glob.glob(
         os.path.join(args.data_dir, "reports_files_by_plot", "*", "*.csv")
     )
@@ -157,10 +168,9 @@ def main(args):
 
     drc_fp = glob.glob(os.path.join(args.data_dir, "DRC_TABLE*.csv"))
     assert len(drc_fp) == 1, "Incorrect number of DRC_TABLE files found, expected 1 found: {}".format(len(drc_fp))
-    drc = pd.read_csv(drc_fp[0])
+    drc_fp = drc_fp[0]
 
-    prep_and_write_drc(args, drc, insertionDate=CURRENT_TIME)
-
+    prep_and_write_drc(args, drc_fp, insertionDate=CURRENT_TIME)
     logging.info("done")
     return
 
