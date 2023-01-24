@@ -66,6 +66,9 @@ args=(
   --project "${project}"
 )
 
+#setup environment
+source activate prism
+
 echo python /clue/bin/prep_portal_data.py  "${args[@]}"
 python /clue/bin/prep_portal_data.py  "${args[@]}"
 

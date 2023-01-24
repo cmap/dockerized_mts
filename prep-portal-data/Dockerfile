@@ -3,10 +3,15 @@ MAINTAINER Anup Jonchhe <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
-RUN apt-get install -y jq && \
-  pip install simplejson
+RUN cd /cmap && \
+conda create -y --name prism python=3.6 numpy pandas simplejson  && \
+cd /
 
-COPY prep_portal_data.py prep_portal_data.py
+SHELL ["conda", "run", "-n", "prism", "/bin/bash", "-c"]
+
+RUN apt-get install -y jq
+
+COPY prep_portal_data.py /clue/bin/prep_portal_data.py
 COPY aws_batch.sh /clue/bin/aws_batch
 
 RUN ["chmod","-R", "+x", "/clue/bin"]
