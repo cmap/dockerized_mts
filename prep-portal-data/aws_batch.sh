@@ -10,6 +10,10 @@ while test $# -gt 0; do
       shift
       data_dir=$1
       ;;
+    -o| --out)
+      shift
+      out=$1
+      ;;
     -c| --compound)
       shift
       compound=$1
@@ -50,11 +54,9 @@ then
     project_dir="${data_dir}"/"${project,,}"/"${project^^}"
     data_dir="${project_dir}"/"${plate}"/"${sanitized_pert_id}"
     compound="${sanitized_pert_id}"
-fi
 
-if [[ -z $out ]]
-then
-  out="${data_dir}"/data-warehouse
+    #output format for s3://portal-data.prism.org/data-to-load/
+    out="${out}"/"${screen}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"/
 fi
 
 args=(

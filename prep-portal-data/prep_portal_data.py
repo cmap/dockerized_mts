@@ -123,7 +123,7 @@ def prep_and_write_drc(args, drc_fp, insertionDate):
     out = drc.to_dict('records')
 
     # write to json
-    drc_filepath = os.path.join(args.out, 'drc', 'drc.json')
+    drc_filepath = os.path.join(args.out, 'dose_response_curves', 'dose_response_curves.json')
     os.makedirs(os.path.dirname(drc_filepath), exist_ok=True)
     with open(drc_filepath, 'w') as fp:
         simplejson.dump(out, fp, ignore_nan=True, indent=4*' ')
@@ -138,7 +138,7 @@ def read_write_files_with_required_columns(args, file, insertionDate):
 
     file_outpath = os.path.join(
         args.out,
-        os.path.basename(os.path.dirname(file)),
+        os.path.splitext(os.path.basename(file))[0],
         os.path.basename(file)
     )
     os.makedirs(os.path.dirname(file_outpath), exist_ok=True)
