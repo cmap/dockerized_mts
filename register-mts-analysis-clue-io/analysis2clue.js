@@ -143,8 +143,9 @@ class Analysis2clue {
         console.log("Roles to associate:", self.roles)
         const promises = [];
 
-        const deleteURL = self.apiURL + "/api/preliminary-analysis/" + prelim_analysisID + "/role"
-        await self.postMethodAPI({}, deleteURL, "DELETE")
+        // Clear previous roles
+        // const deleteURL = self.apiURL + "/api/preliminary-analysis/" + prelim_analysisID + "/role"
+        // await self.postMethodAPI({}, deleteURL, "DELETE")
         for (const role of self.roles){
             const url = self.apiURL + "/api/preliminary-analysis/" + prelim_analysisID + "/role/rel/" + role;
             console.log("role-assignment url:", url)

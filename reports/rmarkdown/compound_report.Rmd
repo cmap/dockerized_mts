@@ -330,7 +330,7 @@ if (!is.null(DRC)) {
     facet_wrap(lineage ~ ., scales = "free_x") +
     theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
     labs(x = "Lineage", y = "AUC")
-  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_dat.csv'), row.names=FALSE)
+  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_data.csv'), row.names=FALSE)
   p
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
