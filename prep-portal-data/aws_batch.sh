@@ -14,17 +14,17 @@ while test $# -gt 0; do
       shift
       compound=$1
       ;;
-    -m| --meta)
+    -s| --screen)
       shift
-      meta_path=$1
+      screen=$1
       ;;
-    -b| --combination)
+    -pp| --pert_plate)
       shift
-      combination=$1
+      plate=$1
       ;;
-    -q| --qc_path)
+    -pj| --project)
       shift
-      qc_path=$1
+      project=$1
       ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
@@ -34,9 +34,6 @@ while test $# -gt 0; do
   esac
   shift
 done
-
-combination=${combination:-0}
-echo $combination
 
 batch_index=0
 sanitized_pert_id=""
@@ -53,36 +50,29 @@ then
     project_dir="${data_dir}"/"${project,,}"/"${project^^}"
     data_dir="${project_dir}"/"${plate}"/"${sanitized_pert_id}"
     compound="${sanitized_pert_id}"
-    SUB='|'
-    if [[ "$pert_id" == *"$SUB"* ]]; then
-      qc_path="${project_dir}"/data/"${project^^}"_QC_TABLE.csv
-      combination=1
-    fi
 fi
 
-echo "${data_dir}" "${compound}" "${meta_path}" "${combination}"
+if [[ -z $out ]]
+then
+  out="${data_dir}"/data-warehouse
+fi
 
 args=(
-  -d "${data_dir}"
-  -c "${compound}"
-  -m "${meta_path}"
-  -b "${combination}"
+  --data_dir "${data_dir}"
+  --out "${out}"
+  --screen "${screen}"
+  --pert_plate "${plate}"
+  --pert_id "${compound}"
+  --project "${project}"
 )
-if [[ -f "$qc_path" ]]; then
-    args+=(-q $qc_path)
-fi
 
+#setup environment
+source activate prism
 
-if [[ "$sanitized_pert_id" == "DMSO" ]]
-then
-  echo "Skipping DMSO"
-else
-  echo Rscript /render_reports "${args[@]}"
-  Rscript /render_reports.R "${args[@]}"
-fi
+echo python /clue/bin/prep_portal_data.py  "${args[@]}"
+python /clue/bin/prep_portal_data.py  "${args[@]}"
 
 
 exit_code=$?
-
 echo "$exit_code"
 exit $exit_code
