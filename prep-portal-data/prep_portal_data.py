@@ -136,6 +136,8 @@ def read_write_files_with_required_columns(args, file, insertionDate):
     df = pd.read_csv(file)
     df = add_required_cols(args, df, insertionDate=insertionDate)
 
+    df.columns = df.columns.str.replace(".", "_", regex=False)
+
     file_outpath = os.path.join(
         args.out,
         os.path.splitext(os.path.basename(file))[0],
