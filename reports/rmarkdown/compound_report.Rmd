@@ -172,7 +172,7 @@ DT::datatable(compounds,
 
 exp_details_path = file.path(plot_files_dir, 'experimental_details')
 dir.create(exp_details_path, showWarnings = FALSE)
-write.csv(compounds, file.path(exp_details_path, 'experimental_details_table.csv'), row.names=FALSE)
+write.csv(compounds, file.path(exp_details_path, 'experimental_details.csv'), row.names=FALSE)
 ```
 
 # Data {.tabset .tabset-fade .tabset-pills}
@@ -232,7 +232,7 @@ DT::datatable(viability_table_dt,
 
 viability_path = file.path(plot_files_dir, 'viability')
 dir.create(viability_path, showWarnings = FALSE)
-write.csv(viability_table_dt, file.path(viability_path, 'viability_table.csv'), row.names=FALSE)
+write.csv(viability_table_dt, file.path(viability_path, 'viability.csv'), row.names=FALSE)
 
 ```
 
@@ -304,8 +304,8 @@ DT::datatable(lin_tab_dt,
 
 lineage_enrichment_path = file.path(plot_files_dir, 'lineage_enrichment')
 dir.create(lineage_enrichment_path, showWarnings = FALSE)
-write.csv(p_table, file.path(lineage_enrichment_path, 'lineage_enrichment_volcano_plot.csv'), row.names=FALSE)
-write.csv(lin_tab_dt, file.path(lineage_enrichment_path, 'lineage_enrichment_data_table.csv'), row.names=FALSE)
+write.csv(p_table, file.path(lineage_enrichment_path, 'lineage_enrichment_volcano_data.csv'), row.names=FALSE)
+# write.csv(lin_tab_dt, file.path(lineage_enrichment_path, 'lineage_enrichment_data_table.csv'), row.names=FALSE)
 
 ```
 
@@ -330,7 +330,7 @@ if (!is.null(DRC)) {
     facet_wrap(lineage ~ ., scales = "free_x") +
     theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
     labs(x = "Lineage", y = "AUC")
-  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_data.csv'), row.names=FALSE)
+  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
   p
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
@@ -348,7 +348,7 @@ if (!is.null(DRC)) {
     facet_wrap(lineage ~ ., scales = "free_x") +
     theme(legend.position = "none") +
     labs(x = "Lineage", y = "Log-fold change")
-  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_dat.csv'), row.names=FALSE)
+  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
   p
 } else {
   print("Unable to show plots by lineage for AUC or a single dose.")
@@ -413,8 +413,8 @@ DT::datatable(p_table %>%
 
 mutations_path = file.path(plot_files_dir, 'mutation_effect')
 dir.create(mutations_path, showWarnings = FALSE)
-write.csv(p_table, file.path(mutations_path, 'mutations_volcano_plot_data.csv'), row.names=FALSE)
-write.csv(p_table, file.path(mutations_path, 'mutations_data_table.csv'), row.names=FALSE)
+write.csv(p_table, file.path(mutations_path, 'mutation_effect_volcano_plot_data.csv'), row.names=FALSE)
+write.csv(p_table, file.path(mutations_path, 'mutation_effect_data_table.csv'), row.names=FALSE)
 
 ```
 
@@ -489,7 +489,7 @@ if (!is.null(DRC)) {
           axis.text.x = element_text(angle = 45)) +
     labs(x = "", y = "AUC")
   
-  write.csv(plot_data, file.path(mutations_path, 'mutations_box_plot_data.csv'), row.names=FALSE)
+  write.csv(plot_data, file.path(mutations_path, 'mutation_effect_boxplot_data.csv'), row.names=FALSE)
   p
 } else if (n_doses == 1) {
   m <- mean(LFC$LFC_cb)
@@ -550,7 +550,7 @@ if (!is.null(DRC)) {
           axis.text.x = element_text(angle = 45)) +
     labs(x = "", y = "LFC")
   
-  write.csv(plot_data, file.path(mutations_path, 'mutations_box_plot_data.csv'), row.names=FALSE)
+  write.csv(plot_data, file.path(mutations_path, 'mutation_effect_boxplot_data.csv'), row.names=FALSE)
   p
 } else {
   print("Unable to show plots by mutation for AUC or a single dose.")
@@ -620,7 +620,7 @@ feat_plot_df = feat_plot_dfs %>% dplyr::bind_rows()
 correlation_analysis_path = file.path(plot_files_dir, 'correlation_analysis')
 dir.create(correlation_analysis_path, showWarnings = FALSE)
 #both volcano plot and data table use same data
-write.csv(feat_plot_df, file.path(correlation_analysis_path, 'correlation_analysis_data.csv'), row.names=FALSE)
+write.csv(feat_plot_df, file.path(correlation_analysis_path, 'correlation_analysis_data_table.csv'), row.names=FALSE)
 ```
 
 # Multivariate biomarker analysis{.tabset .tabset-fade .tabset-pills}
