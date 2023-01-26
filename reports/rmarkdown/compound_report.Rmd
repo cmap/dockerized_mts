@@ -207,7 +207,7 @@ heatmaply::heatmaply(pmin(2^LFC_matrix, 1), Colv = F, Rowv = F,
 
 heatmap_path = file.path(plot_files_dir, 'heatmap')
 dir.create(heatmap_path, showWarnings = FALSE)
-write.csv(LFC_matrix, file.path(heatmap_path, 'heatmap_matrix.csv'), row.names=TRUE)
+#write.csv(LFC_matrix, file.path(heatmap_path, 'heatmap_matrix.csv'), row.names=TRUE)
 
 ```
 
