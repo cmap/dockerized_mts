@@ -105,9 +105,9 @@ def add_required_cols(args, df, insertionDate):
     if not 'pert_plate' in df.columns:
         df['pert_plate'] = args.pert_plate
     if not 'pert_id' in df.columns:
-        df['pert_id'] = args.pert_plate
+        df['pert_id'] = args.pert_id
     if not 'project' in df.columns:
-        df['project'] = args.pert_plate
+        df['project'] = args.project
     if not 'parti_col' in df.columns:
         df['parti_col'] = screen_to_parti_col(args.screen)
     if not 'insertionDate' in df.columns:
