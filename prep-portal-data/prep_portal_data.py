@@ -119,8 +119,10 @@ def add_required_cols(args, df, insertionDate):
 def prep_and_write_drc(args, drc_fp, insertionDate):
     drc = pd.read_csv(drc_fp)
     drc['points'] = drc.apply(lambda row: calc_drc_points(row, 40), axis=1)
+    drc.rename(columns={'varied_iname': 'pert_id'}, inplace=True)
+    sanitize_colnames(drc)
     drc = add_required_cols(args, drc, insertionDate)
-    drc = sanitize_colnames(drc)
+
     out = drc.to_dict('records')
     
 
@@ -133,14 +135,16 @@ def prep_and_write_drc(args, drc_fp, insertionDate):
     logging.info("DRC JSON complete: " + args.out)
     return
 
+
 def sanitize_colnames(df):
-    return df.columns.str.replace(".", "_", regex=False)
+    df.columns = df.columns.str.replace(".", "_", regex=False)
+    return
 
 def read_write_files_with_required_columns(args, file, insertionDate):
     logging.info("Reading File from: " + file)
     df = pd.read_csv(file)
     df = add_required_cols(args, df, insertionDate=insertionDate)
-    df = sanitize_colnames(df)
+    sanitize_colnames(df)
 
     file_outpath = os.path.join(
         args.out,
