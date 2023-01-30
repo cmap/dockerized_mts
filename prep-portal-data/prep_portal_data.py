@@ -87,7 +87,7 @@ def screen_to_parti_col(screen):
     project = mo[1]
     numbers = mo[2]
 
-    if project == "MTS":
+    if (project == "MTS") or (project == "PMTS"):
         return int(numbers) % 1000
     elif project == "CPS":
         return int(numbers) % 1000 + 1 + 1000

@@ -2,7 +2,7 @@
 REPO="prismcmap"
 NAME="prep-portal-data"
 
-VERSION="v0.0.1" #change the version number for each new build
+VERSION="v0.0.2" #change the version number for each new build
 TAG="latest"
 
 #change the version number for each new build
