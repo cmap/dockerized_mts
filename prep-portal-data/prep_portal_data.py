@@ -118,8 +118,8 @@ def add_required_cols(args, df, insertionDate):
 
 def prep_and_write_drc(args, drc_fp, insertionDate):
     drc = pd.read_csv(drc_fp)
-    drc['points'] = drc.apply(lambda row: calc_drc_points(row, 40), axis=1)
-    drc.rename(columns={'varied_iname': 'pert_id'}, inplace=True)
+    drc['pts'] = drc.apply(lambda row: calc_drc_points(row, 40), axis=1)
+    drc.rename(columns={'varied_iname': 'pert_iname', 'varied_id': 'pert_id'}, inplace=True)
     sanitize_colnames(drc)
     drc = add_required_cols(args, drc, insertionDate)
 

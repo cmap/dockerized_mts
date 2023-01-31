@@ -281,11 +281,16 @@ p_table <- lin_tab %>%
   dplyr::mutate(neg_log10_qval = -log10(q.value))
 
 if(nrow(p_table) > 0){
+  lineage_enrichment_path = file.path(plot_files_dir, 'lineage_enrichment')
+  dir.create(lineage_enrichment_path, showWarnings = FALSE)
+  write.csv(p_table, file.path(lineage_enrichment_path, 'lineage_enrichment_volcano_data.csv'), row.names=FALSE)
+  
   p <- p_table %>%
     ggplot() + geom_point(aes(x = effect_size, y =  neg_log10_qval,
                               color = pert_dose, name = lineage)) +
     geom_vline(aes(xintercept = 0), lty = 2, lwd =.5) +
     labs(x = "Effect Size", color = "Dose")
+  
   plotly::ggplotly(p)
 }
 
@@ -302,9 +307,7 @@ DT::datatable(lin_tab_dt,
               colnames = c("Lineage", "Abbreviation", "Effect size", "q value", "Compound", "Dose", "# lines"))
 
 
-lineage_enrichment_path = file.path(plot_files_dir, 'lineage_enrichment')
-dir.create(lineage_enrichment_path, showWarnings = FALSE)
-write.csv(p_table, file.path(lineage_enrichment_path, 'lineage_enrichment_volcano_data.csv'), row.names=FALSE)
+
 # write.csv(lin_tab_dt, file.path(lineage_enrichment_path, 'lineage_enrichment_data_table.csv'), row.names=FALSE)
 
 ```
@@ -393,6 +396,10 @@ if(nrow(p_table) > 0){
     dplyr::ungroup() %>%
     dplyr::filter(rank <= 250 | sign_rank <= 25)
   
+  mutations_path = file.path(plot_files_dir, 'mutation_effect')
+  dir.create(mutations_path, showWarnings = FALSE)
+  write.csv(p_table, file.path(mutations_path, 'mutation_effect_volcano_plot_data.csv'), row.names=FALSE)
+  
   p <- p_table %>%
     ggplot() + geom_point(aes(x = effect_size, y =  neg_log10_qval,
                               color = pert_dose, name = feature)) +
@@ -410,12 +417,6 @@ DT::datatable(p_table %>%
               filter = "top", rownames = F, options = list(dom = "tp"),
               colnames = c("Mutation", "Effect size", "q value", "Compound", "Dose", "# lines")
 )
-
-mutations_path = file.path(plot_files_dir, 'mutation_effect')
-dir.create(mutations_path, showWarnings = FALSE)
-write.csv(p_table, file.path(mutations_path, 'mutation_effect_volcano_plot_data.csv'), row.names=FALSE)
-write.csv(p_table, file.path(mutations_path, 'mutation_effect_data_table.csv'), row.names=FALSE)
-
 ```
 
 ## Plots by mutation
