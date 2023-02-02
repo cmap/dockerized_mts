@@ -50,9 +50,10 @@ def build_parser():
 """
 def calc_drc_points(row, n):
     xx = np.linspace(log2(row['min_dose']), log2(row['max_dose']), 40)
+    xx_pts = np.linspace(row['min_dose'], row['max_dose'], 40)
     yy = [round(dr_func(row, x), 10) for x in xx]
     points = {
-        'x': list(xx),
+        'x': list(xx_pts),
         'y': list(yy)
     }
     return points
@@ -146,14 +147,18 @@ def read_write_files_with_required_columns(args, file, insertionDate):
     df = add_required_cols(args, df, insertionDate=insertionDate)
     sanitize_colnames(df)
 
-    file_outpath = os.path.join(
-        args.out,
-        os.path.splitext(os.path.basename(file))[0],
-        "{}_{}".format(args.pert_id, os.path.basename(file))
-    )
-    os.makedirs(os.path.dirname(file_outpath), exist_ok=True)
-    df.to_csv(file_outpath, index=False)
-    logging.info("File created: " + file_outpath)
+    if len(df) > 0:
+        file_outpath =  os.path.join(
+            args.out,
+            os.path.splitext(os.path.basename(file))[0],
+            "{}_{}".format(args.pert_id, os.path.basename(file))
+        )
+        os.makedirs(os.path.dirname(file_outpath), exist_ok=True)
+        df.to_csv(file_outpath, index=False)
+        logging.info("File created: " + file_outpath)
+    else:
+        logging.info("File, {}, was empty. Skipping...".format(file))
+
     return
 
 def main(args):
