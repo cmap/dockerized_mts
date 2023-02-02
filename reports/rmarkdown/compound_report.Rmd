@@ -280,9 +280,10 @@ p_table <- lin_tab %>%
   dplyr::filter(q.value < 0.1) %>%
   dplyr::mutate(neg_log10_qval = -log10(q.value))
 
+lineage_enrichment_path = file.path(plot_files_dir, 'lineage_enrichment')
+dir.create(lineage_enrichment_path, showWarnings = FALSE)
+
 if(nrow(p_table) > 0){
-  lineage_enrichment_path = file.path(plot_files_dir, 'lineage_enrichment')
-  dir.create(lineage_enrichment_path, showWarnings = FALSE)
   write.csv(p_table, file.path(lineage_enrichment_path, 'lineage_enrichment_volcano_data.csv'), row.names=FALSE)
   
   p <- p_table %>%
@@ -388,6 +389,9 @@ p_table <- MUT_table %>%
   dplyr::mutate(is_positive = effect_size > 0) %>%
   dplyr::ungroup()
 
+mutations_path = file.path(plot_files_dir, 'mutation_effect')
+dir.create(mutations_path, showWarnings = FALSE)
+
 if(nrow(p_table) > 0){
   p_table %<>%
     dplyr::group_by(is_positive, pert_iname, pert_dose) %>%
@@ -396,8 +400,6 @@ if(nrow(p_table) > 0){
     dplyr::ungroup() %>%
     dplyr::filter(rank <= 250 | sign_rank <= 25)
   
-  mutations_path = file.path(plot_files_dir, 'mutation_effect')
-  dir.create(mutations_path, showWarnings = FALSE)
   write.csv(p_table, file.path(mutations_path, 'mutation_effect_volcano_plot_data.csv'), row.names=FALSE)
   
   p <- p_table %>%
