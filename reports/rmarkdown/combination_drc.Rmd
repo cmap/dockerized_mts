@@ -278,6 +278,8 @@ for (i in 1:length(constituents)) {
 # bliss expected fold change (capped FCs at 1)
 B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
 spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
+spread_lfc$B <- B
 spread_lfc %<>%
   dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
   dplyr::mutate(p = 2*pnorm(abs(Z), lower.tail = F)) %>%
@@ -298,8 +300,6 @@ combos <- spread_lfc %>%
   dplyr::distinct(pert_dose)
 
 #spread_lfc %<>% dplyr::group_by(ccle_name) %>% dplyr::mutate(mean_S = round(log2(mean(2^S)), 3))
-spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
-spread_lfc$B <- B
 spread_lfc %<>% dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
 
 
