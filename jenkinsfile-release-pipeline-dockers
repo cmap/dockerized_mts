@@ -9,6 +9,7 @@ REPO="prismcmap"
 PROD_TAG="production"
 LATEST_TAG="latest"
 GIT_FOLDER = "/ci-data/jenkins/workspace/RELEASE-PIPELINE-DOCKERS/.git/"
+URL_PREFIX="https://api.clue.io/api/pipeline_versions/upsertWithWhere?where=";
 
 def getCheckedOutGitCommitHash() {
 
@@ -34,15 +35,36 @@ def parallelStagesMap(DIRS){
    for( String DIR : DIRS ){
        DIR = DIR.replace("/","")
        if(!DIR.equals("docker_base" ) && !DIR.equals("biomarker_files" ) && !DIR.equals("info" )){
+
         DOCKER_FILE_EXISTS=sh(returnStdout: true, script: "test -f ${DIR}/Dockerfile && echo FILE exists.").trim()
         if(DOCKER_FILE_EXISTS){
+            API_JOB = DIR + "_API"
             mp.put("${DIR}",generateStage(DIR,GIT_COMMIT_HASH))
+            mp.put("${API_JOB}",generateAPIStage(API_JOB,DIR,GIT_COMMIT_HASH))
         }
        }
    }
     return mp
 }
+def generateAPIStage(job,repo_name,docker_hash) {
 
+    return {
+        stage("stage: ${job}") {
+            String name = REPO + "/" + repo_name;
+            String where = '{"name":"' + name + '","docker_tag":"' + PROD_TAG + '"}';
+            String whereClause = java.net.URLEncoder.encode(where, "UTF-8");
+            def message = '{"name":"' + name + '","docker_tag":"' + PROD_TAG + '","docker_hash": "' + docker_hash + '"}';
+            def post = new URL(URL_PREFIX + whereClause).openConnection();
+            post.setRequestMethod("POST")
+            post.setDoOutput(true)
+            post.setRequestProperty("Content-Type", "application/json")
+            post.setRequestProperty("user_key", API_KEY)
+            post.getOutputStream().write(message.getBytes("UTF-8"));
+            def postRC = post.getResponseCode();
+            println(postRC);
+      }
+    }
+}
 def generateStage(job,HASH_TAG) {
     return {
         stage("stage: ${job}") {
@@ -59,6 +81,7 @@ pipeline{
     agent any
     environment {
         DOCKERHUB_CREDENTIALS= credentials('dockerhub-cred-jasiedu')
+        API_KEY = credentials('API_KEY')
     }
     stages {
       stage('Login to Docker Hub') {
