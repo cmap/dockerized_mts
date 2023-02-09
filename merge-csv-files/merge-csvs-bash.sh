@@ -119,7 +119,7 @@ else
   python /clue/bin/merge_csvs.py "${args[@]}"
 fi
 
-
+echo "Skipping Testing"
 exit_code=$?
 conda deactivate
 exit $exit_code
