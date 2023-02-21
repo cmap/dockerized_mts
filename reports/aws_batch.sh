@@ -26,6 +26,10 @@ while test $# -gt 0; do
       shift
       qc_path=$1
       ;;
+    -i| --failed_indicies)
+      shift
+      FAILED_INDICES=$1
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -38,12 +42,33 @@ done
 combination=${combination:-0}
 echo $combination
 
+echo FAILED_INDICES: "$FAILED_INDICES"
+#Case: Multiple Failed Jobs run from rerun-script as array job of size: n_failed_jobs
+if [[ -n "${AWS_BATCH_JOB_ARRAY_INDEX}" && -n $FAILED_INDICES ]]; then # -n is same as ! -z
+  #Case: Multiple Failed Jobs run from rerun-script as array job of size: n_failed_jobs
+  IFS=',' read -r -a failed_indices <<< "${FAILED_INDICES}"
+  RERUN_INDEX="${failed_indices[${AWS_BATCH_JOB_ARRAY_INDEX}]}"
+  echo "RERUN_INDEX IS: ${RERUN_INDEX}"
+elif [[ -n "$FAILED_INDICES" ]]; then
+    #case: Single failed job, cloned job and passed as parameter from command UI in AWS
+    IFS=',' read -r -a failed_indices <<< "${FAILED_INDICES}"
+    RERUN_INDEX="${failed_indices[0]}"
+    echo "RERUN_INDEX IS: ${RERUN_INDEX}"
+fi
+
+
 batch_index=0
 sanitized_pert_id=""
 if [[ ! -z $compound_key ]]
 then
-    if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
-      batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    if [[ -n "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+      if [[ -n $RERUN_INDEX ]]; then
+          echo "RERUN_INDEX:" "${RERUN_INDEX}"
+          batch_index=${RERUN_INDEX}
+        else
+          echo "AWS_BATCH_JOB_ARRAY_INDEX:" "$AWS_BATCH_JOB_ARRAY_INDEX"
+          batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+        fi
     fi
     pert_id=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
     project=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')

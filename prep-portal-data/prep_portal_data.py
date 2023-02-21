@@ -50,9 +50,10 @@ def build_parser():
 """
 def calc_drc_points(row, n):
     xx = np.linspace(log2(row['min_dose']), log2(row['max_dose']), 40)
+    xx_pts = np.linspace(row['min_dose'], row['max_dose'], 40)
     yy = [round(dr_func(row, x), 10) for x in xx]
     points = {
-        'x': list(xx),
+        'x': list(xx_pts),
         'y': list(yy)
     }
     return points
@@ -87,7 +88,7 @@ def screen_to_parti_col(screen):
     project = mo[1]
     numbers = mo[2]
 
-    if project == "MTS":
+    if (project == "MTS") or (project == "PMTS"):
         return int(numbers) % 1000
     elif project == "CPS":
         return int(numbers) % 1000 + 1 + 1000
@@ -118,17 +119,26 @@ def add_required_cols(args, df, insertionDate):
 
 def prep_and_write_drc(args, drc_fp, insertionDate):
     drc = pd.read_csv(drc_fp)
-    drc['points'] = drc.apply(lambda row: calc_drc_points(row, 40), axis=1)
+    drc['pts'] = drc.apply(lambda row: calc_drc_points(row, 40), axis=1)
+    drc.rename(columns={'varied_iname': 'pert_iname', 'varied_id': 'pert_id'}, inplace=True)
+    sanitize_colnames(drc)
     drc = add_required_cols(args, drc, insertionDate)
+
     out = drc.to_dict('records')
+    
 
     # write to json
-    drc_filepath = os.path.join(args.out, 'drc', 'drc.json')
+    drc_filepath = os.path.join(args.out, 'dose_response_curves', '{}_dose_response_curves.json'.format(args.pert_id))
     os.makedirs(os.path.dirname(drc_filepath), exist_ok=True)
     with open(drc_filepath, 'w') as fp:
         simplejson.dump(out, fp, ignore_nan=True, indent=4*' ')
 
     logging.info("DRC JSON complete: " + args.out)
+    return
+
+
+def sanitize_colnames(df):
+    df.columns = df.columns.str.replace(".", "_", regex=False)
     return
 
 def read_write_files_with_required_columns(args, file, insertionDate):
@@ -149,14 +159,6 @@ def read_write_files_with_required_columns(args, file, insertionDate):
     else:
         logging.info("File, {}, was empty. Skipping...".format(file))
 
-    file_outpath = os.path.join(
-        args.out,
-        os.path.basename(os.path.dirname(file)),
-        os.path.basename(file)
-    )
-    os.makedirs(os.path.dirname(file_outpath), exist_ok=True)
-    df.to_csv(file_outpath, index=False)
-    logging.info("File created: " + file_outpath)
     return
 
 def main(args):

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-ROLE_ID="cmap_core"
+ROLE_ID=("cmap_core" "prism")
 APPROVED="false"
 
 while test $# -gt 0; do
@@ -22,7 +22,7 @@ while test $# -gt 0; do
       ;;
     -r|--role_id)
       shift
-      ROLE_ID=$1
+      ROLE_ID+=("$1")
       APPROVED="true"
       ;;
     *)
@@ -42,6 +42,7 @@ then
         batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
         if [ -f "${COMPOUND_KEY_JSON}" ];
         then
+            echo "Reading from file"
             project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
             PROJECT_NAME="${project}"
             INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
@@ -50,7 +51,8 @@ then
             project=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
             role=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].role')
             PROJECT_NAME="${project}"
-            ROLE_ID="${role}"
+            echo $role
+            ROLE_ID+=("$role")
             APPROVED="true"
             INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
          else
@@ -62,11 +64,12 @@ then
         batch_index=0
         if [ -f "${COMPOUND_KEY_JSON}" ];
         then
+            echo "Reading from file"
             project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
         else
             project=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
             role=$(echo "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].role')
-            ROLE_ID="${role}"
+            ROLE_ID+=("$role")
             APPROVED="true"
         fi
         PROJECT_NAME="${project}"
@@ -83,13 +86,19 @@ else
     errorMessage="$errorMessage register -s <S3_LOCATION> -i <BUILD_ID> [-p PROJECT_NAME | -f COMPOUND_KEY_JSON]${NL}"
 fi
 
+#Join ROLES
+SAVE_IFS="$IFS"
+IFS=","
+ROLE_CSL="${ROLE_ID[*]}"
+IFS="$SAVE_IFS"
+
 echo PROJECT_NAME: "${PROJECT_NAME}" INDEX_PAGE: "${INDEX_PAGE}"  BUILD_ID: "${BUILD_ID}"
-echo ROLE_ID: "${ROLE_ID}" APPROVED: "${APPROVED}"
+echo ROLE_ID: "${ROLE_CSL}" APPROVED: "${APPROVED}"
 
 if [[ -z "${errorMessage}" ]]
 then
-    echo node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_ID}" "${APPROVED}"
-    node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_ID}" "${APPROVED}"
+    echo node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_CSL}" "${APPROVED}"
+    node ./index.js "${PROJECT_NAME}" "${INDEX_PAGE}"  "${BUILD_ID}" "${ROLE_CSL}" "${APPROVED}"
 else
     echo "${errorMessage}"
     exit -1
