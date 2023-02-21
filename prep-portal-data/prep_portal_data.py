@@ -27,14 +27,14 @@ REQUIRED_COLUMNS = [
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data_dir', '-d', help='Compound Data Directory', required=True)
+    parser.add_argument('--data_dir', '-d', help='Compound Data Directory', required=False)
     parser.add_argument('--file', '-f', help='Individual file, adds required columns.', required=False, default=None)
     parser.add_argument('--drc', help='Individual file, DRC file. Adds points and required columns.', required=False, default=None)
     parser.add_argument('--out', '-o', help='Output file', default=None)
     parser.add_argument('--screen', '-sc', help='Screen', required=True)
-    parser.add_argument('--pert_plate', '-pp', help='Pert Plate', required=True)
-    parser.add_argument('--pert_id', '-id', help='Pert ID', required=True)
-    parser.add_argument('--project', '-pj', help='Pert ID', required=True)
+    parser.add_argument('--pert_plate', '-pp', help='Pert Plate', required=False, default=None)
+    parser.add_argument('--pert_id', '-id', help='Pert ID', required=False, default=None)
+    parser.add_argument('--project', '-pj', help='Pert ID', required=False, default=None)
 
     parser.add_argument(
         "--verbose", '-v',
@@ -100,14 +100,14 @@ def get_current_datetime():
     return datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
 
 def add_required_cols(args, df, insertionDate):
-    if not 'screen' in df.columns:
-        df['screen'] = args.screen
-    if not 'pert_plate' in df.columns:
+    if args.pert_plate:
         df['pert_plate'] = args.pert_plate
-    if not 'pert_id' in df.columns:
-        df['pert_id'] = args.pert_plate
-    if not 'project' in df.columns:
-        df['project'] = args.pert_plate
+    if args.pert_id:
+        df['pert_id'] = args.pert_id
+    if args.project:
+        df['project'] = args.project
+
+    df['screen'] = args.screen
     if not 'parti_col' in df.columns:
         df['parti_col'] = screen_to_parti_col(args.screen)
     if not 'insertionDate' in df.columns:
@@ -135,6 +135,19 @@ def read_write_files_with_required_columns(args, file, insertionDate):
     logging.info("Reading File from: " + file)
     df = pd.read_csv(file)
     df = add_required_cols(args, df, insertionDate=insertionDate)
+    sanitize_colnames(df)
+
+    if len(df) > 0:
+        file_outpath = os.path.join(
+            args.out,
+            os.path.splitext(os.path.basename(file))[0],
+            "{}_{}".format(args.pert_id, os.path.basename(file))
+        )
+        os.makedirs(os.path.dirname(file_outpath), exist_ok=True)
+        df.to_csv(file_outpath, index=False)
+        logging.info("File created: " + file_outpath)
+    else:
+        logging.info("File, {}, was empty. Skipping...".format(file))
 
     file_outpath = os.path.join(
         args.out,
@@ -176,7 +189,10 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = build_parser().parse_args(sys.argv[1:])
+    parser = build_parser()
+    args = parser.parse_args(sys.argv[1:])
+    if not (args.data_dir or args.file):
+        parser.error("--file or --data_directory required")
 
     level = (logging.DEBUG if args.verbose else logging.INFO)
     logging.basicConfig(level=level)
