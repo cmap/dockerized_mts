@@ -2,9 +2,13 @@
 # read in flagged arguments
 while test $# -gt 0; do
   case "$1" in
-    -f| --compound_key_path)
+    -k| --compound_key_path)
       shift
       compound_key=$1
+      ;;
+    -f| --file)
+      shift
+      file=$1
       ;;
     -d| --data_dir)
       shift
@@ -13,6 +17,10 @@ while test $# -gt 0; do
     -o| --out)
       shift
       out=$1
+      ;;
+    -of| --outfile)
+      shift
+      outfile=$1
       ;;
     -c| --compound)
       shift
@@ -39,34 +47,52 @@ while test $# -gt 0; do
   shift
 done
 
+if [[ -z $screen ]]; then
+  echo "Screen is a required field"
+  exit -1
+else
+  args=(--screen "${screen}")
+fi
+
+
 batch_index=0
 sanitized_pert_id=""
 if [[ ! -z $compound_key ]]
 then
     if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
       batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+      pert_id=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+      project=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+      plate=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+      cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
+      sanitized_pert_id="${cleaned_pert_id^^}"
+      project_dir="${data_dir}"/"${project,,}"/"${project^^}"
+      data_dir="${project_dir}"/"${plate}"/"${sanitized_pert_id}"
+      compound="${sanitized_pert_id}"
+
+      #output format for s3://portal-data.prism.org/data-to-load/
+      out="${out}"/"${screen}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"/
+      args+=(
+        --data_dir "${data_dir}"
+        --out "${out}"
+        --pert_plate "${plate}"
+        --pert_id "${compound}"
+        --project "${project}"
+      )
+
+    else
+      echo "AWS_BATCH_JOB_ARRAY_INDEX NOT SET"
+      exit -1
     fi
-    pert_id=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
-    project=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-    plate=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
-    cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
-    sanitized_pert_id="${cleaned_pert_id^^}"
-    project_dir="${data_dir}"/"${project,,}"/"${project^^}"
-    data_dir="${project_dir}"/"${plate}"/"${sanitized_pert_id}"
-    compound="${sanitized_pert_id}"
-
-    #output format for s3://portal-data.prism.org/data-to-load/
-    out="${out}"/"${screen}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"/
+else
+    if [[ ! -z "${file}" ]];
+    then
+      args+=(
+        --f "${file}"
+        --outfile "${outfile}"
+      )
+    fi
 fi
-
-args=(
-  --data_dir "${data_dir}"
-  --out "${out}"
-  --screen "${screen}"
-  --pert_plate "${plate}"
-  --pert_id "${compound}"
-  --project "${project}"
-)
 
 #setup environment
 source activate prism

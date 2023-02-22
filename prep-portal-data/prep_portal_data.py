@@ -27,14 +27,15 @@ REQUIRED_COLUMNS = [
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data_dir', '-d', help='Compound Data Directory', required=True)
+    parser.add_argument('--data_dir', '-d', help='Compound Data Directory', required=False)
     parser.add_argument('--file', '-f', help='Individual file, adds required columns.', required=False, default=None)
     parser.add_argument('--drc', help='Individual file, DRC file. Adds points and required columns.', required=False, default=None)
-    parser.add_argument('--out', '-o', help='Output file', default=None)
+    parser.add_argument('--out', '-o', help='Output folder', default=None)
+    parser.add_argument('--outfile', '-of', help='Specify output path and filename', default=None)
     parser.add_argument('--screen', '-sc', help='Screen', required=True)
-    parser.add_argument('--pert_plate', '-pp', help='Pert Plate', required=True)
-    parser.add_argument('--pert_id', '-id', help='Pert ID', required=True)
-    parser.add_argument('--project', '-pj', help='Pert ID', required=True)
+    parser.add_argument('--pert_plate', '-pp', help='Pert Plate', required=False, default=None)
+    parser.add_argument('--pert_id', '-id', help='Pert ID', required=False, default=None)
+    parser.add_argument('--project', '-pj', help='Pert ID', required=False, default=None)
 
     parser.add_argument(
         "--verbose", '-v',
@@ -101,14 +102,14 @@ def get_current_datetime():
     return datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
 
 def add_required_cols(args, df, insertionDate):
-    if not 'screen' in df.columns:
-        df['screen'] = args.screen
-    if not 'pert_plate' in df.columns:
+    if args.pert_plate:
         df['pert_plate'] = args.pert_plate
-    if not 'pert_id' in df.columns:
+    if args.pert_id:
         df['pert_id'] = args.pert_id
-    if not 'project' in df.columns:
+    if args.project:
         df['project'] = args.project
+
+    df['screen'] = args.screen
     if not 'parti_col' in df.columns:
         df['parti_col'] = screen_to_parti_col(args.screen)
     if not 'insertionDate' in df.columns:
@@ -125,7 +126,6 @@ def prep_and_write_drc(args, drc_fp, insertionDate):
     drc = add_required_cols(args, drc, insertionDate)
 
     out = drc.to_dict('records')
-    
 
     # write to json
     drc_filepath = os.path.join(args.out, 'dose_response_curves', '{}_dose_response_curves.json'.format(args.pert_id))
@@ -148,11 +148,19 @@ def read_write_files_with_required_columns(args, file, insertionDate):
     sanitize_colnames(df)
 
     if len(df) > 0:
-        file_outpath =  os.path.join(
-            args.out,
-            os.path.splitext(os.path.basename(file))[0],
-            "{}_{}".format(args.pert_id, os.path.basename(file))
-        )
+        if args.outfile:
+            file_outpath = args.outfile
+        else:
+            if args.pert_id:
+                filename = "{}_{}".format(args.pert_id, os.path.basename(file))
+            else:
+                filename = "{}".format(os.path.basename(file))
+
+            file_outpath = os.path.join(
+                args.out,
+                os.path.splitext(os.path.basename(file))[0],
+                filename)
+
         os.makedirs(os.path.dirname(file_outpath), exist_ok=True)
         df.to_csv(file_outpath, index=False)
         logging.info("File created: " + file_outpath)
@@ -163,7 +171,7 @@ def read_write_files_with_required_columns(args, file, insertionDate):
 
 def main(args):
     #prep_drc(args)
-    os.makedirs(args.out, exist_ok=True)
+    # os.makedirs(args.out, exist_ok=True)
     CURRENT_TIME = get_current_datetime()
 
     if args.file:
@@ -180,22 +188,27 @@ def main(args):
     for file in report_files:
         read_write_files_with_required_columns(args, file, insertionDate=CURRENT_TIME)
 
-
     drc_fp = glob.glob(os.path.join(args.data_dir, "DRC_TABLE*.csv"))
-    assert len(drc_fp) == 1, "Incorrect number of DRC_TABLE files found, expected 1 found: {}".format(len(drc_fp))
-    drc_fp = drc_fp[0]
+    if len(drc_fp) > 0:
+        assert len(drc_fp) == 1, "Incorrect number of DRC_TABLE files found, expected 1 found: {}".format(len(drc_fp))
+        drc_fp = drc_fp[0]
+        prep_and_write_drc(args, drc_fp, insertionDate=CURRENT_TIME)
+    else:
+        logging.info("No DRC file found, skipping")
 
-    prep_and_write_drc(args, drc_fp, insertionDate=CURRENT_TIME)
     logging.info("done")
     return
 
 
 if __name__ == "__main__":
-    args = build_parser().parse_args(sys.argv[1:])
+    parser = build_parser()
+    args = parser.parse_args(sys.argv[1:])
+    if not (args.data_dir or args.file):
+        parser.error("--file or --data_directory required")
 
     level = (logging.DEBUG if args.verbose else logging.INFO)
     logging.basicConfig(level=level)
     logger.info("args:  \n{}".format(args))
-    if args.out is None:
+    if (args.out is None) and (args.outfile is None):
         args.out = os.path.join(args.data_dir, "data-warehouse")
     main(args)
