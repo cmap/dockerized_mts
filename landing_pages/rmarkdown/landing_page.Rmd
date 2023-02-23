@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS
-  project_name: CPS005_VALIDATION_COMPOUNDS
+  data_dir: /Users/anup/work/1_Projects/PRISM_Portal/mts021_validation_compounds_internal/MTS021_VALIDATION_COMPOUNDS_INTERNAL
+  project_name: MTS021_VALIDATION_COMPOUNDS_INTERNAL
   val_link: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -135,6 +135,9 @@ if (stringr::str_detect(params$project_name, coll("validation", ignore_case = T)
 ```
 
 ## Reports and Downloads {.tabset .tabset-pills}
+```{r}
+  download_files = data.frame(title=character(0), type=character(0), url=character(0), project=character(0)) #instantiate
+```
 
 ### Report Files
 
@@ -188,6 +191,14 @@ These are the links to files containing QC and sensitivity data for all compound
 for (i in 1:length(data_files)) {
   if (names(data_files)[i] %in% names(file_text)) {
     cat("* [", file_text[names(data_files)[i]], "](", data_files[i], ") \n")
+    
+    download_files %<>% add_row(
+      title=file_text[names(data_files)[i]],
+      type="compound_data",
+      url=str_replace(data_files[i], "./", ""),
+      project=params$project_name
+    )
+
   } else {
     next
   }
@@ -202,6 +213,14 @@ These are links to files containing biomarker analysis results for all compounds
 for (i in 1:length(data_files)) {
   if (names(data_files)[i] %in% names(biomarker_text)) {
     cat("* [", biomarker_text[names(data_files)[i]], "](", data_files[i], ") \n")
+    
+    download_files %<>% add_row(
+      title=biomarker_text[names(data_files)[i]],
+      type="biomarker_data",
+      url=str_replace(data_files[i], "./", ""),
+      project=params$project_name
+    )
+    
   } else {
     next
   }
@@ -217,10 +236,19 @@ for (i in 1:length(data_files)) {
   if (names(data_files)[i] %in% names(matrix_text)) {
     cat("* [", matrix_text[names(data_files)[i]], "](", data_files[i], ") \n")
     cat('<button title="view in depmap" id="', names(data_files)[i], '" name="depmap" value="toDepMap" data-filename="', data_files[i], '"><span class="glyphicon glyphicon-eye-open"></span></button>\n',sep="")
+    
+    download_files %<>% add_row(
+      title=matrix_text[names(data_files)[i]],
+      type="depmap",
+      url=str_replace(data_files[i], "./", ""),
+      project=params$project_name
+    )
+    
   } else {
     next
   }
 }
+write.csv(download_files, file.path(params$data_dir, "data", "downloads.csv"), row.names=FALSE)
 ```
 
 ## QC Information
