@@ -18,6 +18,10 @@ while test $# -gt 0; do
       shift
       project_name=$1
       ;;
+    -b| --build_name)
+      shift
+      project_name=$1
+      ;;
     -l| --val_link)
       shift
       val_link=$1
@@ -56,6 +60,7 @@ args=(
   -d "${data_dir}"
   -o "${out_dir}"
   -p "${project_name}"
+  -b "${build_name}"
   -l "${val_link}"
 )
 

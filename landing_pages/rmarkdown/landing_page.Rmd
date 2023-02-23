@@ -2,6 +2,7 @@
 params:
   data_dir: /Users/anup/work/1_Projects/PRISM_Portal/mts021_validation_compounds_internal/MTS021_VALIDATION_COMPOUNDS_INTERNAL
   project_name: MTS021_VALIDATION_COMPOUNDS_INTERNAL
+  build_name: PMTS021
   val_link: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -136,7 +137,13 @@ if (stringr::str_detect(params$project_name, coll("validation", ignore_case = T)
 
 ## Reports and Downloads {.tabset .tabset-pills}
 ```{r}
-  download_files = data.frame(title=character(0), type=character(0), url=character(0), project=character(0)) #instantiate
+  download_files = data.frame(
+    title=character(0),
+    type=character(0),
+    url=character(0),
+    project=character(0),
+    build=character(0)
+  ) #instantiate
 ```
 
 ### Report Files
@@ -196,7 +203,8 @@ for (i in 1:length(data_files)) {
       title=file_text[names(data_files)[i]],
       type="compound_data",
       url=file.path(str_to_lower(params$project_name), str_replace(data_files[i], "./", "")),
-      project=params$project_name
+      project=params$project_name,
+      build=params$build_name
     )
 
   } else {
@@ -218,7 +226,8 @@ for (i in 1:length(data_files)) {
       title=biomarker_text[names(data_files)[i]],
       type="biomarker_data",
       url=file.path(str_to_lower(params$project_name), str_replace(data_files[i], "./", "")),
-      project=params$project_name
+      project=params$project_name,
+      build=params$build_name
     )
     
   } else {
@@ -241,7 +250,8 @@ for (i in 1:length(data_files)) {
       title=matrix_text[names(data_files)[i]],
       type="depmap",
       url=file.path(str_to_lower(params$project_name), str_replace(data_files[i], "./", "")),
-      project=params$project_name
+      project=params$project_name,
+      build=params$build_name
     )
     
   } else {

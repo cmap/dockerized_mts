@@ -2,7 +2,7 @@
 REPO="prismcmap"
 NAME="landing"
 
-VERSION="v0.2.0" #change the version number for each new build
+VERSION="v0.2.1" #change the version number for each new build
 TAG="latest"
 
 #change the version number for each new build
