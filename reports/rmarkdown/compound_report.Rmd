@@ -273,18 +273,18 @@ lin_tab <- plot_lineages %>%
   dplyr::inner_join(LIN_table,
                     by = c("lineage" = "feature")) %>%
   dplyr::inner_join(n_lines) %>%
-  dplyr::filter(n_lines >= 5)
+  dplyr::filter(n_lines >= 5) %>%
+  dplyr::mutate(neg_log10_qval = -log10(q.value))
 
 p_table <- lin_tab %>%
-  distinct(lineage, effect_size, q.value, pert_iname, pert_dose) %>%
-  dplyr::filter(q.value < 0.1) %>%
-  dplyr::mutate(neg_log10_qval = -log10(q.value))
+  distinct(lineage, effect_size, q.value, pert_iname, pert_dose, neg_log10_qval) %>%
+  dplyr::filter(q.value < 0.1)
 
 lineage_enrichment_path = file.path(plot_files_dir, 'lineage_enrichment')
 dir.create(lineage_enrichment_path, showWarnings = FALSE)
 
 if(nrow(p_table) > 0){
-  write.csv(p_table, file.path(lineage_enrichment_path, 'lineage_enrichment_volcano_data.csv'), row.names=FALSE)
+  #write.csv(p_table, file.path(lineage_enrichment_path, 'lineage_enrichment_volcano_data.csv'), row.names=FALSE)
   
   p <- p_table %>%
     ggplot() + geom_point(aes(x = effect_size, y =  neg_log10_qval,
@@ -296,20 +296,21 @@ if(nrow(p_table) > 0){
 }
 
 lin_tab_dt = lin_tab %>%
-                dplyr::inner_join(n_lines) %>%
                 dplyr::filter(n_lines >= 5) %>%
                 dplyr::distinct(lineage, lin_abbreviation, n_lines,
-                                effect_size, q.value, pert_iname, pert_dose) %>%
+                                effect_size, q.value, pert_iname, pert_dose, neg_log10_qval) %>%
                 dplyr::arrange(q.value) %>%
-                dplyr::mutate(effect_size = signif(effect_size, 3),
-                              q.value = signif(q.value, 3))
+                dplyr::mutate(
+                    effect_size = signif(effect_size, 3),
+                    q.value = signif(q.value, 3)
+                )
 DT::datatable(lin_tab_dt,
               filter = "top", rownames = F, options = list(dom = "tp"),
               colnames = c("Lineage", "Abbreviation", "Effect size", "q value", "Compound", "Dose", "# lines"))
 
 
 
-# write.csv(lin_tab_dt, file.path(lineage_enrichment_path, 'lineage_enrichment_data_table.csv'), row.names=FALSE)
+write.csv(lin_tab_dt, file.path(lineage_enrichment_path, 'lineage_enrichment_volcano_data.csv'), row.names=FALSE)
 
 ```
 
