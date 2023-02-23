@@ -195,7 +195,7 @@ for (i in 1:length(data_files)) {
     download_files %<>% add_row(
       title=file_text[names(data_files)[i]],
       type="compound_data",
-      url=str_replace(data_files[i], "./", ""),
+      url=file.path(str_to_lower(params$project_name), str_replace(data_files[i], "./", "")),
       project=params$project_name
     )
 
@@ -217,7 +217,7 @@ for (i in 1:length(data_files)) {
     download_files %<>% add_row(
       title=biomarker_text[names(data_files)[i]],
       type="biomarker_data",
-      url=str_replace(data_files[i], "./", ""),
+      url=file.path(str_to_lower(params$project_name), str_replace(data_files[i], "./", "")),
       project=params$project_name
     )
     
@@ -240,7 +240,7 @@ for (i in 1:length(data_files)) {
     download_files %<>% add_row(
       title=matrix_text[names(data_files)[i]],
       type="depmap",
-      url=str_replace(data_files[i], "./", ""),
+      url=file.path(str_to_lower(params$project_name), str_replace(data_files[i], "./", "")),
       project=params$project_name
     )
     
