@@ -27,7 +27,9 @@ REQUIRED_COLUMNS = [
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data_dir', '-d', help='Compound Data Directory', required=False)
+    parser.add_argument('--data_dir', '-d', help='Data Directory', required=False)
+    parser.add_argument('--search_patterns', '-sp', help='Comma-separated list of search patterns in --data_dir',
+                        default=None, required=False)
     parser.add_argument('--file', '-f', help='Individual file, adds required columns.', required=False, default=None)
     parser.add_argument('--drc', help='Individual file, DRC file. Adds points and required columns.', required=False, default=None)
     parser.add_argument('--out', '-o', help='Output folder', default=None)
@@ -35,8 +37,7 @@ def build_parser():
     parser.add_argument('--screen', '-sc', help='Screen', required=True)
     parser.add_argument('--pert_plate', '-pp', help='Pert Plate', required=False, default=None)
     parser.add_argument('--pert_id', '-id', help='Pert ID', required=False, default=None)
-    parser.add_argument('--project', '-pj', help='Pert ID', required=False, default=None)
-
+    parser.add_argument('--project', '-pj', help='Project', required=False, default=None)
     parser.add_argument(
         "--verbose", '-v',
         help="Whether to print a bunch of output",
@@ -173,6 +174,16 @@ def main(args):
     #prep_drc(args)
     # os.makedirs(args.out, exist_ok=True)
     CURRENT_TIME = get_current_datetime()
+
+    if args.search_patterns:
+        sp = args.search_patterns.split(",")
+        for s in sp:
+            file = glob.glob(os.path.join(args.data_dir, "*"+s+"*"))[0]
+            if "DRC" in s.upper():
+                prep_and_write_drc(args, file, insertionDate=CURRENT_TIME)
+            else:
+                read_write_files_with_required_columns(args, file, insertionDate=CURRENT_TIME)
+        return
 
     if args.file:
         read_write_files_with_required_columns(args, args.file, insertionDate=CURRENT_TIME)

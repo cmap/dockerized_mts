@@ -20,7 +20,7 @@ while test $# -gt 0; do
       ;;
     -b| --build_name)
       shift
-      project_name=$1
+      build_name=$1
       ;;
     -l| --val_link)
       shift
@@ -64,6 +64,7 @@ args=(
   -l "${val_link}"
 )
 
+echo Rscript /render_reports.R "${args[@]}"
 Rscript /render_reports.R "${args[@]}"
 
 exit_code=$?

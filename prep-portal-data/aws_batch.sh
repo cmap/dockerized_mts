@@ -6,6 +6,14 @@ while test $# -gt 0; do
       shift
       compound_key=$1
       ;;
+    -pk| --project_key_path)
+      shift
+      project_key=$1
+      ;;
+    -sp| --search_patterns)
+      shift
+      search_patterns=$1
+      ;;
     -f| --file)
       shift
       file=$1
@@ -77,6 +85,25 @@ then
         --out "${out}"
         --pert_plate "${plate}"
         --pert_id "${compound}"
+        --project "${project}"
+      )
+
+    else
+      echo "AWS_BATCH_JOB_ARRAY_INDEX NOT SET"
+      exit -1
+    fi
+elif [[ ! -z $project_key ]]; then
+    if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+      batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+      project=$(cat "${project_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+      project_dir="${data_dir}"/"${project,,}"/"${project^^}"/data
+
+      #output format for s3://portal-data.prism.org/data-to-load/
+      out="${out}"/"${screen}"/"${project}"/
+      args+=(
+        --data_dir "${project_dir}"
+        --search_patterns "${search_patterns}"
+        --out "${out}"
         --project "${project}"
       )
 

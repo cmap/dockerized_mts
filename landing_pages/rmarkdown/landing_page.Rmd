@@ -20,6 +20,7 @@ knitr::opts_chunk$set(include=T, echo=FALSE, message=FALSE, warning=FALSE)
 library(DT)
 library(tidyverse)
 library(ggthemes)
+library(magrittr)
 library(cowplot)
 
 # get paths to data files
