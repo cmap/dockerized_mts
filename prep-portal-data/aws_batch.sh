@@ -69,48 +69,40 @@ if [[ ! -z $compound_key ]]
 then
     if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
       batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-      pert_id=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
-      project=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-      plate=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
-      cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
-      sanitized_pert_id="${cleaned_pert_id^^}"
-      project_dir="${data_dir}"/"${project,,}"/"${project^^}"
-      data_dir="${project_dir}"/"${plate}"/"${sanitized_pert_id}"
-      compound="${sanitized_pert_id}"
-
-      #output format for s3://portal-data.prism.org/data-to-load/
-      out="${out}"/"${screen}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"/
-      args+=(
-        --data_dir "${data_dir}"
-        --out "${out}"
-        --pert_plate "${plate}"
-        --pert_id "${compound}"
-        --project "${project}"
-      )
-
-    else
-      echo "AWS_BATCH_JOB_ARRAY_INDEX NOT SET"
-      exit -1
     fi
+    pert_id=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_id')
+    project=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    plate=$(cat "${compound_key}" | jq -r --argjson index ${batch_index} '.[$index].pert_plate')
+    cleaned_pert_id=$(echo "${pert_id//|/$'_'}")
+    sanitized_pert_id="${cleaned_pert_id^^}"
+    project_dir="${data_dir}"/"${project,,}"/"${project^^}"
+    data_dir="${project_dir}"/"${plate}"/"${sanitized_pert_id}"
+    compound="${sanitized_pert_id}"
+
+    #output format for s3://portal-data.prism.org/data-to-load/
+    out="${out}"/"${screen}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"/
+    args+=(
+      --data_dir "${data_dir}"
+      --out "${out}"
+      --pert_plate "${plate}"
+      --pert_id "${compound}"
+      --project "${project}"
+    )
 elif [[ ! -z $project_key ]]; then
     if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
       batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-      project=$(cat "${project_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-      project_dir="${data_dir}"/"${project,,}"/"${project^^}"/data
-
-      #output format for s3://portal-data.prism.org/data-to-load/
-      out="${out}"/"${screen}"/"${project}"/
-      args+=(
-        --data_dir "${project_dir}"
-        --search_patterns "${search_patterns}"
-        --out "${out}"
-        --project "${project}"
-      )
-
-    else
-      echo "AWS_BATCH_JOB_ARRAY_INDEX NOT SET"
-      exit -1
     fi
+    project=$(cat "${project_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    project_dir="${data_dir}"/"${project,,}"/"${project^^}"/data
+
+    #output format for s3://portal-data.prism.org/data-to-load/
+    out="${out}"/"${screen}"/"${project}"/
+    args+=(
+      --data_dir "${project_dir}"
+      --search_patterns "${search_patterns}"
+      --out "${out}"
+      --project "${project}"
+    )
 else
     if [[ ! -z "${file}" ]];
     then
