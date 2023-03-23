@@ -2,9 +2,21 @@
 # read in flagged arguments
 while test $# -gt 0; do
   case "$1" in
-    -f| --compound_key_path)
+    -k| --compound_key_path)
       shift
       compound_key=$1
+      ;;
+    -pk| --project_key_path)
+      shift
+      project_key=$1
+      ;;
+    -sp| --search_patterns)
+      shift
+      search_patterns=$1
+      ;;
+    -f| --file)
+      shift
+      file=$1
       ;;
     -d| --data_dir)
       shift
@@ -13,6 +25,10 @@ while test $# -gt 0; do
     -o| --out)
       shift
       out=$1
+      ;;
+    -of| --outfile)
+      shift
+      outfile=$1
       ;;
     -c| --compound)
       shift
@@ -39,6 +55,14 @@ while test $# -gt 0; do
   shift
 done
 
+if [[ -z $screen ]]; then
+  echo "Screen is a required field"
+  exit -1
+else
+  args=(--screen "${screen}")
+fi
+
+
 batch_index=0
 sanitized_pert_id=""
 if [[ ! -z $compound_key ]]
@@ -57,16 +81,37 @@ then
 
     #output format for s3://portal-data.prism.org/data-to-load/
     out="${out}"/"${screen}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"/
-fi
+    args+=(
+      --data_dir "${data_dir}"
+      --out "${out}"
+      --pert_plate "${plate}"
+      --pert_id "${compound}"
+      --project "${project}"
+    )
+elif [[ ! -z $project_key ]]; then
+    if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
+      batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
+    fi
+    project=$(cat "${project_key}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    project_dir="${data_dir}"/"${project,,}"/"${project^^}"/data
 
-args=(
-  --data_dir "${data_dir}"
-  --out "${out}"
-  --screen "${screen}"
-  --pert_plate "${plate}"
-  --pert_id "${compound}"
-  --project "${project}"
-)
+    #output format for s3://portal-data.prism.org/data-to-load/
+    out="${out}"/"${screen}"/"${project}"/
+    args+=(
+      --data_dir "${project_dir}"
+      --search_patterns "${search_patterns}"
+      --out "${out}"
+      --project "${project}"
+    )
+else
+    if [[ ! -z "${file}" ]];
+    then
+      args+=(
+        --f "${file}"
+        --outfile "${outfile}"
+      )
+    fi
+fi
 
 #setup environment
 source activate prism

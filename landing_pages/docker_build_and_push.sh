@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 REPO="prismcmap"
-NAME="reports"
+NAME="landing"
 
-VERSION="v0.2.10" #change the version number for each new build
+VERSION="v0.2.1" #change the version number for each new build
 TAG="latest"
 
 #change the version number for each new build

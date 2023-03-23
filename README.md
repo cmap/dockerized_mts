@@ -21,4 +21,4 @@ To run individual scripts or make modifications install [R](https://www.r-projec
 
 ## A note about running locally
 
-The MTS pipeline is run on AWS and therefore most modules are designed with AWS in mind. Some modules are also specifically for handling and moving around files on AWS. Therefore, while the Docker images are useful tools, it may be easier in some cases to run the R scripts individually when running locally.
+The MTS pipeline is run on AWS and therefore most modules are designed with AWS in mind. Some modules are also specifically for handling and moving around files on AWS. Therefore, while the Docker images are useful tools, it may be easier in some cases to run the R scripts individually when running locally

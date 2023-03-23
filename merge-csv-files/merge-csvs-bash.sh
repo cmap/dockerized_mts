@@ -118,8 +118,6 @@ then
 else
   python /clue/bin/merge_csvs.py "${args[@]}"
 fi
-
-
 exit_code=$?
 conda deactivate
 exit $exit_code
