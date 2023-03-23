@@ -1,8 +1,9 @@
 ---
 params:
-  data_dir: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_repare/CPS007_DMC_REPARE/CPS011/COMPOUND-Y_COMPOUND-Z'
-  comp: 'COMPOUND-Y_COMPOUND-Z'
-  qc_path: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_repare/CPS007_DMC_REPARE/data/CPS007_DMC_REPARE_QC_TABLE.csv'
+  data_dir: '/Users/shiker/Documents/trouble_shoot/cps07_vib/VIB-001927-01-03_VIB-001955-01-03'
+  comp: 'VIB-001927-01-03_VIB-001955-01-03'
+  qc_path: '/Users/shiker/Documents/trouble_shoot/cps07_vib/CPS007_VIBLIOME_QC_TABLE.csv'
+
   
 output:
   html_document:
@@ -90,14 +91,15 @@ drc_plots <- list()
 for (i in 1:nrow(conditions)) {
   condition <- conditions[i,]
 
-  d <- drc %>% dplyr::inner_join(condition)
+  d <- drc %>% dplyr::inner_join(condition, by = c("varied_iname", "ccle_name", "culture", "pert_time", "added_compounds", "added_doses"))
   xx = seq(log2(min(d$min_dose)), log2(max(d$max_dose)), length.out = 40)
   res <- apply(d, 1, function(p) dr_func(p, xx))
   func_tab <- cbind(xx, res)
   func_tab %<>% as_tibble() %>%
     dplyr::rename(x = 1, y = 2) %>%
     dplyr::bind_cols(condition) %>%
-    dplyr::left_join(drc)
+    dplyr::left_join(drc,  by = c("varied_iname", "ccle_name", "culture", "pert_time", "added_compounds",
+"added_doses"))
   drc_plots[[i]] <- func_tab
 }
 drc_plots %<>%
@@ -152,14 +154,14 @@ drc_plots_const <- list()
 for (i in 1:nrow(conditions_const)) {
   condition_const <- conditions_const[i,]
   
-  d_const <- drc_const %>% dplyr::inner_join(condition_const)
+  d_const <- drc_const %>% dplyr::inner_join(condition_const, by= c("varied_iname", "ccle_name", "culture", "pert_time"))
   xx_const = seq(log2(min(d_const$min_dose)), log2(max(d_const$max_dose)), length.out = 40)
   res_const <- apply(d_const, 1, function(p) dr_func(p, xx_const))
   func_tab_const <- cbind(xx_const, res_const)
   func_tab_const %<>% as_tibble() %>%
     dplyr::rename(x = 1, y = 2) %>%
     dplyr::bind_cols(condition_const) %>%
-    dplyr::left_join(drc_const)
+    dplyr::left_join(drc_const, by = c("varied_iname", "ccle_name", "culture", "pert_time"))
   drc_plots_const[[i]] <- func_tab_const
 }
 drc_plots_const %<>% 
@@ -300,6 +302,7 @@ combos <- spread_lfc %>%
   dplyr::distinct(pert_dose)
 
 #spread_lfc %<>% dplyr::group_by(ccle_name) %>% dplyr::mutate(mean_S = round(log2(mean(2^S)), 3))
+
 spread_lfc %<>% dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
 
 

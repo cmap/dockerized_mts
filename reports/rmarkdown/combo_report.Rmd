@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: '/Users/shiker/Documents/reports/CPS06_CORSELLO/CPS06_CORSELLO/CPS008/BAY-204_LCL-161'
-  comp: 'BAY-204_LCL-161'
-  qc_path: '/Users/shiker/Documents/reports/CPS06_CORSELLO/CPS06_CORSELLO/data/CPS06_CORSELLO_QC_TABLE.csv'
+  data_dir: '/Users/shiker/Documents/trouble_shoot/CPS008/PCPS017/O6-BENZYLGUANINE_TEMOZOLOMIDE'
+  comp: 'O6-BENZYLGUANINE_TEMOZOLOMIDE'
+  qc_path: '/Users/shiker/Documents/trouble_shoot/CPS008/CPS008_VALIDATION_COMPOUNDS_QC_TABLE.csv'
 output:
   html_document:
     toc: false
@@ -478,6 +478,9 @@ dt
 Rank of gene expression features that appear in the top 10 of one of the conditions. `NA` value indicates a rank below 100 for that feature in that condition.
 
 ```{r expression heatmap, fig.height=5}
+if (nrow(features_ge) == 0) {
+  print('No significant features (q < 0.1) for GE data across conditions. No heatmap to display.')
+} else {
 top_feats <- features_ge %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
 top_tab <- features_ge %>%
   dplyr::filter(feature %in% top_feats) %>%
@@ -489,6 +492,7 @@ if (is.null(dim(top_tab))) {
 } else {
   heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
                        key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
+}
 }
 ```
 
@@ -546,6 +550,9 @@ dt
 Rank of CRISPR dependency features that appear in the top 10 of one of the conditions. `NA` value indicates a rank below 100 for that feature in that condition.
 
 ```{r crispr heatmap, fig.height=5}
+if (nrow(features_xpr) == 0) {
+  print('No significant features (q < 0.1) for CRISPR data across conditions. No heatmap to display.')
+} else {
 top_feats <- features_xpr %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
 top_tab <- features_xpr %>%
   dplyr::filter(feature %in% top_feats) %>%
@@ -557,6 +564,8 @@ if (is.null(dim(top_tab))) {
 } else {
   heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
                        key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
+}
+
 }
 ```
 
@@ -613,6 +622,9 @@ dt
 Rank of repurposing features that appear in the top 10 of one of the conditions. `NA` value indicates a rank below 100 for that feature in that condition.
 
 ```{r rep heatmap, fig.height=5}
+if (nrow(features_rep) == 0) {
+  print('No significant features (q < 0.1) for REP data across conditions. No heatmap to display.')
+} else {
 top_feats <- features_rep %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
 top_tab <- features_rep %>%
   dplyr::filter(feature %in% top_feats) %>%
@@ -624,6 +636,7 @@ if (is.null(dim(top_tab))) {
 } else {
   heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
                        key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
+}
 }
 ```
 
