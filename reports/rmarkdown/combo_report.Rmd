@@ -238,6 +238,10 @@ spread_lfc %<>% dplyr::mutate(S = LFC_cb_1 + LFC_cb_2 - LFC_cb, flag = (LFC_cb +
 
 # bliss expected fold change (capped FCs at 1)
 B <- apply(2^spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')], 1, function(x) prod(pmin(x, 1))) # converting back to FC and multiplying cap at 1 
+spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
+spread_lfc$B <- B
+
+
 
 spread_lfc %<>%
   dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
@@ -313,9 +317,6 @@ dt
 The tab(s) below indicate which compound is treated as the test compound for calculating AUC, the dose(s) of anchor are indicated at the top of each plot.
 
 ```{r auc, include=F, fig.height=10}
-# calculate fold-change of combination
-spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
-spread_lfc$B <- B
 
 # group by dose 2 to calculate AUC and expected for comp 1
 pseudo_auc_1 <- spread_lfc %>%

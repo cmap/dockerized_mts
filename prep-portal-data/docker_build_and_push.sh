@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 REPO="prismcmap"
-NAME="collate"
+NAME="prep-portal-data"
 
-VERSION="v0.3.0" #change the version number for each new build
+VERSION="v0.0.2" #change the version number for each new build
 TAG="latest"
 
 #change the version number for each new build
