@@ -17,6 +17,7 @@ class Analysis2clue {
     constructor(apiKey, apiURL, buildID, projectName, indexFile, roleId='cmap_core', approved=false) {
         this.apiKey = apiKey;
         this.apiURL = apiURL;
+        this.buildID = buildID;
         this.indexFile = indexFile;
         this.roleId = roleId;
         this.roles = this.roleId.split(",")
@@ -114,7 +115,11 @@ class Analysis2clue {
 
         if (response.length > 0) {
             // if (self.indexFile === response[0].url) {
+            const prelim_analysisID = response[0].id;
             console.log(self.projectName + " already exists");
+
+            // check if report is associated with build
+            self.confirmBuildAssociation(self.buildID, prelim_analysisID)
 
             const existingReport_roles = _.pluck(response[0].role, 'role_id');
 
@@ -160,6 +165,32 @@ class Analysis2clue {
         }
     }
 
+    async confirmBuildAssociation(buildID, prelim_analysisID) {
+        // check for relation
+        // if relation does not exist
+            // make relation
+        const self = this;
+        const options = {
+            method: 'GET',
+            headers: {
+                'user_key': self.apiKey
+            }
+        };
+        const url = this.apiURL + "/api/data/" + buildID + "/external_analysis/" + prelim_analysisID;
+
+        console.log("Checking association for build.", url)
+        const response = await fetch(url, options);
+
+        if (response.status === 500) {
+            // TODO - check error message for no relation found string
+            const creationURL = this.apiURL + "/api/data/" + buildID + "/external_analysis/rel/" + prelim_analysisID;
+            const resp = await self.postMethodAPI({}, creationURL, "PUT");
+            const data = await resp.json();
+            return "Success"
+        }
+
+    }
+
     /**
      *
      * Start the processing
@@ -180,6 +211,8 @@ class Analysis2clue {
         }
         return "done";
     }
+
+
 }
 
 
