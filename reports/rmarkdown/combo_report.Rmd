@@ -305,7 +305,7 @@ subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F)
 spread_lfc_table <- highlight_key(spread_lfc %>% dplyr::select(ccle_name, culture, pert_iname, pert_dose, S, dr, flag, q), ~ccle_name, group = "Synergy scores")
 
 
-dt <- DT::datatable(spread_lfc_table, style="bootstrap", options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp"), colnames = c("Cell Line", "Culture", "Varied Compound | Anchor Compound", "Varied Dose | Anchor Dose", "Synergy", "Dynamic Range", "Artificial Antagonism Flag", "q"), selection = "single", filter = "top")%>%
+dt <- DT::datatable(spread_lfc_table, style="bootstrap", extensions = 'Buttons', options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))), colnames = c("Cell Line", "Culture", "Varied Compound | Anchor Compound", "Varied Dose | Anchor Dose", "Synergy", "Dynamic Range", "Artificial Antagonism Flag", "q"), selection = "single", filter = "top")%>%
   DT::formatSignif(columns = c("S", "dr", "q"), digits = 3)
 
 
@@ -465,9 +465,9 @@ features_combo <- features_ge %>%
   dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
   dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
 features_combo_dt <- highlight_key(features_combo, ~feature, group = "GE correlations")
-dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
-                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
-                                   scrollX = "300px", paging = FALSE),
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%", extensions = 'Buttons',  
+                    options = list(lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
                     filter = "top",
                     colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
 dt
@@ -537,9 +537,9 @@ features_combo <- features_xpr %>%
   dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
   dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
 features_combo_dt <- highlight_key(features_combo, ~feature, group = "XPR correlations")
-dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
-                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
-                                   scrollX = "300px", paging = FALSE),
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%", extensions = 'Buttons', 
+                    options = list(lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
                     filter = "top",
                     colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
 dt
@@ -609,9 +609,9 @@ features_combo <- features_rep %>%
   dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
   dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
 features_combo_dt <- highlight_key(features_combo, ~feature, group = "REP correlations")
-dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%",
-                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
-                                   scrollX = "300px", paging = FALSE),
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%", extensions='Buttons',
+                    options = list(lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
                     filter = "top",
                     colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
 dt
@@ -672,10 +672,10 @@ df <- sub_models %>% dplyr::inner_join(sub_rf) %>%
   dplyr::mutate_at(vars(R2, PearsonScore, RF.imp.mean),
                    funs(signif(., 3)))
 
-dt <- DT::datatable(df, style="bootstrap", width="100%",
-                    options = list(dom = "t", lengthChange = FALSE, scrollY = "300px",
+dt <- DT::datatable(df, style="bootstrap", width="100%", extensions = 'Buttons', 
+                    options = list(lengthChange = FALSE, scrollY = "300px",
                                    scrollX = "300px", paging = FALSE,
-                                   columnDefs = list(list(className = 'dt-center', targets = "_all"))),
+                                   columnDefs = list(list(className = 'dt-center', targets = "_all")), dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
                     filter = "top",
                     colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Model", "R2", "Pearson Score", "Feature", "Feature Importance"),)
 
