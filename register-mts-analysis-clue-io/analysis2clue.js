@@ -1,4 +1,5 @@
 const _ = require("underscore");
+const fetch = require("node-fetch");
 
 /**
  *
@@ -56,7 +57,6 @@ class Analysis2clue {
      * @returns {Promise<any>}
      */
     async resourceExists() {
-        const fetch = require("node-fetch");
         const self = this;
         const options = {
             method: 'GET',
@@ -106,9 +106,15 @@ class Analysis2clue {
     }
 
     async getBuildNameFromID() {
-        self = this;
+        const self = this;
         const buildURL = self.apiURL + "/api/data/" + self.buildID ;
-        const resp = await self.postMethodAPI({},buildURL, "GET");
+        const options = {
+            method: 'GET',
+            headers: {
+                'user_key': self.apiKey
+            }
+        };
+        const resp =  await fetch(buildURL, options)
         if (resp.ok && resp.status < 300) {
             const data = await resp.json();
             return data.name
@@ -146,8 +152,9 @@ class Analysis2clue {
             }
             return {ignore: false, id: correctPA[0].id}
         }
-        self.buildName = self.getBuildNameFromID()
+        self.buildName = await self.getBuildNameFromID()
         self.projectNameWithBuild = self.projectName + " (" + self.buildName + ")"
+        console.log("Project Name with Build: ", self.projectNameWithBuild)
         const correctPAwithbuildname = _.filter(matchingurlsPAs,
             function (prelim_analysis){return prelim_analysis.name == self.projectNameWithBuild})
 
@@ -206,7 +213,14 @@ class Analysis2clue {
         const self = this;
         const buildExtAnalysisURL = this.apiURL + "/api/data/" + buildID + "/external_analysis/";
         console.log("Checking association for build.", buildExtAnalysisURL)
-        const responses = await self.postMethodAPI({}, buildExtAnalysisURL, "GET")
+        const options = {
+            method: 'GET',
+            headers: {
+                'user_key': self.apiKey
+            }
+        };
+
+        const responses = await fetch(url, options)
 
         if (responses.ok && responses.status === 200) {
             const linkedAnalyses = await responses.json()
