@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: ~/Desktop/combination_compare/new_combo/BRD-K32107296_BRD-K92041145
-  comp: "BRD-K32107296_BRD-K92041145"
+  data_dir: '/Users/shiker/Documents/trouble_shoot/CPS008/PCPS017/O6-BENZYLGUANINE_TEMOZOLOMIDE'
+  comp: "O6-BENZYLGUANINE_TEMOZOLOMIDE"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -227,8 +227,7 @@ DT::datatable(LFC %>%
                 dplyr::arrange(viab),
               filter = "top", rownames = F,
               colnames = c("Cell line", "Culture", "Pool", "Dose",
-                           "Vehicle", "log2-fold change", "Viability"),
-              options = list(dom = "tp"))
+                           "Vehicle", "log2-fold change", "Viability"), extensions = 'Buttons', options = list(dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))))
 
 ```
 
@@ -292,7 +291,7 @@ DT::datatable(lin_tab %>%
                 dplyr::arrange(q.value) %>%
                 dplyr::mutate(effect_size = signif(effect_size, 3),
                               q.value = signif(q.value, 3)),
-              filter = "top", rownames = F, options = list(dom = "tp"),
+              filter = "top", rownames = F, extensions = 'Buttons', options = list(dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
               colnames = c("Lineage", "Abbreviation", "Effect size", "q value", "Compound", "Dose", "# lines"))
 ```
 
@@ -374,7 +373,7 @@ DT::datatable(p_table %>%
                                 effect_size, q.value, pert_iname, pert_dose) %>%
                 dplyr::mutate(effect_size = signif(effect_size, 3),
                               q.value = signif(q.value, 3)),
-              filter = "top", rownames = F, options = list(dom = "tp"),
+              filter = "top", rownames = F, extensions = 'Buttons', options = list(dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
               colnames = c("Mutation", "Effect size", "q value", "Compound", "Dose", "# lines")
 )
 ```
@@ -463,7 +462,7 @@ for (feat in corr_feats) {
                         dplyr::arrange(rank) %>%
                         dplyr::mutate(coef = signif(coef, 3),
                                       q.val = signif(q.val, 3)),
-                      filter = "top", rownames = F, options = list(dom = "tp"),
+                      filter = "top", rownames = F, extensions = 'Buttons', options = list(dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
                       colnames = c("Feature", "Correlation", "q value", "Rank", "Compound", "Dose")
   )
   
@@ -495,7 +494,7 @@ DT::datatable(model_table %>%
                 dplyr::mutate_at(vars(R2, PearsonScore),
                                  funs(signif(., 3))) %>%
                 dplyr::arrange(desc(R2)),
-              filter = "top", rownames = F,
+              filter = "top", rownames = F, extensions = 'Buttons', options = list(dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))), 
               colnames = c("Compound", "Dose", "Model", "R-squared", "Pearson Score"))
 ```
 
@@ -526,7 +525,7 @@ DT::datatable(df %>%
                 dplyr::mutate_at(vars(RF.imp.mean, RF.imp.sd, RF.imp.stability, R2),
                                  funs(signif(., 3))) %>%
                 dplyr::arrange(rank),
-              filter = "top", rownames = F, options = list(dom = "tp"),
+              filter = "top", rownames = F, extensions = 'Buttons', options = list(dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
               colnames = c("Feature", "r-squared", "Rank", "Feature importance", "Feature stability",
                            "Feature importance SD", "Compound", "Dose"))
 ```
@@ -556,7 +555,7 @@ DT::datatable(df %>%
                 dplyr::mutate_at(vars(RF.imp.mean, RF.imp.sd, RF.imp.stability, R2),
                                  funs(signif(., 3))) %>%
                 dplyr::arrange(rank),
-              filter = "top", rownames = F, options = list(dom = "tp"),
+              filter = "top", rownames = F, extensions = 'Buttons', options = list(dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
               colnames = c("Feature", "r-squared", "Rank", "Feature importance", "Feature stability",
                            "Feature importance SD", "Compound", "Dose"))
 ```
