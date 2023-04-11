@@ -134,7 +134,7 @@ abbreviations <- abbreviate(stringr::str_replace_all(all_annotations,
 names(abbreviations) <- all_annotations
 lineages$lin_abbreviation <- abbreviations[lineages$lineage]
 lineages$lin_sub_abbreviation <- abbreviations[lineages$lineage_subtype]
-readr::write_csv(lineages, "./lineages.csv")  # write abbreviations file
+write.csv(lineages, "./lineages.csv")  # write abbreviations file
 
 # create matrix with lineage, subtype, and sub-subtype (one hot encoded)
 lin <- LIN %>% dplyr::distinct(ccle_name, lineage) %>%
@@ -247,7 +247,7 @@ write.csv(miRNA, "./data/mirna.csv")
 write.csv(XPR, "./data/xpr.csv")
 write.csv(RPPA, "./data/rppa.csv")
 write.csv(REP, "./data/rep.csv")
-readr::write_csv(rep_info, "./data/rep_info.csv")
+write.csv(rep_info, "./data/rep_info.csv")
 write.csv(PROT, "./data/prot.csv")
 
 # make combined tables for multivariate analyses (only keeps complete rows)
@@ -289,4 +289,4 @@ mutations <- MUT %>%
   dplyr::filter(is_mutant > 0) %>%
   dplyr::select(-is_mutant) %>%
   dplyr::mutate(mutation = word(mutation, 2, -1, sep = "_"))
-readr::write_csv(mutations, "./mutations.csv")
+write.csv(mutations, "./mutations.csv")

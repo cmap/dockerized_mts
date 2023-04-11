@@ -60,5 +60,5 @@ dims_coll = paste(dplyr::distinct(LFC_COLLAPSED_TABLE, sig_id) %>% nrow(),
                   sep = "x")
 
 #---- Write results ----
-readr::write_csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC_COMBAT_n", dims_full, ".csv"))
-readr::write_csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC_COMBAT_n", dims_coll, ".csv"))
+write.csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC_COMBAT_n", dims_full, ".csv"))
+write.csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC_COMBAT_n", dims_coll, ".csv"))

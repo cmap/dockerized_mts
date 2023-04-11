@@ -73,4 +73,4 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
 
 #---- Write data ----
 # Write QC table
-readr::write_csv(qc_table, paste0(out_dir, "/", build_name, "_QC_TABLE.csv"))
+write.csv(qc_table, paste0(out_dir, "/", build_name, "_QC_TABLE.csv"))
