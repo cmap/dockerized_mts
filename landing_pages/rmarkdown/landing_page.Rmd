@@ -264,7 +264,7 @@ for (i in 1:length(data_files)) {
 download_files %<>% add_row(
       title="Project Downloads",
       type="all",
-      url=file.path(str_to_lower(params$project_name), params$project_name, "data", "project_downloads.zip"),
+      url=file.path(str_to_lower(params$project_name), params$project_name, "data", paste0(params$project_name, ".zip")),
       project=params$project_name,
       build=params$build_name
     )
