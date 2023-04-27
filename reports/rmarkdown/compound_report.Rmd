@@ -1,6 +1,6 @@
 ---
 params:
-  data_dir: "/Users/anup/work/1_Projects/PRISM_Portal/BRD-A47706533"
+  data_dir: "/Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY/PMTS056/BRD-U00116474"
   comp: "BRD-A47706533"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
@@ -54,7 +54,7 @@ disc_table <- data.table::fread(file.path(params$data_dir, "discrete_association
   dplyr::mutate(feature = word(feature, 2, -1, sep = "_"))
 model_table <- data.table::fread(file.path(params$data_dir, "model_table.csv"))
 rf_table <- data.table::fread(file.path(params$data_dir, "RF_table.csv")) %>%
-  dplyr::left_join(model_table)
+  dplyr::left_join(model_table, by = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "pert_dose"))
 
 if (all(is.na(corr_table$pert_time)) || all(corr_table$pert_time == "")) {
   corr_table %<>% dplyr::mutate(pert_time = "120H")
@@ -131,9 +131,9 @@ compounds <- LFC %>%
 
 # lineage and mutation table
 lineages <- data.table::fread(file.path(params$meta_folder, "lineages.csv")) %>%
-  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name))
+  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
 mutations <- data.table::fread(file.path(params$meta_folder, "mutations.csv")) %>%
-  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name))
+  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
 
 # aesthetics
 theme_set(theme_bw())
@@ -261,7 +261,7 @@ plot_lineages <- lineages %>%
 
 n_lines <- LFC %>%
   dplyr::distinct(ccle_name, culture) %>%
-  dplyr::inner_join(plot_lineages) %>%
+  dplyr::inner_join(plot_lineages, by = "ccle_name") %>%
   dplyr::group_by(lineage, lin_abbreviation) %>%
   dplyr::summarise(n_lines = n(), .groups = "drop")
 
@@ -272,7 +272,7 @@ lin_tab <- plot_lineages %>%
   dplyr::distinct(lineage, lin_abbreviation) %>%
   dplyr::inner_join(LIN_table,
                     by = c("lineage" = "feature")) %>%
-  dplyr::inner_join(n_lines) %>%
+  dplyr::inner_join(n_lines, by = c("lineage", "lin_abbreviation")) %>%
   dplyr::filter(n_lines >= 5) %>%
   dplyr::mutate(neg_log10_qval = -log10(q.value))
 
@@ -306,7 +306,7 @@ lin_tab_dt = lin_tab %>%
                 )
 DT::datatable(lin_tab_dt,
               filter = "top", rownames = F, options = list(dom = "tp"),
-              colnames = c("Lineage", "Abbreviation", "Effect size", "q value", "Compound", "Dose", "# lines"))
+              colnames = c("Lineage", "Abbreviation", "Effect size", "q value", "Compound", "Dose", "# lines", "-log10(q)"))
 
 
 
@@ -375,7 +375,7 @@ Mutation effects are visualized below on interactive volcano plots. Please hover
 ```{r, echo=F, message=F, warning=F}
 n_lines <- LFC %>%
   dplyr::distinct(ccle_name, culture) %>%
-  dplyr::inner_join(mutations) %>%
+  dplyr::inner_join(mutations, by = "ccle_name") %>%
   dplyr::group_by(mutation) %>%
   dplyr::summarise(n_lines = n(), .groups = "drop")
 
@@ -463,7 +463,7 @@ if (!is.null(DRC)) {
     dplyr::mutate(gene = word(mutation, 2, sep = fixed("_")), # adding gene word
                   mut.type = word(mutation,1,-2, sep = fixed("_"))) %>% # adding mutation type 
     dplyr::filter(gene %in% top.genes$gene) %>% # filtering from all the genes to only top genes 
-    dplyr::left_join(mutations) %>% # adding corresponding CCLE names associated with top mutations (multiple per gene and mutation type)
+    dplyr::left_join(mutations, by = "mutation") %>% # adding corresponding CCLE names associated with top mutations (multiple per gene and mutation type)
     dplyr::filter(ccle_name %in% DRC$ccle_name) %>% # filtering out CCLE within DRC data 
     dplyr::mutate(ix = 1) %>% # denoting mutations the gene and mutation type present in a particular CCLE
     reshape2::acast(ccle_name ~ gene + mut.type, value.var = "ix", fill = 0) %>% 
@@ -472,13 +472,13 @@ if (!is.null(DRC)) {
                   mut.type = word(Var2,2,-1, sep = fixed("_"))) %>% # creating mutation type column
     dplyr::mutate(mut.type = ifelse(value == 1, mut.type, "wild_type")) %>% # if CCLE has 0 for a specific gene mutation type, denote it wild type 
     dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) %>% # renaming columns 
-    dplyr::left_join(top.genes) # adding minimum q values for top genes 
+    dplyr::left_join(top.genes, by = "gene") # adding minimum q values for top genes 
   
   
   
   
   plot_data <- top_muts %>%
-    dplyr::left_join(DRC %>% dplyr::distinct(ccle_name, auc)) %>% 
+    dplyr::left_join(DRC %>% dplyr::distinct(ccle_name, auc),  by = "ccle_name") %>% 
     dplyr::mutate(gene = reorder(gene, minq)) 
   
   p <- plot_data %>% 

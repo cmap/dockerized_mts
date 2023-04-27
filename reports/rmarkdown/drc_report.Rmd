@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: /Users/anup/work/1_Projects/PRISM_Portal/BRD-A47706533
-  comp: BRD-A47706533
+  data_dir: "/Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY/PMTS056/BRD-U00116474"
+  comp: BRD-U00116474
 output:
   html_document:
     toc: false
@@ -85,14 +85,14 @@ drc_plots <- list()
 for (i in 1:nrow(conditions)) {
   condition <- conditions[i,]
   
-  d <- drc %>% dplyr::inner_join(condition)
+  d <- drc %>% dplyr::inner_join(condition, by = c("varied_iname", "ccle_name", "culture", "pert_time"))
   xx = seq(log2(min(d$min_dose)), log2(max(d$max_dose)), length.out = 40)
   res <- apply(d, 1, function(p) dr_func(p, xx))
   func_tab <- cbind(xx, res)
   func_tab %<>% as_tibble() %>%
     dplyr::rename(x = 1, y = 2) %>%
     dplyr::bind_cols(condition) %>%
-    dplyr::left_join(drc)
+    dplyr::left_join(drc, by = c("varied_iname", "ccle_name", "culture", "pert_time") )
   drc_plots[[i]] <- func_tab
 }
 drc_plots %<>% 
@@ -137,7 +137,7 @@ curves_all <- highlight_key(drc_plots %>%
                               dplyr::arrange(auc),
                             ~cell_id, group = "Dose-response")
 lfc_table <- lfc %>%
-                 dplyr::inner_join(drc_meta) %>%
+                 dplyr::inner_join(drc_meta, by = c("ccle_name", "culture", "pert_plate", "pert_time")) %>%
                  dplyr::rename(dose = pert_dose) %>%
                  dplyr::mutate(Viability = 2^LFC_cb,
                                Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
