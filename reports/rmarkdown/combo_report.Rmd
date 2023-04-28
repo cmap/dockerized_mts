@@ -203,14 +203,14 @@ Below are synergy plots by dose. Points flagged for potential 'artificial antago
 
 ```{r synergy scoring, fig.height=synergy_height}
 # non-combination values
-solo_lfc <- dplyr::anti_join(LFC, combo_lfc)
+solo_lfc <- dplyr::anti_join(LFC, combo_lfc, by = c("rid", "ccle_name", "culture", "pool_id", "pert_iname", "pert_id", "pert_dose", "pert_idose", "pert_plate", "pert_vehicle", "pert_time", "pert_type", "sig_id", "x_project_id", "LFC", "LFC_cb"))
 
 # split combination perts
 spread_lfc <- combo_lfc %>%
   dplyr::inner_join(qc_table %>%
                       dplyr::group_by(ccle_name, culture, pert_plate) %>%
                       dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad), dr = median(dr), 
-                                       .groups = "drop")) %>%  # QC info
+                                       .groups = "drop"), by = c("ccle_name", "culture", "pert_plate")) %>%  # QC info
   dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad, dr) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
                           sep = "|", fixed = T,
@@ -265,7 +265,7 @@ combos <- spread_lfc %>%
 plots <- list()
 for (i in 1:nrow(combos)) {
   synergy_plot <- highlight_key(spread_lfc # filter for visualization only - not analysis 
-                                %>% dplyr::inner_join(combos[i,]),
+                                %>% dplyr::inner_join(combos[i,], by = "pert_dose"),
                                 ~ccle_name, group = "Synergy scores")
   p <- plot_ly(synergy_plot) %>%
     add_trace(x = ~S, y = ~-log10(q), type = "scatter", mode = "markers",
@@ -441,7 +441,7 @@ if (nrow(combos) < 1) {
   print("No significant correlations to plot")
 } else {
   for (i in 1:nrow(combos)) {
-    volcano_combo <- highlight_key(features_ge %>% dplyr::inner_join(combos[i,]),
+    volcano_combo <- highlight_key(features_ge %>% dplyr::inner_join(combos[i,], by = c("added_compounds", "pert_iname")),
                                    ~feature, group = "GE correlations")
     p <- plot_ly(volcano_combo) %>%
       add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
@@ -585,7 +585,7 @@ if (nrow(combos) < 1) {
   print("No significant correlations to plot")
 } else {
   for (i in 1:nrow(combos)) {
-    volcano_combo <- highlight_key(features_rep %>% dplyr::inner_join(combos[i,]),
+    volcano_combo <- highlight_key(features_rep %>% dplyr::inner_join(combos[i,], by = c("added_compounds", "pert_iname")),
                                    ~feature, group = "REP correlations")
     p <- plot_ly(volcano_combo) %>%
       add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
@@ -666,7 +666,7 @@ p2 <- sub_rf %>%
   layout(xaxis = list(type = "log", title = "Rank"),
          yaxis = list(title = "Feature importance"))
 
-df <- sub_models %>% dplyr::inner_join(sub_rf) %>%
+df <- sub_models %>% dplyr::inner_join(sub_rf, by = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose")) %>%
   dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore,
                 feature, RF.imp.mean) %>%
   dplyr::mutate_at(vars(R2, PearsonScore, RF.imp.mean),

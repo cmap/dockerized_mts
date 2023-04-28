@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: '/Users/shiker/Documents/trouble_shoot/cps07_vib/VIB-001927-01-03_VIB-001955-01-03'
-  comp: 'VIB-001927-01-03_VIB-001955-01-03'
-  qc_path: '/Users/shiker/Documents/trouble_shoot/cps07_vib/CPS007_VIBLIOME_QC_TABLE.csv'
+  data_dir: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_bms2/cps007_dmc_bms/CPS007_DMC_BMS/CPS011/BMS-I1_DOCETAXEL'
+  comp: 'BMS-I1_DOCETAXEL'
+  qc_path: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_bms2/cps007_dmc_bms/CPS007_DMC_BMS/data/CPS007_DMC_BMS_QC_TABLE.csv'
 
   
 output:
@@ -197,7 +197,7 @@ for (const in constituents) {
 }
 
 
-bliss_data_const <- lfc_const %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_const) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+bliss_data_const <- lfc_const %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_const, by = c("ccle_name", "culture")) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
 
 
@@ -250,14 +250,14 @@ for (const in constituents) {
 
 
 # non-combination values
-solo_lfc <- dplyr::anti_join(LFC_table, combo_lfc)
+solo_lfc <- dplyr::anti_join(LFC_table, combo_lfc, by = c("rid", "ccle_name", "culture", "pool_id", "pert_iname", "pert_id", "pert_dose", "pert_idose", "pert_plate", "pert_vehicle","pert_time", "pert_type", "sig_id", "x_project_id", "LFC", "LFC_cb"))
 
 # split combination perts
 spread_lfc <- combo_lfc %>%
   dplyr::inner_join(qc_table %>%
                       dplyr::group_by(ccle_name, culture) %>%
                       dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad),
-                                       .groups = "drop")) %>%  # QC info
+                                       .groups = "drop"), by = c("ccle_name", "culture")) %>%  # QC info
   dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
                           sep = "|", fixed = T,
@@ -353,9 +353,9 @@ drc_plots_const_2 <- drc_plots_const %>% dplyr::filter(varied_iname == constitue
 
 
 
-bliss_data_const_1 <- lfc_const %>% dplyr::filter(pert_iname == constituents[2]) %>% filter(round(pert_dose, 10) %in% anchor_2_doses) %>% dplyr::inner_join(drc_plots_const_1) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+bliss_data_const_1 <- lfc_const %>% dplyr::filter(pert_iname == constituents[2]) %>% filter(round(pert_dose, 10) %in% anchor_2_doses) %>% dplyr::inner_join(drc_plots_const_1,  by = c("ccle_name", "culture", "pool_id", "pert_plate", "pert_time")) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
-bliss_data_const_2 <- lfc_const %>% dplyr::filter(pert_iname == constituents[1]) %>% filter(round(pert_dose, 10) %in% anchor_1_doses) %>% dplyr::inner_join(drc_plots_const_2) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+bliss_data_const_2 <- lfc_const %>% dplyr::filter(pert_iname == constituents[1]) %>% filter(round(pert_dose, 10) %in% anchor_1_doses) %>% dplyr::inner_join(drc_plots_const_2, by =  c("ccle_name", "culture", "pool_id", "pert_plate", "pert_time")) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
 
 bliss_data_const <- rbind(bliss_data_const_1, bliss_data_const_2)
@@ -457,12 +457,12 @@ pseudo_auc %<>% dplyr::mutate(MSS = log2(B/FC)) %>% rename(varied_iname = pert_i
 drc_meta %<>% dplyr::mutate(added_doses = round(added_doses, 10))
 pseudo_auc %<>% dplyr::mutate(added_doses = round(added_doses, 10))
 
-drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname, added_doses) %>% dplyr::distinct(cell_id, MSS, varied_iname, added_doses))
+drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname, added_doses) %>% dplyr::distinct(cell_id, MSS, varied_iname, added_doses), by = c("varied_iname", "added_doses", "cell_id"))
 
 # round to the 10th place because R saves added_doses (pert_dose in this case) values differently in different dataframes 
 bliss_data_const %<>% dplyr::mutate(pert_dose = round(pert_dose, 10))
 
-drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::rename(added_doses = pert_dose) %>% dplyr::select(cell_id, FC_cb, varied_iname, added_doses) %>% dplyr::distinct(cell_id, FC_cb, varied_iname, added_doses))
+drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::rename(added_doses = pert_dose) %>% dplyr::select(cell_id, FC_cb, varied_iname, added_doses) %>% dplyr::distinct(cell_id, FC_cb, varied_iname, added_doses), by = c("varied_iname", "added_doses", "cell_id"))
 
 # creating titles for legend per trace per anchor dose 
 drc_plots %<>% dplyr::mutate(combination_string = 'Combo ') %>% dplyr::mutate(combo_title = paste0(combination_string, added_doses))
