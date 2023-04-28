@@ -203,7 +203,7 @@ Below are synergy plots by dose. Points flagged for potential 'artificial antago
 
 ```{r synergy scoring, fig.height=synergy_height}
 # non-combination values
-solo_lfc <- dplyr::anti_join(LFC, combo_lfc, c("rid", "ccle_name", "culture", "pool_id", "pert_iname", "pert_id", "pert_dose", "pert_idose", "pert_plate", "pert_vehicle", "pert_time", "pert_type", "sig_id", "x_project_id", "LFC", "LFC_cb"))
+solo_lfc <- dplyr::anti_join(LFC, combo_lfc, by = c("rid", "ccle_name", "culture", "pool_id", "pert_iname", "pert_id", "pert_dose", "pert_idose", "pert_plate", "pert_vehicle", "pert_time", "pert_type", "sig_id", "x_project_id", "LFC", "LFC_cb"))
 
 # split combination perts
 spread_lfc <- combo_lfc %>%
@@ -441,7 +441,7 @@ if (nrow(combos) < 1) {
   print("No significant correlations to plot")
 } else {
   for (i in 1:nrow(combos)) {
-    volcano_combo <- highlight_key(features_ge %>% dplyr::inner_join(combos[i,], c("added_compounds", "pert_iname")),
+    volcano_combo <- highlight_key(features_ge %>% dplyr::inner_join(combos[i,], by = c("added_compounds", "pert_iname")),
                                    ~feature, group = "GE correlations")
     p <- plot_ly(volcano_combo) %>%
       add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
