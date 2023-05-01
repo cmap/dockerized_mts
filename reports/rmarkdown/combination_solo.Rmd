@@ -56,7 +56,7 @@ disc_table <- data.table::fread(file.path(params$data_dir, "discrete_association
   dplyr::mutate(feature = word(feature, 2, -1, sep = "_"))
 model_table <- data.table::fread(file.path(params$data_dir, "model_table.csv"))
 rf_table <- data.table::fread(file.path(params$data_dir, "RF_table.csv")) %>%
-  dplyr::left_join(model_table)
+  dplyr::left_join(model_table, by = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose"))
 
 if (all(is.na(corr_table$pert_time)) || all(corr_table$pert_time == "")) {
   corr_table %<>% dplyr::mutate(pert_time = "120H")
@@ -148,9 +148,9 @@ compounds <- LFC %>%
 
 # lineage and mutation table
 lineages <- data.table::fread(file.path(params$meta_folder, "lineages.csv")) %>%
-  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name))
+  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
 mutations <- data.table::fread(file.path(params$meta_folder, "mutations.csv")) %>%
-  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name))
+  dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
 
 # aesthetics
 theme_set(theme_bw())
@@ -256,7 +256,7 @@ plot_lineages <- lineages %>%
 
 n_lines <- LFC %>%
   dplyr::distinct(ccle_name, culture) %>%
-  dplyr::inner_join(plot_lineages) %>%
+  dplyr::inner_join(plot_lineages, by = "ccle_name") %>%
   dplyr::group_by(lineage, lin_abbreviation) %>%
   dplyr::summarise(n_lines = n(), .groups = "drop")
 
@@ -267,7 +267,7 @@ lin_tab <- plot_lineages %>%
   dplyr::distinct(lineage, lin_abbreviation) %>%
   dplyr::inner_join(LIN_table,
                     by = c("lineage" = "feature")) %>%
-  dplyr::inner_join(n_lines) %>%
+  dplyr::inner_join(n_lines, by = c("lineage", "lin_abbreviation")) %>%
   dplyr::filter(n_lines >= 5)
 
 p_table <- lin_tab %>%
@@ -284,7 +284,7 @@ if(nrow(p_table) > 0){
 }
 
 DT::datatable(lin_tab %>%
-                dplyr::inner_join(n_lines) %>%
+                dplyr::inner_join(n_lines, by = c("lineage", "lin_abbreviation", "n_lines")) %>%
                 dplyr::filter(n_lines >= 5) %>%
                 dplyr::distinct(lineage, lin_abbreviation, n_lines,
                                 effect_size, q.value, pert_iname, pert_dose) %>%
@@ -304,7 +304,7 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
     dplyr::summarise(m = mean(auc), .groups = "drop")
   df <- DRC %>%
     dplyr::inner_join(lineages, by = "ccle_name") %>%
-    dplyr::inner_join(m) %>%
+    dplyr::inner_join(m, by = c("varied_iname", "added_compounds", "added_doses")) %>%
     dplyr::filter(lineage != "") %>%
     dplyr::distinct()
   
@@ -336,7 +336,7 @@ Mutation effects are visualized below on interactive volcano plots. Please hover
 ```{r, echo=F, message=F, warning=F}
 n_lines <- LFC %>%
   dplyr::distinct(ccle_name, culture) %>%
-  dplyr::inner_join(mutations) %>%
+  dplyr::inner_join(mutations, by = "ccle_name") %>%
   dplyr::group_by(mutation) %>%
   dplyr::summarise(n_lines = n(), .groups = "drop")
 
@@ -402,7 +402,7 @@ if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
   
   df %<>%
     dplyr::filter(mutation %in% top_muts) %>%
-    dplyr::inner_join(m)
+    dplyr::inner_join(m, by = c("varied_iname", "added_compounds", "added_doses"))
   
   p <- df %>%
     ggplot(aes(x = auc, y = reorder(mutation, auc, function(x) -mean(x, na.rm = T)),
