@@ -106,6 +106,9 @@ elif [[ ! -z $project_key ]]; then
 else
     if [[ ! -z "${file}" ]];
     then
+      if [[ ! -z $project ]]; then #QC Data should be PUBLIC
+        args+=(--project "${project}")
+      fi
       args+=(
         --f "${file}"
         --outfile "${outfile}"
