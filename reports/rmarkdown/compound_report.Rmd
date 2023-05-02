@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: "/Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY/PMTS056/BRD-U00116474"
-  comp: "BRD-A47706533"
+  data_dir: "/Users/shiker/Documents/trouble_shoot/mts022/BRD-A12230535"
+  comp: "BRD-A12230535"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -454,7 +454,8 @@ if (!is.null(DRC)) {
   top.genes = top_muts %>% 
     dplyr::group_by(gene) %>% # grouping by gene 
     dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
-    dplyr::top_n(20, -minq) # returning list of top 20 smallest q values 
+    dplyr::top_n(20, -minq) %>% # returning list of top 20 smallest q values 
+    dplyr::arrange(minq)  
   
   top.genes = top.genes[1:20,]
   
@@ -516,7 +517,8 @@ if (!is.null(DRC)) {
   top.genes = top_muts %>% 
     dplyr::group_by(gene) %>% # grouping by gene 
     dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
-    dplyr::top_n(20, -minq) # returning list of top 20 smallest q values 
+    dplyr::top_n(20, -minq) %>% # returning list of top 20 smallest q values 
+    dplyr::arrange(minq) # returning list of top 20 smallest q values 
   
   top.genes = top.genes[1:20,]
   
