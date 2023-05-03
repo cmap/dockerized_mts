@@ -229,7 +229,7 @@ if (length(linear_table) > 0) {
   linear_table %<>% dplyr::bind_rows()
   file_suffix <- if (is.null(biomarker_file)) "" else paste0("_", biomarker_file)
   file_name <- paste0(out_dir, "/continuous_associations", file_suffix, ".csv")
-  write.csv(linear_table, file_name)
+  write.csv(linear_table, file_name, row.names=FALSE)
 }
 
 # repeat for discrete t-test
@@ -289,7 +289,7 @@ if (length(discrete_table) > 0) {
   discrete_table %<>% dplyr::bind_rows()
   file_suffix <- if (is.null(biomarker_file)) "" else paste0("_", biomarker_file)
   file_name <- paste0(out_dir, "/discrete_associations", file_suffix, ".csv")
-  write.csv(discrete_table, file_name)
+  write.csv(discrete_table, file_name, row.name=FALSE)
 }
 
 # repeat for random forest
@@ -345,6 +345,6 @@ if (length(random_forest_table) > 0) {
   file_suffix <- if (is.null(biomarker_file)) "" else paste0("_", biomarker_file)
   model_name <- paste0(out_dir, "/model_table", file_suffix, ".csv")
   rf_name <- paste0(out_dir, "/RF_table", file_suffix, ".csv")
-  write.csv(random_forest_table, rf_name)
-  write.csv(model_table, model_name)
+  write.csv(random_forest_table, rf_name, row.name=FALSE)
+  write.csv(model_table, model_name, row.name=FALSE)
 }

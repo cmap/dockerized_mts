@@ -116,7 +116,7 @@ logMFI_normalized %<>%
 logMFI_normalized %>%
   dplyr::bind_rows(base_normalized) %>%
   dplyr::select(-rLMFI) %>%
-  write.csv(., paste0(out_dir, "/", build_name, "_LEVEL3_LMFI.csv"))
+  write.csv(., paste0(out_dir, "/", build_name, "_LEVEL3_LMFI.csv"), row.names=FALSE)
 
 # compound key
 write_key(logMFI_normalized, out_dir, build_name)

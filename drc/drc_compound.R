@@ -172,5 +172,5 @@ DRC %<>% dplyr::bind_rows()  # combine results
 
 #---- Write to .csv ----
 if(nrow(DRC) > 0)  {
-  write.csv(DRC, paste0(out_dir, "/DRC_TABLE.csv"))
+  write.csv(DRC, paste0(out_dir, "/DRC_TABLE.csv"), row.names=FALSE)
 }
