@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 REPO="prismcmap"
-NAME="register-mts"
+NAME="register-mts-analysis-clue-io"
 
 VERSION="v0.2.0" #change the version number for each new build
 TAG="latest"
