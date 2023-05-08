@@ -38,6 +38,28 @@ read_hdf5 <- function(filename, index = NULL) {
   return(data_matrix)
 }
 
+#---- Extract BASE plate ----
+
+extract_baseplate <- function(instinfo, base_string="BASE",inst_column = "prism_replicate" ){
+  
+  base_plate_inst = instinfo %>%
+  dplyr::filter(str_detect(.data[[inst_column]], base_string))
+  
+  return(base_plate_inst)
+}
+
+
+build_master_logMFI <- function(raw_matrix, inst_info, cell_info,
+                                data_col = "logMFI"){
+  
+  master_logMFI = log2(raw_matrix) %>%
+    reshape2::melt(varnames = c("rid", "profile_id"), value.name = data_col) %>%
+    dplyr::filter(is.finite(logMFI)) %>%
+    dplyr::inner_join(cell_info) %>%
+    dplyr::inner_join(inst_info)
+  
+  return(master_logMFI)
+}
 
 #---- Compound tracking ----
 

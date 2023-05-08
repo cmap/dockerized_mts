@@ -48,18 +48,14 @@ cell_info <- data.table::fread(path_cell_info, colClasses = "character") %>%
 inst_info <- data.table::fread(path_inst_info, colClasses = "character")
 
 # split out base plate
-base_day <- data.table::fread(path_inst_info) %>%
-  dplyr::filter(str_detect(prism_replicate, "BASE"))
+base_day <- data.table::fread(path_inst_info)
+base_day <- extract_baseplate(base_day, base_string="BASE", inst_column = "prism_replicate")
 
 # ensure unique profile IDs
 raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 
 # melt matrix into data tables and join with inst and cell info
-master_logMFI <- log2(raw_matrix) %>%
-  reshape2::melt(varnames = c("rid", "profile_id"), value.name = "logMFI") %>%
-  dplyr::filter(is.finite(logMFI)) %>%
-  dplyr::inner_join(cell_info) %>%
-  dplyr::inner_join(inst_info)
+master_logMFI <- build_master_logMFI(raw_matrix, inst_info, cell_info)
 
 if (!is.null(args$exclude_bcids)){
     exclude_bcids = unlist(strsplit(args$exclude_bcids, ","))
