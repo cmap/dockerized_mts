@@ -1,6 +1,6 @@
 ---
 params:
-  data_dir: '/Users/shiker/Documents/trouble_shoot/CPS008/PCPS017/O6-BENZYLGUANINE_TEMOZOLOMIDE'
+  data_dir: '/Users/shiker/Documents/trouble_shoot/CPS008/PCPS017/PCPS017/O6-BENZYLGUANINE_TEMOZOLOMIDE'
   comp: 'O6-BENZYLGUANINE_TEMOZOLOMIDE'
   qc_path: '/Users/shiker/Documents/trouble_shoot/CPS008/CPS008_VALIDATION_COMPOUNDS_QC_TABLE.csv'
 output:
@@ -307,6 +307,25 @@ spread_lfc_table <- highlight_key(spread_lfc %>% dplyr::select(ccle_name, cultur
 
 dt <- DT::datatable(spread_lfc_table, style="bootstrap", extensions = 'Buttons', options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))), colnames = c("Cell Line", "Culture", "Varied Compound | Anchor Compound", "Varied Dose | Anchor Dose", "Synergy", "Dynamic Range", "Artificial Antagonism Flag", "q"), selection = "single", filter = "top")%>%
   DT::formatSignif(columns = c("S", "dr", "q"), digits = 3)
+
+  export_spread_lfc <- spread_lfc %>% dplyr::select(ccle_name, culture, pert_iname, pert_dose, S, dr, flag, q)
+
+
+  # save for portal 
+  plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+  dir.create(plot_files_dir, showWarnings = FALSE)
+  synergy_path = file.path(plot_files_dir, 'combo_synergy')
+  dir.create(synergy_path, showWarnings = FALSE)
+  write.csv(export_spread_lfc, file.path(synergy_path, 'combo_synergy_table.csv'), row.names=FALSE)
+
+  # save for reports landing page 
+  write.csv(export_spread_lfc, file.path(params$data_dir, 'combo_synergy_table.csv'), row.names=FALSE)
+
+
+
+
+
+
 
 
 dt
