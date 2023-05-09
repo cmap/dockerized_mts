@@ -579,7 +579,7 @@ for (comp in varied_comps) {
   write.csv(export_pseudo_auc, file.path(auc_path, 'combo_auc_bliss_mss_table.csv'), row.names=FALSE)
 
   # save for reports landing page 
-  write.csv(export_pseudo_auc, file.path(params$data_dir, 'combo_auc_bliss_mss_table.csv'))
+  write.csv(export_pseudo_auc, file.path(params$data_dir, 'combo_auc_bliss_mss_table.csv'), row.names=FALSE)
   
   
   
