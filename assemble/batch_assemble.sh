@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 print_help () {
-  source activate assemble
+  source activate prism
 #  cd /cmap/merino/
 #  python setup.py develop
   python /clue/bin/assemble/assemble.py --help
@@ -43,7 +43,7 @@ while test $# -gt 0; do
   shift # past argument or value
 done
 
-source activate assemble
+source activate prism
 
 python --version
 

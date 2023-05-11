@@ -11,15 +11,36 @@ const Buffer = require("buffer");
 const writeOutput = async function(fileName,projects){
     return await fsPromises.writeFile(fileName,JSON.stringify(projects));
 }
+
+const getProjectsWithCombinations = function(projectKeys){
+    return _.pluck(_.uniq(projectKeys.filter(function(projectKey){
+        return projectKey.is_combination === '1';
+    }), function (projectKey) {
+        return projectKey.x_project_id;
+    }), "x_project_id");
+}
+
 /**
  *
  * @param projectKeys
  * @returns {*}
  */
 const uniqueProjects= function(projectKeys){
-    return _.uniq(projectKeys, function (projectKey) {
+    const projectsWithCombinations =  getProjectsWithCombinations(projectKeys);
+
+    const out = _.uniq(projectKeys, function (projectKey) {
         return projectKey.x_project_id;
-    });
+    })
+
+    out.forEach((project) => {
+        if (projectsWithCombinations.includes(project.x_project_id)) {
+            project.combination_project = '1'
+        } else {
+            project.combination_project = '0'
+        }
+    })
+
+    return out;
 }
 
 const uniquePertPlates = function (projectKeys) {
@@ -27,6 +48,18 @@ const uniquePertPlates = function (projectKeys) {
         return projectKey.pert_plate;
     });
 }
+
+const detectCombinations = function (projectKeys) {
+    return projectKeys.forEach((compound) => {
+            //check if compound.pert_iname has | character
+            if (compound.pert_iname.includes("|")) {
+                compound.is_combination = '1'
+            } else{
+                compound.is_combination = '0'
+            }
+        })
+}
+
 const uniqueProjectKeysWithPertPlates = async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_uniq_pert_plates.json");
     const projectsPertPlates = _.map(
@@ -186,6 +219,19 @@ const uniqueProjectsWithSearch = async function(projectKeys,fileName){
     const projects = searchPatterns(patterns,uniqueProjectKeys);
     return await writeOutput(outPath,projects);
 }
+const uniqueProjectsWithCombinationSearch = async function(projectKeys,fileName){
+    const outPath = fileName.replace(".json","_comb_search_pattern.json");
+    const combinationsOnly = projectKeys.filter(function(projectKey){
+        return projectKey.is_combination === '1';
+    })
+    const uniqueProjectKeys = uniqueProjects(combinationsOnly);
+    const patterns = [
+        "synergy_table.csv",
+        "bliss_mss_table.csv"
+    ];
+    const projects = searchPatterns(patterns,uniqueProjectKeys);
+    return await writeOutput(outPath,projects);
+}
 /**
  *
  * @param projectKeys
@@ -212,8 +258,10 @@ const doAll = async function(projectKeyPath){
     const promises = [];
     const projKeys = await fsPromises.readFile(projectKeyPath,'utf-8');
     const projectKeys = JSON.parse(projKeys);
+    detectCombinations(projectKeys)
 
     promises.push(uniqueProjectsWithSearch(projectKeys,projectKeyPath));
+    promises.push(uniqueProjectsWithCombinationSearch(projectKeys,projectKeyPath));
     promises.push(uniques(projectKeys,projectKeyPath));
     promises.push(levels(projectKeys,projectKeyPath));
     promises.push(features(projectKeys,projectKeyPath));

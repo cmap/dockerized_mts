@@ -1,4 +1,4 @@
-FROM prismcmap/base-merino:latest
+FROM prismcmap/base-prism:latest
 MAINTAINER Anup Jonchhe <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
