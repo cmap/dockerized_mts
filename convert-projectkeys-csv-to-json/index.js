@@ -11,14 +11,33 @@ const Buffer = require("buffer");
 const writeOutput = async function(fileName,projects){
     return await fsPromises.writeFile(fileName,JSON.stringify(projects));
 }
+
+const getProjectsWithCombinations = function(projectKeys){
+    return _.pluck(_.uniq(projectKeys.filter(function(projectKey){
+        return projectKey.is_combination === '1';
+    }), function (projectKey) {
+        return projectKey.x_project_id;
+    }), "x_project_id");
+}
+
 /**
  *
  * @param projectKeys
  * @returns {*}
  */
 const uniqueProjects= function(projectKeys){
+    const projectsWithCombinations =  getProjectsWithCombinations(projectKeys);
+
     const out = _.uniq(projectKeys, function (projectKey) {
         return projectKey.x_project_id;
+    })
+
+    out.forEach((project) => {
+        if (projectsWithCombinations.includes(project.x_project_id)) {
+            project.combination_project = '1'
+        } else {
+            project.combination_project = '0'
+        }
     })
 
     return out;
@@ -243,11 +262,11 @@ const doAll = async function(projectKeyPath){
 
     promises.push(uniqueProjectsWithSearch(projectKeys,projectKeyPath));
     promises.push(uniqueProjectsWithCombinationSearch(projectKeys,projectKeyPath));
-    // promises.push(uniques(projectKeys,projectKeyPath));
-    // promises.push(levels(projectKeys,projectKeyPath));
-    // promises.push(features(projectKeys,projectKeyPath));
-    // promises.push(searchProjectPatterns(projectKeys,projectKeyPath));
-    // promises.push(uniqueProjectKeysWithPertPlates(projectKeys,projectKeyPath));
+    promises.push(uniques(projectKeys,projectKeyPath));
+    promises.push(levels(projectKeys,projectKeyPath));
+    promises.push(features(projectKeys,projectKeyPath));
+    promises.push(searchProjectPatterns(projectKeys,projectKeyPath));
+    promises.push(uniqueProjectKeysWithPertPlates(projectKeys,projectKeyPath));
 
     const p = await Promise.all(promises);
     return "done";
