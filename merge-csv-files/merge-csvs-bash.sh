@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #setup environment
-source activate merino
+source activate prism
 
 cd /cmap/merino/
 python setup.py develop
@@ -68,7 +68,7 @@ then
     PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     PATTERN=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].pattern')
 
-    if [[ $projects == *_proj_search_pattern.json ]] # * is used for pattern matching
+    if [[ $projects == *_proj_search_pattern.json || $projects == *_comb_search_pattern.json ]] # * is used for pattern matching
     then
         DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"
         OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/data
@@ -118,6 +118,7 @@ then
 else
   python /clue/bin/merge_csvs.py "${args[@]}"
 fi
+
 exit_code=$?
 conda deactivate
 exit $exit_code

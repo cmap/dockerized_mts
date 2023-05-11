@@ -4,6 +4,7 @@ params:
   project_name: MTS021_VALIDATION_COMPOUNDS_INTERNAL
   build_name: PMTS021
   val_link: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS
+  has_combination_data: TRUE
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -48,6 +49,11 @@ matrix_text <- c(
   "LFC" = "Log-fold change matrix",
   "AUC" = "AUC matrix",
   "IC50" = "IC50 matrix"
+)
+
+combination_text <- c(
+  "synergy_table" = "Synergy Table",
+  "bliss_mss" = "Bliss MSS Table"
 )
 
 # get compound info
@@ -260,6 +266,41 @@ for (i in 1:length(data_files)) {
   }
 }
 
+#add row with location for zip file
+download_files %<>% add_row(
+      title="Project Downloads",
+      type="all",
+      url=file.path(str_to_lower(params$project_name), params$project_name, "data", paste0(params$project_name, ".zip")),
+      project=params$project_name,
+      build=params$build_name
+    )
+
+write.csv(download_files, file.path(params$data_dir, "data", "downloads.csv"), row.names=FALSE)
+```
+
+
+```{r combinations, results='asis', eval=params$has_combination_data}
+knitr::asis_output("### Combination Downloads\\n")
+knitr::asis_output("\nThese are links to files that are matrices of data for all combination compounds ")
+
+for (i in 1:length(data_files)) {
+  if (names(data_files)[i] %in% names(combination_text)) {
+    cat("* [", combination_text[names(data_files)[i]], "](", data_files[i], ") \n")
+    
+    download_files %<>% add_row(
+      title=combination_text[names(data_files)[i]],
+      type="combination_data",
+      url=file.path(str_to_lower(params$project_name), str_replace(data_files[i], "./", "")),
+      project=params$project_name,
+      build=params$build_name
+    )
+  } else {
+    next
+  }
+}
+```
+
+```{r}
 #add row with location for zip file
 download_files %<>% add_row(
       title="Project Downloads",
