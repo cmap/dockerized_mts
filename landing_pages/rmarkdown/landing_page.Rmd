@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: /Users/anup/work/1_Projects/PRISM_Portal/mts021_validation_compounds_internal/MTS021_VALIDATION_COMPOUNDS_INTERNAL
-  project_name: MTS021_VALIDATION_COMPOUNDS_INTERNAL
+  data_dir: /Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY
+  project_name: MTS021_NATHANAEL_GRAY
   build_name: PMTS021
   val_link: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS
   combination_project: TRUE
@@ -57,8 +57,13 @@ combination_text <- c(
 )
 
 # get compound info
-inst <- data.table::fread(list.files(file.path(params$data_dir, "data"), pattern = "inst_info", full.names = T)) %>%
-  dplyr::distinct(pert_iname, pert_id)
+
+inst_info <- data.table::fread(list.files(file.path(params$data_dir, "data"), pattern = "inst_info", full.names = T)) 
+
+inst <- inst_info %>%  dplyr::distinct(pert_iname, pert_id)
+
+neg_control <- inst_info$pert_vehicle %>% unique()
+
 name_map <- inst$pert_iname
 names(name_map) <- stringr::str_replace_all(inst$pert_id, pattern = fixed("|"), "_") %>% toupper()
 
@@ -104,7 +109,7 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 
 1. Mean fluorescent intensities (MFI) for each control and treatment well. This is a measure of the abundance of each PRISM barcode for each replicate/treatment/cell line, available in long-table format: `Compound Data > Raw fluorescence values` and `Normalized fluorescence values`.
 2. QC table containing all the dynamic range and error rate statistics, available: `Compound Data > QC metrics`.
-3. Normalized (log-fold change) cell-viability values with respect to negative control (DMSO), available in long-table format (`Compound Data > Viability data`) and (`Compound Data > Replicate collapsed viability data`) for median-collapsed values across cell lines.
+3. Normalized (log-fold change) cell-viability values with respect to negative control (`r neg_control`), available in long-table format (`Compound Data > Viability data`) and (`Compound Data > Replicate collapsed viability data`) for median-collapsed values across cell lines.
 4. Dose-response parameters for the compound, available: `Compound Data > Dose-response curve data`, and dose-response curves for each treatment/cell line in `Dose-Response Curves`. **Please note:** we are sometimes unable to fit a dose response curve for some cell lines so they will not be included in this file.
 5. Biomarker and correlation analysis using omics and genetic dependency data from [depmap.org](https://depmap.org/portal/download/all/). Biomarkers are identified by selecting the genomic features that best explain the observed profile of sensitivity in the PRISM cell line panel. Univariate analysis for continuous and discrete variables at `Biomarker Data > Continuous associations` and `Discrete associations` respectively. Multivariate analysis available at `Biomarker Data > Random forest features` and with model level statistics at `Biomarker Data > Random forest model statistics`.
 
@@ -113,9 +118,9 @@ Explanations of the columns within each file are available on [GitHub](https://g
 
 ### Data Processing
 
-I.  For each plate, we first normalize the logMFI ($\log_2$ mean fluorescence intensity) of the DMSO wells to their median logMFI.
+I.  For each plate, we first normalize the logMFI ($\log_2$ mean fluorescence intensity) of the `r neg_control` wells to their median logMFI.
 
-II.  Each detection well contains 10 control barcodes in increasing abundances as spike-in controls. A monotonic smooth p-spline is fit for each control barcode detection well to normalize the abundance of each barcode to the corresponding value in the plate-wise median DMSO profiles. Next, all the logMFI values in the well are transformed through the inferred spline function to correct for amplification and detection artifacts.
+II.  Each detection well contains 10 control barcodes in increasing abundances as spike-in controls. A monotonic smooth p-spline is fit for each control barcode detection well to normalize the abundance of each barcode to the corresponding value in the plate-wise median `r neg_control` profiles. Next, all the logMFI values in the well are transformed through the inferred spline function to correct for amplification and detection artifacts.
 
 III.  Next, the separability between negative and positive control treatments is assessed. In particular, we use the error rate of the optimum simple threshold classifier between the control samples for each cell line and plate combination. Error rate is a measure of overlap of the two control sets and is defined as $$ER = \frac{FP + FN}{n}$$ where $FP$ is false positives, $FN$ is false negatives, and $n$ is the total number of controls. A threshold is set between the distributions of positive and negative control logMFI values (with everything below the threshold said to be positive and above said to be negative) such that this value is minimized. Additionally, we filter based on the dynamic range of each cell line. Dynamic range is defined as $$DR = \mu_{-} - \mu_{+}$$ where $\mu_{+/-}$ stand for the median of the normalized logMFI values in positive/negative control samples.
 
@@ -325,6 +330,7 @@ dodger = position_dodge(width = 0.9)
 
 # QC plot
 qc_file <- list.files(file.path(params$data_dir, "data"), "QC_TABLE", full.names = T)
+qc_file <- '/Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY/data/MTS021_NATHANAEL_GRAY_QC_TABLE.csv'
 qc_table <- data.table::fread(qc_file)
 
 p1 <- ggplot(qc_table) +
@@ -356,7 +362,7 @@ DT::datatable(qc_table %>% dplyr::select(ccle_name, culture, pool_id, pert_plate
                                          trt_poscon_md, trt_poscon_mad, error_rate, dr, pass),
               filter = "top", options = list(dom = c("tp")), rownames = F,
               colnames = c("Cell line", "Culture", "Pool", "Plate", "Replicate", "Time",
-                           "DMSO median", "DMSO MAD", "Bortezomib median", "Bortezomib MAD",
+                           paste(neg_control, " median"), paste(neg_control, " MAD"), "Bortezomib median", "Bortezomib MAD",
                            "Error rate", "Dynamic range", "Pass")) %>%
   DT::formatRound(columns = c(7:12), digits = 2)
 ```
