@@ -91,7 +91,7 @@ then
 fi
 
 #setup environment
-source activate merino
+source activate prism
 cd /cmap
 git clone https://github.com/cmap/merino.git
 cd /cmap/merino/

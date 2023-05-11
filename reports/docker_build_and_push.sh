@@ -2,7 +2,7 @@
 REPO="prismcmap"
 NAME="reports"
 
-VERSION="v0.2.10" #change the version number for each new build
+VERSION="v0.2.11" #change the version number for each new build
 TAG="latest"
 
 #change the version number for each new build

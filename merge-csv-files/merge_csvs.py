@@ -31,14 +31,19 @@ def main(args):
         output_file = os.path.join(args.out, args.search_pattern).replace("*",".csv")
 
     matches = glob.glob(search_str)
+    print("Found {} files".format(len(matches)))
+    print("Files: {}".format(matches))
     dfs = []
     for filename in matches:
+        print("Reading file: {}".format(filename))
         df = pd.read_csv(filename, index_col=None, header=0,sep=args.separator)
         dfs.append(df)
+
 
     if len(dfs) > 0:
         result = pd.concat(dfs, axis=0, ignore_index=True)
         result.to_csv(output_file, index=False,sep=args.separator)
+        print("Wrote file: {}".format(output_file))
     return
 
 if __name__ == "__main__":
