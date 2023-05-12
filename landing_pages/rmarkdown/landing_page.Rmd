@@ -330,7 +330,6 @@ dodger = position_dodge(width = 0.9)
 
 # QC plot
 qc_file <- list.files(file.path(params$data_dir, "data"), "QC_TABLE", full.names = T)
-qc_file <- '/Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY/data/MTS021_NATHANAEL_GRAY_QC_TABLE.csv'
 qc_table <- data.table::fread(qc_file)
 
 p1 <- ggplot(qc_table) +
