@@ -137,7 +137,7 @@ def main(args, all_perturbagens=None, assay_plates=None):
     # Write args used to yaml file
     write_args_to_file(args, os.path.join(args.outfile, "assemble", prism_replicate_name, 'config.yaml'))
 
-    #Select API
+    #Select API TODO: move to config file
     api_url = DEV_API_URL if args.dev else API_URL
 
     if args.map_src_plate is not None:
