@@ -35,6 +35,8 @@ drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 inst_info <- data.table::fread(list.files(file.path(dirname(dirname(params$data_dir)), "data"), pattern = "inst_info", full.names = T)) 
 inst <- inst_info %>%  dplyr::distinct(pert_iname, pert_id)
 neg_control <- inst_info$pert_vehicle %>% unique()
+screen <- substr(inst_info$screen %>% unique(), start = 1, stop = 3)
+pos_control <- ifelse(screen == "APS", "Puromycin", "Bortezomib")
 
 
 
@@ -162,7 +164,7 @@ To navigate through the report please click on the blue tabs under each heading.
 
 # Experimental Details
 
-This compound was screened in the PRISM assay at `r n_doses`-point dose (3-fold dilution) with a `r n_days` day treatment with `r n_lines` cancer cell lines passing QC. Two PRISM cell line collections were used in the assay: PR500 (including only adherent cell lines), and PR300+ (including adherent and suspension cell lines). Three benchmark compounds – included in the MTS Validation set – were also tested at dose to ensure high data quality. All compounds were run in triplicate, and each plate contained positive (Bortezomib, 20uM) and negative (`r neg_control`) controls.
+This compound was screened in the PRISM assay at `r n_doses`-point dose (3-fold dilution) with a `r n_days` day treatment with `r n_lines` cancer cell lines passing QC. Two PRISM cell line collections were used in the assay: PR500 (including only adherent cell lines), and PR300+ (including adherent and suspension cell lines). Three benchmark compounds – included in the `r screen` Validation set – were also tested at dose to ensure high data quality. All compounds were run in triplicate, and each plate contained positive (`r pos_control`) and negative (`r neg_control`) controls.
 
 ```{r compound}
 plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
