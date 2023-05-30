@@ -1,4 +1,4 @@
-# QC Module (For internal use)
+# QC Module
 
 This module calculates cell line level QC metrics based on normalized logMFI values.
 

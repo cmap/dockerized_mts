@@ -1,6 +1,6 @@
 # Screen-level QC Report
 
-**For internal use please**
+**For internal use**
 
 This module creates a build level QC report.
 
