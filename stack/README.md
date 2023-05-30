@@ -1,5 +1,5 @@
 # Stack Module
-## Stack Overview (Testing for Jenkins)
+## Stack Overview
 
 
 Merge two or more builds. Used in pipeline to merge assays with different cell lines.
