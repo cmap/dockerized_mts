@@ -97,7 +97,7 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
         
         # print (mse_df$mse)
         results.df %<>% 
-            dplyr::add_row("pert_iname"=pert_iname.val, "rid"=rid.val,"fit_name"="drc_drm","Lower_Limit"=as.numeric(drc_model$coefficients [[2]]),
+            dplyr::add_row("fit_name"="drc_drm","Lower_Limit"=as.numeric(drc_model$coefficients [[2]]),
                            "Upper_Limit"=as.numeric(drc_model$coefficients [[3]]), 
                            "Slope"=-as.numeric(drc_model$coefficients [[1]]),
                            "Inflection"=as.numeric(drc_model$coefficients [[4]]), 
@@ -117,7 +117,7 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                                   dr4pl_model2$parameters[[3]], dr4pl_model2$parameters [[2]],
                                   "FC", dose_var)
         results.df %<>% 
-            dplyr::add_row("pert_iname"=pert_iname.val, "rid"=rid.val,"fit_name"="dr4pl_model2","Lower_Limit"=as.numeric(dr4pl_model2$parameters [[4]]),
+            dplyr::add_row("fit_name"="dr4pl_model2","Lower_Limit"=as.numeric(dr4pl_model2$parameters [[4]]),
                            "Upper_Limit"=as.numeric(dr4pl_model2$parameters [[1]]), 
                            "Slope"=as.numeric(dr4pl_model2$parameters [[3]]),
                            "Inflection"=as.numeric(dr4pl_model2$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
@@ -138,7 +138,7 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                                   "FC", dose_var)
         
         results.df %<>% 
-            dplyr::add_row("pert_iname"=pert_iname.val, "rid"=rid.val,"fit_name"="dr4pl_model4","Lower_Limit"=as.numeric(dr4pl_model4$parameters [[4]]),
+            dplyr::add_row("fit_name"="dr4pl_model4","Lower_Limit"=as.numeric(dr4pl_model4$parameters [[4]]),
                            "Upper_Limit"=as.numeric(dr4pl_model4$parameters [[1]]), 
                            "Slope"=as.numeric(dr4pl_model4$parameters [[3]]),
                            "Inflection"=as.numeric(dr4pl_model4$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
@@ -159,7 +159,7 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                                   "FC", dose_var)
         
         results.df %<>% 
-            dplyr::add_row("pert_iname"=pert_iname.val, "rid"=rid.val,"fit_name"="dr4pl_model7","Lower_Limit"=as.numeric(dr4pl_model7$parameters [[4]]),
+            dplyr::add_row("fit_name"="dr4pl_model7","Lower_Limit"=as.numeric(dr4pl_model7$parameters [[4]]),
                            "Upper_Limit"=as.numeric(dr4pl_model7$parameters [[1]]), 
                            "Slope"=as.numeric(dr4pl_model7$parameters [[3]]),
                            "Inflection"=as.numeric(dr4pl_model7$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
@@ -178,7 +178,7 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                                   "FC", dose_var)
         
         results.df %<>% 
-            dplyr::add_row("pert_iname"=pert_iname.val, "rid"=rid.val,"fit_name"="dr4pl_model8","Lower_Limit"=as.numeric(dr4pl_model8$parameters [[4]]),
+            dplyr::add_row("fit_name"="dr4pl_model8","Lower_Limit"=as.numeric(dr4pl_model8$parameters [[4]]),
                            "Upper_Limit"=as.numeric(dr4pl_model8$parameters [[1]]), 
                            "Slope"=as.numeric(dr4pl_model8$parameters [[3]]),
                            "Inflection"=as.numeric(dr4pl_model8$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
