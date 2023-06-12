@@ -13,3 +13,5 @@ docker push $REPO/$NAME:$TAG
 
 #v0.2.0 - Fixed issue with reports not being associated when a prior build was made with
 # the same project
+
+# trigger

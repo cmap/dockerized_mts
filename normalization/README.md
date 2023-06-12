@@ -58,5 +58,3 @@ docker run \
   -a PR500 \
   -n PMTS001
 ```
-
-test
