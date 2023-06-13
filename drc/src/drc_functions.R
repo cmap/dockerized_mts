@@ -45,7 +45,7 @@ compute_MSE_MAD <- function(LFC,  UL, LL,  Slope, Inflection,
 
 get_best_fit <- function(LFC_filtered, dose_var,
                          UL_low=0.8, UL_up=1.001, slope_decreasing=TRUE){
-    
+    ## get best fit among different attempts at fitting, and see if this fit works sufficiently well to be reported.
     var_data <- LFC_filtered$FC %>% var()
     all_fits.df <- fit_4param_drc(LFC_filtered, dose_var,  var_data, 
                                   UL_low, UL_up, slope_decreasing)
@@ -53,7 +53,7 @@ get_best_fit <- function(LFC_filtered, dose_var,
     if (nrow(all_fits.df)>0){
         res.df <- all_fits.df[which.max(all_fits.df$frac_var_explained),]
         
-        if (res.df$frac_var_explained>0.05){
+        if (res.df$frac_var_explained>0.05 ){ ## fit has to do somewhat better than predicting just the mean of the data.
             res.df %<>% add_column(successful_fit=TRUE)
         }
         else{
@@ -68,7 +68,9 @@ get_best_fit <- function(LFC_filtered, dose_var,
 
 fit_4param_drc <- function(LFC_filtered, dose_var,  var_data, 
                            UL_low=0.8, UL_up=1.001, slope_decreasing=TRUE) {
-    # UL low is the lowerbound of UL we pass to the optimizer and UL_up is the upper bound of UL that we pass to the optimizer
+    #fits a number of alternate models  to the DRC and passes the results to the calling function (which chooses the best fit.)
+    
+     # UL low is the lowerbound of UL we pass to the optimizer and UL_up is the upper bound of UL that we pass to the optimizer
     results.df <- data.frame("fit_name"=character(),"Lower_Limit"=double(),
                              "Upper_Limit"=double(), 
                              "Slope"=double(),
@@ -78,7 +80,7 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                              "Input_Parameters"=character())
     
     if (slope_decreasing){slope_bound <- 0
-    }else{slope_bound <- Inf}
+    }else{slope_bound <- Inf} # bound the slopes by default unless passed another option
     
 
     # warning is in with Calling Handlers and error is in tryCatch
@@ -91,18 +93,19 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                                                     }
                                                 ),
                            error = function(e)
-                           {#print ("error");
+                           {
                             return(list(convergence=FALSE, error=TRUE,fit=list(convergence=FALSE)))}
                         )
-
+    # "slope" in drc package is -ve of slope in dr4pl package
 
     if (drc_model$fit$convergence){
 
 
-        # "slope" in drc package is -ve of slope in dr4pl package and so -ve sign needs to be put in here.
+        
         mse_df <- compute_MSE_MAD(LFC_filtered, as.numeric(drc_model$coefficients [[3]]), as.numeric(drc_model$coefficients [[2]]),
                                   -as.numeric(drc_model$coefficients [[1]]), as.numeric(drc_model$coefficients [[4]]),
                                   "FC", dose_var)
+        # "slope" in drc package is -ve of slope in dr4pl package and so -ve sign needs to be put in here.
 
         # print (mse_df$mse)
         results.df %<>%
