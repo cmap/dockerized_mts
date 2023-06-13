@@ -11,4 +11,4 @@ docker build --platform linux/amd64 -t $REPO/$NAME:$TAG -t $REPO/$NAME:$VERSION 
 docker push $REPO/$NAME:$VERSION
 docker push $REPO/$NAME:$TAG
 
-# trigger
+# triggers

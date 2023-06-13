@@ -8,3 +8,5 @@ docker build --platform linux/amd64 -t prismcmap/split:$TAG -t prismcmap/split:$
 
 docker push prismcmap/split:$VERSION
 docker push prismcmap/split:$TAG
+
+# trigger
