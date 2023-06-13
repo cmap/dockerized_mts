@@ -13,5 +13,3 @@ RUN ["chmod","-R", "+x", "/clue/bin"]
 ENTRYPOINT ["aws_batch"]
 
 CMD ["-help"]
-
-# trigger
