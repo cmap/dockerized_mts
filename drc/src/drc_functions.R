@@ -115,27 +115,27 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
     }
 
 
-    dr4pl_model2 <- tryCatch(dr4pl(as.formula(paste("FC ~ ", dose_var)), data = LFC_filtered,
+    dr4pl_initL <- tryCatch(dr4pl(as.formula(paste("FC ~ ", dose_var)), data = LFC_filtered,
                                    init.parm = dr4pl::dr4pl_theta(theta_1 = 1, theta_4 = 0.005),
                                    method.init = "logistic",
                                    lowerl = c(UL_low, -Inf, -Inf, 0),
                                    upperl = c(UL_up, Inf, slope_bound, 1.0)),
                              error= function(e){return(list(convergence=FALSE, error=TRUE))}
                              )
-    if (dr4pl_model2$convergence){
-        mse_df <- compute_MSE_MAD(LFC_filtered, dr4pl_model2$parameters[[1]], dr4pl_model2$parameters[[4]],
-                                  dr4pl_model2$parameters[[3]], dr4pl_model2$parameters [[2]],
+    if (dr4pl_initL$convergence){
+        mse_df <- compute_MSE_MAD(LFC_filtered, dr4pl_initL$parameters[[1]], dr4pl_initL$parameters[[4]],
+                                  dr4pl_initL$parameters[[3]], dr4pl_initL$parameters [[2]],
                                   "FC", dose_var)
         results.df %<>% 
-            dplyr::add_row("fit_name"="dr4pl_model2","Lower_Limit"=as.numeric(dr4pl_model2$parameters [[4]]),
-                           "Upper_Limit"=as.numeric(dr4pl_model2$parameters [[1]]), 
-                           "Slope"=as.numeric(dr4pl_model2$parameters [[3]]),
-                           "Inflection"=as.numeric(dr4pl_model2$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
+            dplyr::add_row("fit_name"="dr4pl_initL","Lower_Limit"=as.numeric(dr4pl_initL$parameters [[4]]),
+                           "Upper_Limit"=as.numeric(dr4pl_initL$parameters [[1]]), 
+                           "Slope"=as.numeric(dr4pl_initL$parameters [[3]]),
+                           "Inflection"=as.numeric(dr4pl_initL$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
                            "Input_Parameters"="constrained|init_logistic")
     }
 
     
-    dr4pl_model4 <- tryCatch(dr4pl(as.formula(paste("FC ~ ", dose_var)), data = LFC_filtered,
+    dr4pl_initM_optNM <- tryCatch(dr4pl(as.formula(paste("FC ~ ", dose_var)), data = LFC_filtered,
                                    init.parm = dr4pl::dr4pl_theta(theta_1 = 1, theta_4 = 0.01),
                                    method.init = "Mead",
                                    lowerl = c(UL_low, -Inf, -Inf, 0),
@@ -143,21 +143,21 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                                    method.optim="Nelder-Mead"),
                              error= function(e){return(list(convergence=FALSE, error=TRUE))}
                              )
-    if (dr4pl_model4$convergence){
-        mse_df <- compute_MSE_MAD(LFC_filtered, dr4pl_model4$parameters[[1]], dr4pl_model4$parameters[[4]],
-                                  dr4pl_model4$parameters[[3]], dr4pl_model4$parameters [[2]],
+    if (dr4pl_initM_optNM$convergence){
+        mse_df <- compute_MSE_MAD(LFC_filtered, dr4pl_initM_optNM$parameters[[1]], dr4pl_initM_optNM$parameters[[4]],
+                                  dr4pl_initM_optNM$parameters[[3]], dr4pl_initM_optNM$parameters [[2]],
                                   "FC", dose_var)
         
         results.df %<>% 
-            dplyr::add_row("fit_name"="dr4pl_model4","Lower_Limit"=as.numeric(dr4pl_model4$parameters [[4]]),
-                           "Upper_Limit"=as.numeric(dr4pl_model4$parameters [[1]]), 
-                           "Slope"=as.numeric(dr4pl_model4$parameters [[3]]),
-                           "Inflection"=as.numeric(dr4pl_model4$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
+            dplyr::add_row("fit_name"="dr4pl_initM_optNM","Lower_Limit"=as.numeric(dr4pl_initM_optNM$parameters [[4]]),
+                           "Upper_Limit"=as.numeric(dr4pl_initM_optNM$parameters [[1]]), 
+                           "Slope"=as.numeric(dr4pl_initM_optNM$parameters [[3]]),
+                           "Inflection"=as.numeric(dr4pl_initM_optNM$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
                            "Input_Parameters"="constrained|init_Mead|optim_Nelder-Mead")
     }
     
     
-    dr4pl_model7 <- tryCatch(dr4pl(as.formula(paste("FC ~ ", dose_var)), data = LFC_filtered,
+    dr4pl_initL_optB <- tryCatch(dr4pl(as.formula(paste("FC ~ ", dose_var)), data = LFC_filtered,
                                    init.parm = dr4pl::dr4pl_theta(theta_1 = 1, theta_4 = 0.01),
                                    method.init = "logistic",
                                    lowerl = c(UL_low, -Inf, -Inf, 0),
@@ -165,36 +165,36 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                                    method.optim="BFGS"),
                              error= function(e){return(list(convergence=FALSE, error=TRUE))}
                              )
-    if (dr4pl_model7$convergence){
-        mse_df <- compute_MSE_MAD(LFC_filtered, dr4pl_model7$parameters[[1]], dr4pl_model7$parameters[[4]],
-                                  dr4pl_model7$parameters[[3]], dr4pl_model7$parameters [[2]],
+    if (dr4pl_initL_optB$convergence){
+        mse_df <- compute_MSE_MAD(LFC_filtered, dr4pl_initL_optB$parameters[[1]], dr4pl_initL_optB$parameters[[4]],
+                                  dr4pl_initL_optB$parameters[[3]], dr4pl_initL_optB$parameters [[2]],
                                   "FC", dose_var)
 
         results.df %<>%
-            dplyr::add_row("fit_name"="dr4pl_model7","Lower_Limit"=as.numeric(dr4pl_model7$parameters [[4]]),
-                           "Upper_Limit"=as.numeric(dr4pl_model7$parameters [[1]]),
-                           "Slope"=as.numeric(dr4pl_model7$parameters [[3]]),
-                           "Inflection"=as.numeric(dr4pl_model7$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,
+            dplyr::add_row("fit_name"="dr4pl_initL_optB","Lower_Limit"=as.numeric(dr4pl_initL_optB$parameters [[4]]),
+                           "Upper_Limit"=as.numeric(dr4pl_initL_optB$parameters [[1]]),
+                           "Slope"=as.numeric(dr4pl_initL_optB$parameters [[3]]),
+                           "Inflection"=as.numeric(dr4pl_initL_optB$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,
                            "Input_Parameters"="constrained|init_logistic|optim_BFGS")
     }
     
-    dr4pl_model8<- tryCatch(dr4pl(as.formula(paste("FC ~ ", dose_var)), data = LFC_filtered,
+    dr4pl_lossHuber<- tryCatch(dr4pl(as.formula(paste("FC ~ ", dose_var)), data = LFC_filtered,
                                   init.parm = dr4pl::dr4pl_theta(theta_1 = 1, theta_4 = 0.01),
                                   method.robust="Huber",
                                   lowerl = c(UL_low, -Inf, -Inf, 0),
                                   upperl = c(UL_up, Inf, slope_bound, 1.0)),
                             error= function(e){return(list(convergence=FALSE, error=TRUE))}
                             )
-    if (dr4pl_model8$convergence){
-        mse_df <- compute_MSE_MAD(LFC_filtered, dr4pl_model8$parameters[[1]], dr4pl_model8$parameters[[4]],
-                                  dr4pl_model8$parameters[[3]], dr4pl_model8$parameters [[2]],
+    if (dr4pl_lossHuber$convergence){
+        mse_df <- compute_MSE_MAD(LFC_filtered, dr4pl_lossHuber$parameters[[1]], dr4pl_lossHuber$parameters[[4]],
+                                  dr4pl_lossHuber$parameters[[3]], dr4pl_lossHuber$parameters [[2]],
                                   "FC", dose_var)
         
         results.df %<>% 
-            dplyr::add_row("fit_name"="dr4pl_model8","Lower_Limit"=as.numeric(dr4pl_model8$parameters [[4]]),
-                           "Upper_Limit"=as.numeric(dr4pl_model8$parameters [[1]]), 
-                           "Slope"=as.numeric(dr4pl_model8$parameters [[3]]),
-                           "Inflection"=as.numeric(dr4pl_model8$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
+            dplyr::add_row("fit_name"="dr4pl_lossHuber","Lower_Limit"=as.numeric(dr4pl_lossHuber$parameters [[4]]),
+                           "Upper_Limit"=as.numeric(dr4pl_lossHuber$parameters [[1]]), 
+                           "Slope"=as.numeric(dr4pl_lossHuber$parameters [[3]]),
+                           "Inflection"=as.numeric(dr4pl_lossHuber$parameters [[2]]), "MSE"=mse_df$mse, "MAD" =mse_df$mad, "frac_var_explained"=1-mse_df$mse/var_data,  
                            "Input_Parameters"="constrained|loss_Huber")
     }
 
