@@ -122,7 +122,7 @@ for (i in 1:nrow(dosed_compounds)){
                   max_dose = max(d[[dose_var]]),
                   upper_limit = fit_result.df$Upper_Limit,
                   ec50 = fit_result.df$Inflection,
-                  slope = fit_result.df$Slope,
+                  slope = -fit_result.df$Slope,                 ##### sign of slope is made negative to remain compatible with legacy results and report generation module
                   lower_limit = fit_result.df$Lower_Limit,
                   convergence = fit_result.df$successful_fit) %>%
         dplyr::mutate(auc = compute_auc(lower_limit, upper_limit, ec50, slope,
@@ -131,7 +131,7 @@ for (i in 1:nrow(dosed_compounds)){
                                                    ec50, slope,
                                                    min_dose, max_dose),
                       mse = fit_result.df$MSE,
-                      R2 = fit_result.df$frac_var_explained,
+                      R2 = fit_result.df$frac_var_explained,  ###  old R^2 values used the variance of LFC and not FCin denominator, so do not compare the two.
                       best_fit_name = fit_result.df$fit_name,
                       varied_iname = comp$pert_iname,
                       varied_id = comp$pert_id,
