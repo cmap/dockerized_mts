@@ -382,10 +382,11 @@ The second plot shows the AUC of the combination versus the Bliss expected AUC. 
 
 
 **How are the dose response curves fitted? What are the parameters for fitting?** <br> 
-We fit a robust four-parameter logistic curve to the response of each cell line to treatment. The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
+We fit a robust four-parameter logistic curve to the response of each cell line to treatment. The four parameters are upper limit($a$), lower limit ($b$), slope ($s$), and EC50. The equation for the curve is defined:
 
 $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
-This is implemented using R's dr4pl package, specifying an upper limit between 0.99-1.01 and a positive slope. 
+
+The curve fitting procedure minimizes the squared deviation of the observed viabilities at each dose. The fits are constrained such that the upper-limit lies within the range (0.8,1.001) and the lower limit lies within (0,1). Further, we restrict the predicted viability to always decrease with increasing dose by constraining the slope. Since the nonlinear optimization underlying the fitting procedure may return parameters a local optimum, we fit using four different methods implemented in the dr4pl and drc packages and report parameters with the lowest mean squared error. Fit parameters are only reported if the best fit explains at least 5% of the variance of the fold-change data. An IC50 is only reported if the drc fit crosses 0.5 within the dose range of the experiment. 
 
 **What are the three curves in the dose response graph?** <br> 
 Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself <br> 
