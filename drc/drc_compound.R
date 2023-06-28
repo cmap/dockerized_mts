@@ -8,12 +8,18 @@ parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-i", "--input_dir", default="", help="Input directory with one level 4 LFC file")
 parser$add_argument("-o", "--out", default="", help="Output directory")
+parser$add_argument("--screen_type", 
+                    default="MTS", help = "what type of screen is it? (MTS, CPS, etc.)")
+## For MTS UL of fit is close to 1 and DRC is always decreasing.
+## For CPS UL is b/w 0 and 1 and DRC can increase. 
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 lfc_dir <- args$input_dir
 out_dir <- args$out
+screen_type <- args$screen_type
 
+print (paste("screen type_was= ", screen_type))
 # find level 4 file and return error if none or more than one
 lfc_files <- list.files(lfc_dir,pattern=("LEVEL4_LFC_.*\\.csv$"), full.names=T)
 if (length(lfc_files) != 1) {
@@ -109,10 +115,19 @@ for (i in 1:nrow(dosed_compounds)){
     # d %<>% drop_na(all_of(dose_var))
     
     d$FC <- 2^d[[LFC_column]]
-    # fit curve
-    fit_result.df <- get_best_fit(d, dose_var,  
-                                UL_low=0.8, UL_up=1.001, slope_decreasing=TRUE)
     
+    # fit curve. if MTS UL is close to 1 and slope is always decreasing. 
+    # if CPS, UL can be further from 1 since anchor dose can be toxic and slope can increase
+    if (screen_type=="MTS"|screen_type=="APS"){
+        fit_result.df <- get_best_fit(d, dose_var,  
+                                UL_low=0.8, UL_up=1.001, slope_decreasing=TRUE)
+    }else if(screen_type=="CPS"){
+        fit_result.df <- get_best_fit(d, dose_var,  
+                                      UL_low=0.0, UL_up=1.001, slope_decreasing=FALSE)
+    }else{ ## if screen type has not been defined before, then stop, we need to add it here.
+        print("undefined screen type")
+        stop("Error: undefined screen type")
+    }
     
     # get results if fit
     if (fit_result.df$successful_fit) {
