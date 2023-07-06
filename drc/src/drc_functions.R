@@ -54,7 +54,7 @@ get_best_fit <- function(LFC_filtered, dose_var,
     if (nrow(all_fits.df)>0){
         res.df <- all_fits.df %>%
             dplyr::top_n(1, frac_var_explained) %>%
-            dplyr::mutate(successful_fit = frac.frac_var_explained > 0.05) 
+            dplyr::mutate(successful_fit = frac_var_explained > 0.05) 
         ## fit has to do somewhat better than predicting just the mean of the data to be called successful
     }else{
         res.df  <- data.frame(successful_fit=FALSE)
