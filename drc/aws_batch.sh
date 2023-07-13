@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # read in flagged arguments
-while getopts ":i:o:f:st:" arg; do
+while getopts ":i:o:f:s:" arg; do
   case $arg in
     i) # specify input folder
       data_dir=${OPTARG};;
@@ -9,7 +9,7 @@ while getopts ":i:o:f:st:" arg; do
       output_dir=${OPTARG};;
     f)
       projects=${OPTARG};;
-    st)
+    s)
       screen_type=${OPTARG};;
   esac
 done
