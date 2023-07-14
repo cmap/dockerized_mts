@@ -42,7 +42,7 @@ if [[ "$pert_id" == "DMSO" ]]
 then
   echo "Skipping DMSO"
 else
-  Rscript /drc_compound.R -i "${data}" -o "${out}" -st "${screen}"
+  Rscript /drc_compound.R -i "${data}" -o "${out}" -s "${screen}"
 fi
 
 exit_code=$?

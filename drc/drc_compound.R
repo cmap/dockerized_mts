@@ -8,7 +8,7 @@ parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-i", "--input_dir", default="", help="Input directory with one level 4 LFC file")
 parser$add_argument("-o", "--out", default="", help="Output directory")
-parser$add_argument("-st", "--screen_type", 
+parser$add_argument("-s", "--screen_type", 
                     default="MTS", help = "what type of screen is it? (MTS, CPS, etc.)")
 ## For MTS UL of fit is close to 1 and DRC is always decreasing.
 ## For CPS UL is b/w 0 and 1 and DRC can increase. 
