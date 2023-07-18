@@ -270,17 +270,29 @@ for (i in 1:length(constituents)) {
     dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
+  
+  new_cols <- colnames(df)
+  new_cols <- case_when(
+      "pert_iname" == new_cols  ~ paste("pert_iname", i, sep = "_"),
+      "pert_dose" == new_cols  ~ paste("pert_dose", i, sep = "_"),
+      "LFC_cb" == new_cols  ~ paste("LFC_cb", i, sep = "_"),
+      .default = as.character(new_cols)
+    )
+  colnames(df) <- new_cols
 
-  new_cols <- paste(colnames(df), i, sep = "_")
-  colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
+  # new_cols <- paste(colnames(df), i, sep = "_")
+  # colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
 
   spread_lfc %<>% dplyr::left_join(df)
 }
 
 # bliss expected fold change (capped FCs at 1)
-B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
-spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
-spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
+B <- apply(2^spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')], 1, function(x) prod(pmin(x, 1)))
+spread_lfc %<>% dplyr::mutate(S = LFC_cb_1 + LFC_cb_2 - LFC_cb)
+
+# B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
+# spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+# spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
 spread_lfc$B <- B
 spread_lfc %<>%
   dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
