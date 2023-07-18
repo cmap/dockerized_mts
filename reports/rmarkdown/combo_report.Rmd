@@ -57,6 +57,7 @@ if (length(drc_path) == 1) {
 } else {
   DRC <- NULL
 }
+DRC %<>% tidyr::drop_na(auc) ## drop cell lines without a fit, these will have auc=na 
 
 # read in QC table
 plates <- LFC$pert_plate %>% unique()

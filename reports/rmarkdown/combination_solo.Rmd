@@ -48,6 +48,8 @@ if (length(drc_path) == 1) {
 } else {
   DRC <- NULL
 }
+DRC %<>% tidyr::drop_na(auc) ## drop cell lines without a fit, these will have auc=na 
+
 
 # read in biomarker tables
 corr_table <- data.table::fread(file.path(params$data_dir, "continuous_associations.csv")) %>%
