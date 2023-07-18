@@ -554,8 +554,8 @@ for (comp in varied_comps) {
 
   cat(htmltools::knit_print.shiny.tag(p))
 
-  compounds_all <- highlight_key(drc_meta %>%
-                                   dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+compounds_all <- highlight_key(drc_meta %>%
+                                   dplyr::filter(varied_iname == comp) %>%
                                    dplyr::arrange(auc),
                                  ~cell_id, group = comp)
   
