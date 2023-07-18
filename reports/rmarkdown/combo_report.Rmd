@@ -225,8 +225,15 @@ for (i in 1:length(constituents)) {
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
   
-  new_cols <- paste(colnames(df), i, sep = "_")
-  colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
+  new_cols <- colnames(df)
+  new_cols <- case_when(
+      "pert_iname" == new_cols  ~ paste("pert_iname", i, sep = "_"),
+      "pert_dose" == new_cols  ~ paste("pert_dose", i, sep = "_"),
+      "LFC_cb" == new_cols  ~ paste("LFC_cb", i, sep = "_"),
+      .default = as.character(new_cols)
+    )
+  colnames(df) <- new_cols
+  
   
   spread_lfc %<>% dplyr::left_join(df)
 }
