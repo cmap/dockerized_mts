@@ -171,10 +171,10 @@ p <- plot_ly() %>%
             opacityDim = 1, defaultValues = "",
             selected = attrs_selected(opacity = 1))
 
-compounds_all <- highlight_key(drc_meta %>% 
-                                 dplyr::filter(is.finite(auc)) %>% 
+compounds_all <- highlight_key(drc_meta %>%
                                  dplyr::arrange(auc),
                                ~cell_id, group = "Dose-response")
+
 dt <- DT::datatable(compounds_all, style="bootstrap",
                     options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
                                    columnDefs = list(list(visible = FALSE, targets = c(11)))),
