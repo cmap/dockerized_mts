@@ -12,7 +12,8 @@ library(reshape2)
 library(argparse)
 library(splitstackshape)
 
-### replace print (e);return(list(convergence=FALSE, error=TRUE)) with just the return. this made code take hald the time as before
+## NOTE the functions here use a sign convention for the slope parameter consistent with dr4pl package
+## The data is finally saved and passed to future modules with the opposite sign convention for the slope parameter (based on drc package)
 #---- Dose-Response Parameters ----
 # area under curve given dose-response parameters
 compute_auc <- function(l, u, ec50, h, md, MD) {
@@ -48,16 +49,18 @@ get_best_fit <- function(LFC_filtered, dose_var,
                          UL_low=0.8, UL_up=1.001, slope_decreasing=TRUE){
     ## get best fit among different attempts at fitting, and see if this fit works sufficiently well to be reported.
     var_data <- LFC_filtered$FC %>% var()
+    riemann_AUC <- pmin(LFC_filtered$FC,1) %>% mean() ## mean fold-change after rounding FC to 1.
     all_fits.df <- fit_4param_drc(LFC_filtered, dose_var,  var_data, 
                                   UL_low, UL_up, slope_decreasing)
     
     if (nrow(all_fits.df)>0){
         res.df <- all_fits.df %>%
             dplyr::top_n(1, frac_var_explained) %>%
-            dplyr::mutate(successful_fit = frac_var_explained > 0.05) 
-        ## fit has to do somewhat better than predicting just the mean of the data to be called successful
+            dplyr::mutate(successful_fit = frac_var_explained > 0.0) %>% 
+            dplyr::mutate(auc_riemann = as.numeric(riemann_AUC) )
+        ## fit has to be at least as good as predicting just the mean of the data to be called successful
     }else{
-        res.df  <- data.frame(successful_fit=FALSE)
+        res.df  <- data.frame(successful_fit=FALSE, auc_riemann = riemann_AUC)
     }
     
     return (res.df)

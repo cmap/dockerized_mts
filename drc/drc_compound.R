@@ -110,11 +110,9 @@ for (i in 1:nrow(dosed_compounds)){
     # get LFC data
     d <- df[j, ] %>% dplyr::inner_join(LFC_TABLE.split) %>% suppressMessages()
     
-    ##test ####
-    # dose=0 ie NA, which is -infty on logscale is skipped since plots and dr4pl cannot handle it 
-    # d %<>% drop_na(all_of(dose_var))
     
-    d$FC <- 2^d[[LFC_column]]
+    d <- d[is.finite(d[[LFC_column]])] # drop any infinite LFC values
+    d$FC <- 2^d[[LFC_column]] # get fold-change values.
     
     # fit curve. if MTS UL is close to 1 and slope is always decreasing. 
     # if CPS, UL can be further from 1 since anchor dose can be toxic and slope can increase
@@ -137,7 +135,7 @@ for (i in 1:nrow(dosed_compounds)){
                   max_dose = max(d[[dose_var]]),
                   upper_limit = fit_result.df$Upper_Limit,
                   ec50 = fit_result.df$Inflection,
-                  slope = -fit_result.df$Slope,                 ##### sign of slope is made negative to remain compatible with legacy results and report generation module
+                  slope = -fit_result.df$Slope,                 ##### sign of slope is made negative to remain compatible with  sign convention in report generation module
                   lower_limit = fit_result.df$Lower_Limit,
                   convergence = fit_result.df$successful_fit) %>%
         dplyr::mutate(auc = compute_auc(lower_limit, upper_limit, ec50, slope,
@@ -145,8 +143,9 @@ for (i in 1:nrow(dosed_compounds)){
                       log2.ic50 = compute_log_ic50(lower_limit, upper_limit,
                                                    ec50, slope,
                                                    min_dose, max_dose),
+                      auc_riemann=fit_result.df$auc_riemann,
                       mse = fit_result.df$MSE,
-                      R2 = fit_result.df$frac_var_explained,  ###  old R^2 values used the variance of LFC and not FCin denominator, so do not compare the two.
+                      R2 = fit_result.df$frac_var_explained,  ###  updated. old R^2 values used the variance of LFC and not FC in denominator
                       best_fit_name = fit_result.df$fit_name,
                       varied_iname = comp$pert_iname,
                       varied_id = comp$pert_id,
@@ -166,8 +165,27 @@ for (i in 1:nrow(dosed_compounds)){
         x %<>% dplyr::left_join(added_comp_table)%>% suppressMessages()
       }
       sub_DRC[[j]] <- x
-    } else {
-      sub_DRC[[j]] <- tibble()
+    } else { # fit is unsuccessful and so all we can provide is the riemann auc
+      sub_DRC[[j]] <- tibble(min_dose = min(d[[dose_var]]),
+                             max_dose = max(d[[dose_var]]),
+                             upper_limit = as.numeric(NA),
+                             ec50 = as.numeric(NA),
+                             slope = as.numeric(NA),                 ##### sign of slope is made negative to remain compatible with  sign convention in report generation module
+                             lower_limit = as.numeric(NA),
+                             convergence = NA) %>%
+          dplyr::mutate(auc = as.numeric(NA),
+                        log2.ic50 = as.numeric(NA),
+                        auc_riemann=fit_result.df$auc_riemann,
+                        mse = ifelse("mse" %in% colnames(fit_result.df), fit_result.df$MSE, as.numeric(NA) ),
+                        R2 = ifelse("frac_var_explained" %in% colnames(fit_result.df), fit_result.df$frac_var_explained, as.numeric(NA) ),  ###  updated. old R^2 values used the variance of LFC and not FC in denominator
+                        best_fit_name = NA,
+                        varied_iname = comp$pert_iname,
+                        varied_id = comp$pert_id,
+                        ccle_name = df[j,]$ccle_name,
+                        culture = df[j,]$culture,
+                        pool_id = df[j,]$pool_id,
+                        pert_time = df[j,]$pert_time,
+                        pert_plate = df[j,]$pert_plate)
     }
   }
   
