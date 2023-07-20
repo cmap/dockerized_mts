@@ -37,7 +37,7 @@ compute_log_ic50 <- function(l, u, ec50, h, md, MD) {
 compute_MSE_MAD <- function(LFC,  UL, LL,  Slope, Inflection,
                             FC_column="FC", dose_column="dose") {
     mse_compute <- LFC %>% 
-        dplyr::filter(is.finite(.[[FC_column]])) %>% ## in case there are some nan values accidentally passed.
+        dplyr::filter(is.finite(.[[FC_column]]),is.finite(.[[dose_column]]) ) %>% ## in case there are some na values accidentally passed.
         dplyr::mutate(FC.pred = UL  + (LL -UL )/(1 + (.[[dose_column]]/Inflection)^Slope) ) %>% 
         dplyr::mutate(squared_deviation = (.[[FC_column]]-FC.pred)^2, abs_deviation = abs(.[[FC_column]]-FC.pred)) %>%
         dplyr::summarise(mse = mean(squared_deviation), mad= median(abs_deviation))
@@ -48,6 +48,8 @@ compute_MSE_MAD <- function(LFC,  UL, LL,  Slope, Inflection,
 get_best_fit <- function(LFC_filtered, dose_var,
                          UL_low=0.8, UL_up=1.001, slope_decreasing=TRUE){
     ## get best fit among different attempts at fitting, and see if this fit works sufficiently well to be reported.
+    
+    LFC_filtered %<>% dplyr::filter(is.finite(FC),is.finite(.[[dose_var]]) ) ## remove any NA that may appear in the data
     var_data <- LFC_filtered$FC %>% var()
     riemann_AUC <- pmin(LFC_filtered$FC,1) %>% mean() ## mean fold-change after rounding FC to 1.
     all_fits.df <- fit_4param_drc(LFC_filtered, dose_var,  var_data, 
@@ -55,10 +57,9 @@ get_best_fit <- function(LFC_filtered, dose_var,
     
     if (nrow(all_fits.df)>0){
         res.df <- all_fits.df %>%
-            dplyr::top_n(1, frac_var_explained) %>%
-            dplyr::mutate(successful_fit = frac_var_explained > 0.0) %>% 
-            dplyr::mutate(auc_riemann = as.numeric(riemann_AUC) )
-        ## fit has to be at least as good as predicting just the mean of the data to be called successful
+            slice_max(frac_var_explained, n = 1, with_ties = FALSE) %>%  ## return best fit. if tied, return first of the ties
+            dplyr::mutate(successful_fit = frac_var_explained > 0.0, 
+                          auc_riemann = as.numeric(riemann_AUC) ) ## fit has to be at least as good as predicting just the mean of the data to be called successful
     }else{
         res.df  <- data.frame(successful_fit=FALSE, auc_riemann = riemann_AUC)
     }

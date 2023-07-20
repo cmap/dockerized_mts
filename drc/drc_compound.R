@@ -110,7 +110,9 @@ for (i in 1:nrow(dosed_compounds)){
     # get LFC data
     d <- df[j, ] %>% dplyr::inner_join(LFC_TABLE.split) %>% suppressMessages()
     
-    d <- d[is.finite(d[[LFC_column]]),] # drop any infinite LFC values
+   
+    d %<>% dplyr::filter(is.finite(.[[LFC_column]]),is.finite(.[[dose_var]]) ) # drop any infinite LFC values or undefined doses
+    
     d$FC <- 2^d[[LFC_column]] # get fold-change values.
     
     # fit curve. if MTS UL is close to 1 and slope is always decreasing. 
