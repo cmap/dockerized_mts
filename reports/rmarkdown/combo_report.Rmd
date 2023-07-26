@@ -53,11 +53,12 @@ synergy_height = ceiling(n_combos / 8) * 5
 if (length(drc_path) == 1) {
   DRC <- data.table::fread(drc_path) %>%
     dplyr::mutate(ec50 = as.numeric(ec50))
+  DRC %<>% tidyr::drop_na(auc) ## drop cell lines without a fit, these will have auc=na
   combo_drc <- DRC
 } else {
   DRC <- NULL
 }
-DRC %<>% tidyr::drop_na(auc) ## drop cell lines without a fit, these will have auc=na 
+ 
 
 # read in QC table
 plates <- LFC$pert_plate %>% unique()
@@ -230,7 +231,7 @@ for (i in 1:length(constituents)) {
       "pert_iname" == new_cols  ~ paste("pert_iname", i, sep = "_"),
       "pert_dose" == new_cols  ~ paste("pert_dose", i, sep = "_"),
       "LFC_cb" == new_cols  ~ paste("LFC_cb", i, sep = "_"),
-      .default = as.character(new_cols)
+       TRUE ~ as.character(new_cols)
     )
   colnames(df) <- new_cols
   
