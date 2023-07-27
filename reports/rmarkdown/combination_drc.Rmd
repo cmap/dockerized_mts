@@ -289,10 +289,10 @@ for (i in 1:length(constituents)) {
 # bliss expected fold change (capped FCs at 1)
 B <- apply(2^spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')], 1, function(x) prod(pmin(x, 1)))
 spread_lfc %<>% dplyr::mutate(S = LFC_cb_1 + LFC_cb_2 - LFC_cb)
-
-# B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
+# B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1))) ## remove hardcoded indexing.
 # spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
-# spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
+
+spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
 spread_lfc$B <- B
 spread_lfc %<>%
   dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
