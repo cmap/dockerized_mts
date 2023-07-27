@@ -469,6 +469,42 @@ if (!is.null(DRC)) {
   
   top.genes = top.genes[1:20,]
   
+  ## for debugging #####
+  print ("entering topgenes joins")
+  print(length(top.genes$gene))
+  write.csv(top.genes, file.path(params$data_dir, 'debugging_top_genes.csv'), row.names=FALSE)
+  write.csv(mutations, file.path(params$data_dir, 'debugging_mutations.csv'), row.names=FALSE)
+  write.csv(DRC, file.path(params$data_dir, 'debugging_DRC.csv'), row.names=FALSE)
+  
+  
+  mutated_mutations <- mutations %>% 
+    dplyr::distinct(mutation)  %>% # determining unique mutations 
+    dplyr::mutate(gene = word(mutation, 2, sep = fixed("_")), # adding gene word
+                  mut.type = word(mutation,1,-2, sep = fixed("_"))) %>% # adding mutation type 
+    dplyr::filter(gene %in% top.genes$gene) %>% # filtering from all the genes to only top genes 
+    dplyr::left_join(mutations, by = "mutation") %>% # adding corresponding CCLE names associated with top mutations (multiple per gene and mutation type)
+    dplyr::filter(ccle_name %in% DRC$ccle_name) %>% # filtering out CCLE within DRC data 
+    dplyr::mutate(ix = 1)
+  write.csv(mutated_mutations, file.path(params$data_dir, 'debugging_mutated_mutations.csv'), row.names=FALSE)
+ 
+  pre_join_table <- mutations %>% 
+    dplyr::distinct(mutation)  %>% # determining unique mutations 
+    dplyr::mutate(gene = word(mutation, 2, sep = fixed("_")), # adding gene word
+                  mut.type = word(mutation,1,-2, sep = fixed("_"))) %>% # adding mutation type 
+    dplyr::filter(gene %in% top.genes$gene) %>% # filtering from all the genes to only top genes 
+    dplyr::left_join(mutations, by = "mutation") %>% # adding corresponding CCLE names associated with top mutations (multiple per gene and mutation type)
+    dplyr::filter(ccle_name %in% DRC$ccle_name) %>% # filtering out CCLE within DRC data 
+    dplyr::mutate(ix = 1) %>% # denoting mutations the gene and mutation type present in a particular CCLE
+    reshape2::acast(ccle_name ~ gene + mut.type, value.var = "ix", fill = 0) %>% 
+    reshape2::melt() %>% # one-hot encoding presence of specific genes within a CCLE (0 not present, 1 means present)
+    dplyr::mutate(gene = word(Var2, 1, sep = fixed("_")), # creating gene column 
+                  mut.type = word(Var2,2,-1, sep = fixed("_"))) %>% # creating mutation type column
+    dplyr::mutate(mut.type = ifelse(value == 1, mut.type, "wild_type")) %>% # if CCLE has 0 for a specific gene mutation type, denote it wild type 
+    dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) 
+  
+  write.csv(pre_join_table, file.path(params$data_dir, 'debugging_pre_join_table.csv'), row.names=FALSE)
+  #####
+  
   top_muts <- mutations %>% 
     dplyr::distinct(mutation)  %>% # determining unique mutations 
     dplyr::mutate(gene = word(mutation, 2, sep = fixed("_")), # adding gene word
@@ -485,9 +521,9 @@ if (!is.null(DRC)) {
     dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) %>% # renaming columns 
     dplyr::left_join(top.genes, by = "gene") # adding minimum q values for top genes 
   
-  
-  
-  
+  ## for debugging #####
+  print ("done with top genes joins")
+  #####
   plot_data <- top_muts %>%
     dplyr::left_join(DRC %>% dplyr::distinct(ccle_name, auc),  by = "ccle_name") %>% 
     dplyr::mutate(gene = reorder(gene, minq)) 
@@ -507,6 +543,9 @@ if (!is.null(DRC)) {
   write.csv(plot_data, file.path(mutations_path, 'mutation_effect_boxplot_data.csv'), row.names=FALSE)
   p
 } else if (n_doses == 1) {
+        ## for debugging #####
+  print ("DRC table was null!")
+  #####
   m <- mean(LFC$LFC_cb)
   
   dose <- LFC %>% dplyr::distinct(pert_dose) %>% pull()
