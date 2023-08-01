@@ -173,7 +173,7 @@ for (i in 1:nrow(dosed_compounds)){
                              ec50 = as.numeric(NA),
                              slope = as.numeric(NA),                 ##### sign of slope is made negative to remain compatible with  sign convention in report generation module
                              lower_limit = as.numeric(NA),
-                             convergence = NA) %>%
+                             convergence = FALSE) %>%
           dplyr::mutate(auc = as.numeric(NA),
                         log2.ic50 = as.numeric(NA),
                         auc_riemann=fit_result.df$auc_riemann,
