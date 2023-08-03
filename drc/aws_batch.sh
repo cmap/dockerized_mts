@@ -37,12 +37,22 @@ then
     out="${output_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
 fi
 
+args=(
+  -i "${data}"
+  -o "${out}"
+)
+
+if [[ ! -z $screen ]]
+then
+  args+=(-s "${screen}")
+fi
+
 echo "${data}" "${out}"
 if [[ "$pert_id" == "DMSO" ]]
 then
   echo "Skipping DMSO"
 else
-  Rscript /drc_compound.R -i "${data}" -o "${out}" -s "${screen}"
+  Rscript /drc_compound.R "${args[@]}"
 fi
 
 exit_code=$?
