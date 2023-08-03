@@ -9,7 +9,7 @@ python setup.py develop
 cd /
 
 print_help () {
-  python /clue/bin/deal.py --help
+  python /compound_summary.R --help
 }
 
 #optional
@@ -57,9 +57,7 @@ then
   exit -1
 fi
 
-args=(
-  -b "$DATA_PATH"
-)
+
 
 if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
     batch=0
@@ -67,14 +65,19 @@ else
     batch=${AWS_BATCH_JOB_ARRAY_INDEX}
 fi
 
+PROJECT_DIR="${DATA_PATH}"
+
 if [[ ! -z $projects ]]
 then
     PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch} '.[$index].x_project_id')
-    PROJECT_DIR="${OUT_DIR}"/"${PROJECT,,}"
-    OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"
-    args+=(-i "$PROJECT_DIR")
-    args+=(-o "$OUT_DIR")
+    PROJECT_DIR="${DATA_PATH}"/"${PROJECT,,}"/"${PROJECT^^}"/data/
+    OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/data/
 fi
+
+args=(
+  -i "$PROJECT_DIR"
+  -o "$OUT_DIR"
+)
 
 if [ ! -d $OUT_DIR ]
 then
@@ -88,7 +91,7 @@ then
 fi
 
 
-python /clue/bin/deal.py "${args[@]}"
+python /compound_summary.R "${args[@]}"
 
 exit_code=$?
 conda deactivate
