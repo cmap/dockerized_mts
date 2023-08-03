@@ -13,6 +13,7 @@ parser$add_argument("-o", "--out", default="", help="Output directory")
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 input_dir <- args$input_dir
+input_dir <- "/Users/anup/work/1_Projects/dashboard_metrics/MTS022_DMC_ONCREF/"
 out_dir <- args$out
 
 lfc_files <- list.files(input_dir,pattern=("LEVEL4_LFC.*\\.csv$"), full.names=T)
@@ -112,14 +113,15 @@ LFC.TABLE <- lfc %>%
   dplyr::rowwise() %>%
   dplyr::mutate(X = median(X1, X2, X3, na.rm = T)) %>%
   dplyr::group_by(x_project_id, screen, pert_iname, pert_id, pert_plate, pert_dose) %>%
-  dplyr::summarise(r1 = cor(X1,X2, use = "p"),
-                   r2 = cor(X1,X3, use = "p"),
-                   r3 = cor(X2, X3, use = "p"),
-                   BimodalityCoefficient = bimodality_coefficient(X[is.finite(X)]),
-                   CellLinesKilled = sum(X < log2(.3), na.rm = T)) %>%
+  dplyr::summarise(
+    #r1 = cor(X1,X2, use = "p"),
+    #r2 = cor(X1,X3, use = "p"),
+    #r3 = cor(X2, X3, use = "p"),
+    BimodalityCoefficient = bimodality_coefficient(X[is.finite(X)]),
+    CellLinesKilled = sum(X < log2(.3), na.rm = T)) %>%
   dplyr::rowwise() %>%
-  dplyr::mutate(AverageRepCor = mean(c(r1,r2,r3), na.rm = T)) %>%
-  dplyr::select(-r1, -r2, -r3) %>%
+  #dplyr::mutate(AverageRepCor = mean(c(r1,r2,r3), na.rm = T)) %>%
+  #dplyr::select(-r1, -r2, -r3) %>%
   dplyr::ungroup() %>%
   dplyr::mutate(pert_dose = as.character(pert_dose))
 
@@ -132,8 +134,8 @@ LFC.TABLE %>%
   dplyr::group_by(pert_id, pert_iname, pert_plate) %>%
   dplyr::mutate(BimodalityCoefficient = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
                                                mean(BimodalityCoefficient, na.rm = T), BimodalityCoefficient),
-                AverageRepCor = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
-                                               mean(AverageRepCor, na.rm = T), AverageRepCor),
+                #AverageRepCor = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                #                               mean(AverageRepCor, na.rm = T), AverageRepCor),
                 CellLinesKilled = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
                                        mean(CellLinesKilled, na.rm = T), CellLinesKilled),
                 x_project_id = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
