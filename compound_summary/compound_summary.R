@@ -1,7 +1,7 @@
-library(tidyverse)
-library(magrittr)
-library(useful)
-library(argparse)
+suppressMessages(library(tidyverse))
+suppressMessages(library(magrittr))
+suppressMessages(library(useful))
+suppressMessages(library(argparse))
 suppressMessages(source("./src/metric_functions.R"))
 
 #---- Read arguments ----

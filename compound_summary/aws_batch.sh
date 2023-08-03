@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
 
-#setup environment
-source activate prism
-cd /cmap/merino/
-python setup.py develop
-
 #return to /
 cd /
 
 print_help () {
-  python /compound_summary.R --help
+  Rscript /compound_summary.R --help
 }
 
 #optional
@@ -28,7 +23,7 @@ while test $# -gt 0; do
       shift
       projects=$1
       ;;
-    -d| --data_path)
+    -i| --data_path)
       shift
       DATA_PATH=$1
       ;;
@@ -90,9 +85,8 @@ then
   args+=(-v)
 fi
 
-
-python /compound_summary.R "${args[@]}"
+echo Rscript /compound_summary.R "${args[@]}"
+Rscript /compound_summary.R "${args[@]}"
 
 exit_code=$?
-conda deactivate
 exit $exit_code
