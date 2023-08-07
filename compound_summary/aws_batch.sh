@@ -23,7 +23,7 @@ while test $# -gt 0; do
       shift
       projects=$1
       ;;
-    -i| --data_path)
+    -i| --input_dir)
       shift
       DATA_PATH=$1
       ;;

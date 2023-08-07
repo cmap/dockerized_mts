@@ -13,7 +13,6 @@ parser$add_argument("-o", "--out", default="", help="Output directory")
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 input_dir <- args$input_dir
-input_dir <- "/Users/anup/work/1_Projects/dashboard_metrics/MTS022_DMC_ONCREF/"
 out_dir <- args$out
 
 lfc_files <- list.files(input_dir,pattern=("LEVEL4_LFC.*\\.csv$"), full.names=T)
