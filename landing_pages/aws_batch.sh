@@ -18,7 +18,7 @@ while test $# -gt 0; do
       shift
       project_name=$1
       ;;
-    -b| --combination)
+    -c| --combination)
       shift
       combination=$1
       ;;
