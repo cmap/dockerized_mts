@@ -142,6 +142,6 @@ LFC.TABLE %>%
                 screen = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
                                          screen[!is.na(screen)][1], screen)) %>%
   dplyr::ungroup() %>%
-  write_csv(paste0(out_dir, "/DASHBOARD_TABLE.csv"))
+  write_csv(paste0(out_dir, "/compound_summary_metrics.csv"))
 
 
