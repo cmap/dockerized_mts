@@ -14,6 +14,8 @@ parser$add_argument("-o", "--out", default="", help="Output directory")
 args <- parser$parse_args()
 input_dir <- args$input_dir
 out_dir <- args$out
+dir.create(out_dir, showWarnings = FALSE)
+
 
 lfc_files <- list.files(input_dir,pattern=("LEVEL4_LFC.*\\.csv$"), full.names=T)
 combat_file = lfc_files[str_detect(lfc_files, "COMBAT")]
@@ -30,19 +32,29 @@ if (length(combat_file) == 1) {
 continous_files <- list.files(input_dir,pattern=("continuous_associations.csv$"), full.names=T)
 discrete_files <- list.files(input_dir,pattern=("discrete_associations.csv$"), full.names=T)
 random_forest.model_files <- list.files(input_dir,pattern=("model_table.csv$"), full.names=T)
-random_forest.feats <- list.files(input_dir,pattern=("RF_table.csv$"), full.names=T)
+random_forest.feats_files <- list.files(input_dir,pattern=("RF_table.csv$"), full.names=T)
 
 # load the viability data ----
-lfc <- data.table::fread(lfc_file)
-# drc <- data.table::fread("data/MTS022_VALIDATION_COMPOUNDS_INTERNAL_DRC_TABLE.csv")
+
+lfc <- data.table::fread(lfc_file) %>%
+  dplyr::mutate(pert_dose = as.character(as.numeric(pert_dose)))
 
 # load the biomarker data ----
 
-continous <- data.table::fread(continous_files)
-discrete <- data.table::fread(discrete_files)
-random_forest.model <- data.table::fread(random_forest.model_files)
-random_forest.feats <- data.table::fread(random_forest.feats)
+continous <- data.table::fread(continous_files) %>%
+  dplyr::mutate(pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                   pert_dose, as.character(as.numeric(pert_dose))))
+discrete <- data.table::fread(discrete_files) %>%
+  dplyr::mutate(pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                   pert_dose, as.character(as.numeric(pert_dose))))
 
+random_forest.model <- random_forest.feats <- data.table::fread(random_forest.model_files) %>%
+  dplyr::mutate(pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                   pert_dose, as.character(as.numeric(pert_dose))))
+
+random_forest.feats <- random_forest.feats <- data.table::fread(random_forest.feats_files) %>%
+  dplyr::mutate(pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                   pert_dose, as.character(as.numeric(pert_dose))))
 
 # create the biomarker table first ----
 
@@ -61,15 +73,13 @@ RF.TABLE <- random_forest.feats %>%
   tidyr::pivot_wider(names_from = "model1", values_from = "feats") %>%
   dplyr::group_by(pert_iname, pert_id, pert_plate, pert_dose) %>%
   dplyr::summarise_all(function(x) x[!is.na(x)]) %>%
-  dplyr::ungroup() %>%
-  dplyr::mutate(pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
-                                   pert_dose, as.character(as.numeric(pert_dose)))) # note this last operation is only a band-aid
+  dplyr::ungroup()
 
 
 CONT.TABLE <- continous %>%
-  dplyr::filter(q.val < 0.01, abs(coef) > .1) %>%
+  dplyr::filter(q.val < 0.05, abs(coef) > .1) %>%
   dplyr::group_by(pert_iname, pert_id, pert_plate, pert_dose, feature_type) %>%
-  dplyr::arrange(coef) %>% dplyr::mutate(ix = 1:n()) %>%
+  dplyr::arrange(coef) %>% dplyr::mutate(ix = ifelse(n() > 0, 1:n(), NA)) %>%
   dplyr::arrange(-coef) %>% dplyr::mutate(ix = pmin(ix,1:n())) %>%
   dplyr::filter(ix < 4) %>%
   dplyr::arrange(coef) %>%
@@ -78,14 +88,12 @@ CONT.TABLE <- continous %>%
   dplyr::ungroup() %>%
   tidyr::pivot_wider(names_from = "feature_type",
                      values_from = "feats") %>%
-  dplyr::ungroup() %>%
-  dplyr::mutate(pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
-                                   pert_dose, as.character(as.numeric(pert_dose))))
+  dplyr::ungroup()
 
 DISC.TABLE <- discrete %>%
-  dplyr::filter(q.value < 0.01, abs(effect_size) > .1)  %>%
+  dplyr::filter(q.value < 0.05, abs(effect_size) > .1)  %>%
   dplyr::group_by(pert_iname, pert_id, pert_plate, pert_dose, feature_type) %>%
-  dplyr::arrange(effect_size) %>% dplyr::mutate(ix = 1:n()) %>%
+  dplyr::arrange(effect_size) %>% dplyr::mutate(ix = ifelse(n() > 0, 1:n(), NA)) %>%
   dplyr::arrange(-effect_size) %>% dplyr::mutate(ix = pmin(ix,1:n())) %>%
   dplyr::filter(ix < 4) %>%
   dplyr::arrange(effect_size) %>%
@@ -94,47 +102,55 @@ DISC.TABLE <- discrete %>%
   dplyr::ungroup() %>%
   tidyr::pivot_wider(names_from = "feature_type",
                      values_from = "feats") %>%
-  dplyr::ungroup() %>%
-  dplyr::mutate(pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
-                                   pert_dose, as.character(as.numeric(pert_dose))))
+  dplyr::ungroup()
 
 
 BIOMARKER.TABLE <- RF.TABLE %>%
   dplyr::full_join(CONT.TABLE) %>%
   dplyr::full_join(DISC.TABLE)
 
+
 # Next create summary statistics -----
+
+
+summarize.lfc = function(ccle_name, pert_well, replicate, LFC_cb){
+  AverageRepCor = tibble(ccle_name, replicate, pert_well, LFC_cb) %>%
+    reshape2::acast(ccle_name ~ replicate + pert_well, value.var = "LFC_cb") %>%
+    cor(use = "p") %>%
+    reshape2::melt() %>%
+    dplyr::filter(Var1 != Var2) %>%
+    dplyr::summarise(m = mean(value, na.rm = T), n = n()/2)
+
+  res = tibble(ccle_name, LFC_cb) %>%
+    dplyr::group_by(ccle_name) %>%
+    dplyr::summarise(X = median(LFC_cb, na.rm = T)) %>%
+    dplyr::summarise(BimodalityCoefficient = bimodality_coefficient(X[is.finite(X)]),
+                     CellLinesKilled = sum(X < log2(.3), na.rm = T)) %>%
+    dplyr::mutate(n.rep = AverageRepCor$n,
+                  AverageRepCor = AverageRepCor$m)
+
+  return(res)
+}
+
 LFC.TABLE <- lfc %>%
   dplyr::group_by(x_project_id, screen, pert_iname, pert_id, pert_plate, pert_dose,
-                  replicate, ccle_name) %>%
+                  ccle_name, pert_well, replicate) %>%
   dplyr::summarise(LFC_cb = median(LFC_cb, na.rm = T)) %>%
-  tidyr::pivot_wider(names_from = "replicate", values_from = "LFC_cb") %>%
-  dplyr::rowwise() %>%
-  dplyr::mutate(X = median(X1, X2, X3, na.rm = T)) %>%
   dplyr::group_by(x_project_id, screen, pert_iname, pert_id, pert_plate, pert_dose) %>%
-  dplyr::summarise(
-    #r1 = cor(X1,X2, use = "p"),
-    #r2 = cor(X1,X3, use = "p"),
-    #r3 = cor(X2, X3, use = "p"),
-    BimodalityCoefficient = bimodality_coefficient(X[is.finite(X)]),
-    CellLinesKilled = sum(X < log2(.3), na.rm = T)) %>%
-  dplyr::rowwise() %>%
-  #dplyr::mutate(AverageRepCor = mean(c(r1,r2,r3), na.rm = T)) %>%
-  #dplyr::select(-r1, -r2, -r3) %>%
-  dplyr::ungroup() %>%
-  dplyr::mutate(pert_dose = as.character(pert_dose))
-
+  dplyr::summarise(summarize.lfc(ccle_name, pert_well, replicate, LFC_cb)) %>%
+  dplyr::ungroup()
 
 
 # Join and write to csv ----
-
 LFC.TABLE %>%
   dplyr::full_join(BIOMARKER.TABLE) %>%
   dplyr::group_by(pert_id, pert_iname, pert_plate) %>%
   dplyr::mutate(BimodalityCoefficient = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
                                                mean(BimodalityCoefficient, na.rm = T), BimodalityCoefficient),
-                #AverageRepCor = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
-                #                               mean(AverageRepCor, na.rm = T), AverageRepCor),
+                n.rep = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                               mean(n.rep, na.rm = T), n.rep),
+                AverageRepCor = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                                               mean(AverageRepCor, na.rm = T), AverageRepCor),
                 CellLinesKilled = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
                                        mean(CellLinesKilled, na.rm = T), CellLinesKilled),
                 x_project_id = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
