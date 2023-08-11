@@ -155,7 +155,7 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
 <a href="https://www.broadinstitute.org/"><img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/></a>
-<a href="https://www.theprismlab.org/"><img src="misc/prism_logo_tagline_side.png" width=300px align="right"/></a>
+<a href="https://www.theprismlab.org/"><img src="misc/prism_logo_tagline_side.png" width=250px align="right"/></a>
 <br><br><br>
 
 [Back](../../../index.html)
