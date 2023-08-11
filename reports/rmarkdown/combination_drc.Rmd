@@ -13,7 +13,7 @@ output:
 ---
 
 <img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/>
-<img src="misc/prism_logo_tagline_side.png" width=300px align="right"/>
+<img src="misc/prism_logo_tagline_side.png" width=250px align="right"/>
 <br><br><br>
 
 Return to [compound report](`r paste0("./", params$comp, "_report.html")`)
