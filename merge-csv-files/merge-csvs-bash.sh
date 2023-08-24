@@ -41,6 +41,10 @@ while test $# -gt 0; do
       shift
       OUT_FILE=$1
       ;;
+    -p|--file_prefix)
+      shift
+      FILE_PREFIX=$1
+      ;;
     -s|--search_pattern)
       shift
       PATTERN=$1
@@ -134,16 +138,15 @@ then
   )
 fi
 
-if [[ "$pert_id" == "DMSO" ]]
-then
-  echo "Skipping DMSO"
-else
-  python /clue/bin/merge_csvs.py "${args[@]}"
-fi
-
 if [[ ! -z $SEARCH_PATTERN_LIST ]]
 then
   IFS=',' read -r -a array <<< "$SEARCH_PATTERN_LIST"
+  if [[ ! -z $FILE_PREFIX ]]
+  then
+    args+=(
+      -p "$FILE_PREFIX"
+    )
+  fi
   for pattern in "${array[@]}"
   do
     python /clue/bin/merge_csvs.py "${args[@]}" -s "$pattern"
