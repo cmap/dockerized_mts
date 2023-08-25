@@ -4,15 +4,15 @@ LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
 RUN apt-get install -y jq
-COPY ./deal_bash.sh /clue/bin/deal
-COPY ./deal.py /clue/bin/deal.py
+COPY ./aws_batch.sh /clue/bin/filter_skipped_wells
+COPY ./filter_skipped_wells.py /clue/bin/filter_skipped_wells.py
 
 RUN ["chmod","-R", "+x", "/clue/bin"]
 
-RUN cd /cmap && git clone https://github.com/cmap/merino.git
+#RUN cd /cmap && git clone https://github.com/cmap/merino.git
 
 WORKDIR /
 
 ENV PATH /clue/bin:$PATH
 RUN ["chmod","-R", "+x", "/clue/bin"]
-ENTRYPOINT ["deal"]
+ENTRYPOINT ["filter_skipped_wells"]
