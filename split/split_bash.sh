@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #setup environment
-source activate merino
+source activate prism
 
 cd /cmap/merino/
 python setup.py develop

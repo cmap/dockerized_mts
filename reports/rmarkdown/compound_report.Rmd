@@ -3,6 +3,7 @@ params:
   data_dir: "/Users/anup/work/3_Resources/example_data/mts022_vivek_rangnekar/MTS022_VIVEK_RANGNEKAR/PMTS061/BRD-U00127224"
   comp: "KTX-236_KTX-856"
   is_combination: FALSE
+
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -33,6 +34,14 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
 drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
+inst_info <- data.table::fread(list.files(file.path(dirname(dirname(params$data_dir)), "data"), pattern = "inst_info", full.names = T)) 
+inst <- inst_info %>%  dplyr::distinct(pert_iname, pert_id)
+neg_control <- inst_info$pert_vehicle %>% unique()
+screen <- substr(inst_info$screen %>% unique(), start = 1, stop = 3)
+pos_control <- ifelse(screen == "APS", "Puromycin", "Bortezomib")
+
+
+
 # read in LFC
 if (length(lfc_path) == 1) {
   LFC <- data.table::fread(lfc_path)
@@ -44,16 +53,17 @@ if (length(lfc_path) == 1) {
 # read in DRC if available
 if (length(drc_path) == 1) {
   DRC <- data.table::fread(drc_path)
+  DRC %<>% tidyr::drop_na(auc) ## drop cell lines without a fit, these will have auc=na
 } else {
   DRC <- NULL
 }
+
 
 if (params$is_combination){
   model_join_columns = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose")
 } else{
   model_join_columns = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "pert_dose")
 }
-
 
 # read in biomarker tables
 corr_table <- data.table::fread(file.path(params$data_dir, "continuous_associations.csv")) %>%
@@ -193,7 +203,7 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
 <a href="https://www.broadinstitute.org/"><img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/></a>
-<a href="https://www.theprismlab.org/"><img src="misc/prism_logo_tagline_side.png" width=300px align="right"/></a>
+<a href="https://www.theprismlab.org/"><img src="misc/prism_logo_tagline_side.png" width=250px align="right"/></a>
 <br><br><br>
 
 [Back](../../../index.html)
@@ -202,7 +212,7 @@ To navigate through the report please click on the blue tabs under each heading.
 
 # Experimental Details
 
-This compound was screened in the PRISM assay at `r n_doses`-point dose (3-fold dilution) with a `r n_days` day treatment with `r n_lines` cancer cell lines passing QC. Two PRISM cell line collections were used in the assay: PR500 (including only adherent cell lines), and PR300+ (including adherent and suspension cell lines). Three benchmark compounds – included in the MTS Validation set – were also tested at dose to ensure high data quality. All compounds were run in triplicate, and each plate contained positive (Bortezomib, 20uM) and negative (DMSO) controls.
+This compound was screened in the PRISM assay at `r n_doses`-point dose (3-fold dilution) with a `r n_days` day treatment with `r n_lines` cancer cell lines passing QC. Two PRISM cell line collections were used in the assay: PR500 (including only adherent cell lines), and PR300+ (including adherent and suspension cell lines). Three benchmark compounds – included in the `r screen` Validation set – were also tested at dose to ensure high data quality. All compounds were run in triplicate, and each plate contained positive (`r pos_control`) and negative (`r neg_control`) controls.
 
 ```{r compound}
 plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
@@ -229,7 +239,7 @@ This section contains log-fold change data and a link to the dose response data 
 
 ## Heatmap
 
-The viability values for each of the screened doses are shown in the heatmap below. Please hover over the heatmap to see the fold-change viability values relative to the negative control (DMSO). Blue indicates more killing (sensitivity), while red indicates less.
+The viability values for each of the screened doses are shown in the heatmap below. Please hover over the heatmap to see the fold-change viability values relative to the negative control (`r neg_control`). Blue indicates more killing (sensitivity), while red indicates less.
 
 
 ```{r heatmap, fig.height = 36}
@@ -540,7 +550,8 @@ if (!is.null(DRC)) {
   top.genes = top_muts %>% 
     dplyr::group_by(gene) %>% # grouping by gene 
     dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
-    dplyr::top_n(20, -minq) # returning list of top 20 smallest q values 
+    dplyr::top_n(20, -minq) %>% # returning list of top 20 smallest q values 
+    dplyr::arrange(minq)  
   
   top.genes = top.genes[1:20,]
   
@@ -559,9 +570,6 @@ if (!is.null(DRC)) {
     dplyr::mutate(mut.type = ifelse(value == 1, mut.type, "wild_type")) %>% # if CCLE has 0 for a specific gene mutation type, denote it wild type 
     dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) %>% # renaming columns 
     dplyr::left_join(top.genes, by = "gene") # adding minimum q values for top genes 
-  
-  
-  
   
   plot_data <- top_muts %>%
     dplyr::left_join(DRC %>% dplyr::distinct(ccle_name, auc),  by = "ccle_name") %>% 
@@ -582,6 +590,7 @@ if (!is.null(DRC)) {
   write.csv(plot_data, file.path(mutations_path, 'mutation_effect_boxplot_data.csv'), row.names=FALSE)
   p
 } else if (n_doses == 1) {
+
   m <- mean(LFC$LFC_cb)
   
   dose <- LFC %>% dplyr::distinct(pert_dose) %>% pull()
@@ -602,7 +611,8 @@ if (!is.null(DRC)) {
   top.genes = top_muts %>% 
     dplyr::group_by(gene) %>% # grouping by gene 
     dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
-    dplyr::top_n(20, -minq) # returning list of top 20 smallest q values 
+    dplyr::top_n(20, -minq) %>% # returning list of top 20 smallest q values 
+    dplyr::arrange(minq) # returning list of top 20 smallest q values 
   
   top.genes = top.genes[1:20,]
   

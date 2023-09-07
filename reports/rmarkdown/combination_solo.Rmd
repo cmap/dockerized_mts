@@ -45,9 +45,12 @@ if (length(lfc_path) == 1) {
 # read in DRC if available
 if (length(drc_path) == 1) {
   DRC <- data.table::fread(drc_path)
+  DRC %<>% tidyr::drop_na(auc) ## drop cell lines without a fit, these will have auc=na 
 } else {
   DRC <- NULL
 }
+
+
 
 # read in biomarker tables
 corr_table <- data.table::fread(file.path(params$data_dir, "continuous_associations.csv")) %>%
@@ -164,7 +167,7 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
 <a href="https://www.broadinstitute.org/"><img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/></a>
-<a href="https://www.theprismlab.org/"><img src="misc/prism_logo_tagline_side.png" width=300px align="right"/></a>
+<a href="https://www.theprismlab.org/"><img src="misc/prism_logo_tagline_side.png" width=250px align="right"/></a>
 <br><br><br>
 
 [Back](../../../index.html)

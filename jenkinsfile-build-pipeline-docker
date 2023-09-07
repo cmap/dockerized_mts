@@ -8,7 +8,7 @@ import groovy.json.JsonSlurper
 REPO="prismcmap"
 DEV_TAG="develop"
 WORKSPACE_DIR="/ci-data/jenkins/workspace/BUILD-PIPELINE-DOCKER/"
-GIT_FOLDER = "/ci-data/jenkins/workspace/BUILD-PIPELINE-DOCKER/.git/"
+GIT_FOLDER = "/ci-data/jenkins/workspace/START-BUILD-PIPELINE/.git/"
 URL_PREFIX="https://api.clue.io/api/pipeline_versions/upsertWithWhere?where=";
 
 def getCheckedOutGitCommitHash() {
@@ -30,29 +30,36 @@ def getCheckedOutGitCommitHash() {
 }
 
 def parallelStagesMap(DIRS,GIT_PREVIOUS_COMMIT,GIT_COMMIT){
-
-
   def mp = [:]
-   for( String DIR : DIRS ){
-    DIR = DIR.replace("/","")
-    API_JOB = DIR.replace("/","") + "_API"
-    CHANGED=sh(returnStdout: true, script: "git diff --name-only ${GIT_PREVIOUS_COMMIT} ${GIT_COMMIT} ${DIR}").trim()
-    try{
-        DOCKER_FILE_EXISTS=sh(returnStdout: true, script: "test -f ${DIR}/Dockerfile && echo 'FILE exists.'").trim()
-        if(CHANGED && DOCKER_FILE_EXISTS){
-            GIT_COMMIT_HASH = getCheckedOutGitCommitHash()
-            mp.put("${DIR}",generateStage(DIR,GIT_COMMIT_HASH))
-            mp.put("${API_JOB}",generateAPIStage(API_JOB,DIR,GIT_COMMIT_HASH))
+    CHANGED = sh(returnStdout: true, script: "git diff --name-only ${GIT_PREVIOUS_COMMIT} ${GIT_COMMIT}").trim()
+
+    if(CHANGED){
+        CHANGED_LINES = CHANGED.split("\n")
+        if(CHANGED_LINES.size() > 0){
+            for( String CHANGED_LINE : CHANGED_LINES ){
+                try{
+                    def (DIR)=CHANGED_LINE.tokenize( '/' );
+                    API_JOB = DIR.replace("/","") + "_API"
+
+                    DOCKER_FILE_EXISTS=sh(returnStdout: true, script: "test -f ${DIR}/Dockerfile && echo 'FILE exists.'").trim()
+
+                    if(DOCKER_FILE_EXISTS){
+
+                        GIT_COMMIT_HASH = getCheckedOutGitCommitHash()
+                        mp.put("${DIR}",generateStage(DIR,GIT_COMMIT_HASH))
+                        mp.put("${API_JOB}",generateAPIStage(API_JOB,DIR,GIT_COMMIT_HASH))
+                    }
+
+                }
+                catch(err){
+                    println(err);
+                }
+            }
         }
     }
-    catch(err){
-
-    }
-   }
     return mp
 }
 def generateAPIStage(job,repo_name,docker_hash) {
-
     return {
         stage("stage: ${job}") {
             String name = REPO + "/" + repo_name;
@@ -117,6 +124,10 @@ pipeline{
                     DIRS=sh(returnStdout: true, script: "ls -d -- */").trim()
                     DIR_PATHS = DIRS.split("\n")
                     mp = parallelStagesMap(DIR_PATHS,GIT_PREVIOUS_COMMIT,GIT_COMMIT)
+                    mp.each { key, value ->
+                           println("Key: ${key}, Value: ${value}")
+                    }
+
                     if(mp.size() > 0){
                       parallel mp
                     }

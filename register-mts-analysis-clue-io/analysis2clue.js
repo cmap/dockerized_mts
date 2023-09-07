@@ -220,7 +220,7 @@ class Analysis2clue {
             }
         };
 
-        const responses = await fetch(url, options)
+        const responses = await fetch(buildExtAnalysisURL, options)
 
         if (responses.ok && responses.status === 200) {
             const linkedAnalyses = await responses.json()
@@ -233,18 +233,6 @@ class Analysis2clue {
                 const data = await resp.json();
             }
         }
-
-        console.log("Checking association for build.", url)
-        const response = await fetch(url, options);
-
-        if (response.status === 500) {
-            // TODO - check error message for no relation found string
-            const creationURL = this.apiURL + "/api/data/" + buildID + "/external_analysis/rel/" + prelim_analysisID;
-            const resp = await self.postMethodAPI({}, creationURL, "PUT");
-            const data = await resp.json();
-            return "Success"
-        }
-
     }
 
     /**

@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "argparse": "^2.0.1",
     "underscore": "^1.13.1"
   }
 }

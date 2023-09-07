@@ -5,7 +5,8 @@ install.packages("hdf5r")
 install.packages("reshape2")
 install.packages("readr")
 install.packages("magrittr")
-install.packages("dr4pl")
+install.packages("dr4pl") ## for DRC curve fit
+install.packages("drc") ## for DRC curve fit
 install.packages("data.table")
 install.packages("scam")
 install.packages("argparse")

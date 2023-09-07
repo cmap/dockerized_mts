@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # read in flagged arguments
-while getopts ":i:o:f:" arg; do
+while getopts ":i:o:f:s:" arg; do
   case $arg in
     i) # specify input folder
       data_dir=${OPTARG};;
@@ -9,11 +9,14 @@ while getopts ":i:o:f:" arg; do
       output_dir=${OPTARG};;
     f)
       projects=${OPTARG};;
+    s)
+      screen_type=${OPTARG};;
   esac
 done
 
 out="${output_dir}"
 data="${data_dir}"
+screen="${screen_type}"
 echo "${data}" "${out}"
 
 batch_index=0
@@ -34,12 +37,22 @@ then
     out="${output_dir}"/"${project,,}"/"${project^^}"/"${plate}"/"${sanitized_pert_id}"
 fi
 
+args=(
+  -i "${data}"
+  -o "${out}"
+)
+
+if [[ ! -z $screen ]]
+then
+  args+=(-s "${screen}")
+fi
+
 echo "${data}" "${out}"
 if [[ "$pert_id" == "DMSO" ]]
 then
   echo "Skipping DMSO"
 else
-  Rscript /drc_compound.R -i "${data}" -o "${out}"
+  Rscript /drc_compound.R "${args[@]}"
 fi
 
 exit_code=$?

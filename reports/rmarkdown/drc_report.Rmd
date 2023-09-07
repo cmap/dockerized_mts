@@ -121,11 +121,12 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 
 ## Curve fitting method
 
-Dose response curves fit for `r params$comp`.Robust 4-parameter dose-response curves (DRCs) are fit for each cell line using the viability metrics (see the Data Processing section). The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
+Dose response curves fit for `r params$comp`. Four parameter dose-response curves (DRCs) are fit for each cell line using the viability metrics (see the Data Processing section). The four parameters are upper limit ($a$), lower limit ($b$), slope ($s$), and EC50. The equation for the curve is defined:
 
 $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
+The curve fitting procedure minimizes the squared deviation of the observed viabilities at each dose. The fits are constrained such that the upper-limit lies within the range (0.8,1.001) and the lower limit lies within (0,1). Further, we restrict the predicted viability to always decrease with increasing dose by constraining the slope. Since the nonlinear optimization underlying the fitting procedure may return parameters a local optimum, we fit using four different methods implemented in the dr4pl and drc packages and report parameters with the lowest mean squared error. 
 
-These data, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. Some cell lines may be missing due to insensitivity and/or inability to fit a standard curve to the data (see a standard PRISM report for more information on curve fitting techniques).
+These data, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. Fit parameters are only reported if the best fit explains at least 5% of the variance of the fold-change data. Additionally, an IC50 is only reported if the drc fit crosses 0.5 within the dose range of the experiment. 
 
 The table and plots are interactive. To highlight a cell line either search it using the search box or select it in the table.
 
@@ -170,10 +171,10 @@ p <- plot_ly() %>%
             opacityDim = 1, defaultValues = "",
             selected = attrs_selected(opacity = 1))
 
-compounds_all <- highlight_key(drc_meta %>% 
-                                 dplyr::filter(is.finite(auc)) %>% 
+compounds_all <- highlight_key(drc_meta %>%
                                  dplyr::arrange(auc),
                                ~cell_id, group = "Dose-response")
+
 dt <- DT::datatable(compounds_all, style="bootstrap",
                     options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
                                    columnDefs = list(list(visible = FALSE, targets = c(11)))),
