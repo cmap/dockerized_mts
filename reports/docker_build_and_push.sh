@@ -2,8 +2,8 @@
 REPO="prismcmap"
 NAME="reports"
 
-VERSION="v0.2.11" #change the version number for each new build
-TAG="latest"
+VERSION="v0.3.0" #change the version number for each new build
+TAG="test_unify"
 
 #change the version number for each new build
 docker build --platform linux/amd64 -t $REPO/$NAME:$TAG -t $REPO/$NAME:$VERSION --rm=true .
