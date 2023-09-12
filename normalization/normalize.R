@@ -26,6 +26,7 @@ if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
 # paths to data (make sure directory of data has these files)
 # TODO: add var for count path
+path_count <- list.files(base_dir, pattern = "*_LEVEL2_COUNT*", full.names=T)
 path_data <- list.files(base_dir, pattern =  "*_LEVEL2_MFI*", full.names = T)
 path_cell_info <- list.files(base_dir, pattern = "*_cell_info*", full.names = T)
 path_inst_info <- list.files(base_dir, pattern = "*_inst_info*", full.names = T)
@@ -35,6 +36,8 @@ path_inst_info <- list.files(base_dir, pattern = "*_inst_info*", full.names = T)
 # read in logMFI data
 # TODO: get raw_matrix for count instead of MFI
 print(path_data)
+count_matrix <- read_hdf5(path_count)
+rownames(count_matrix) <- paste0(rownames(count_matrix), "_", assay)
 raw_matrix <- read_hdf5(path_data)
 rownames(raw_matrix) <- paste0(rownames(raw_matrix), "_", assay)
 
@@ -57,8 +60,8 @@ base_day <- extract_baseplate(base_day, base_string="BASE", inst_column = "prism
 raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 
 # melt matrix into data tables and join with inst and cell info
-# TODO: melt count matrix and join
-master_logMFI <- build_master_logMFI(raw_matrix, inst_info, cell_info)
+count_table <- build_count_table(count_matrix)
+master_logMFI <- build_master_logMFI(raw_matrix, inst_info, cell_info, count_table)
 
 if (!is.null(args$exclude_bcids)){
     exclude_bcids = unlist(strsplit(args$exclude_bcids, ","))
