@@ -218,5 +218,39 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
         
     }
     
+    ### add in original default drc into pipeline just to compare. ######
+    a <- tryCatch(dr4pl(dose = LFC_filtered[[dose_var]], response = LFC_filtered$FC,
+                        init.parm = dr4pl::dr4pl_theta(theta_1 = 1, theta_4 = 0.3),
+                        method.init = "logistic",
+                        lowerl = c(0.99, -Inf, -Inf, 0),
+                        upperl = c(1.01, Inf, Inf, 1.01)),
+                  error = function(e) {print(e); return(NA)})
+    
+    # if it fits and doesn't converge grab robust fit
+    if (!is.na(a)) {
+      if (!a$convergence) {
+        a <- a$dr4pl.robust 
+      }
+    }
+    # get parameters
+    param <- tryCatch(a$parameters, error = function(e) return(NA))
+    if (!all(is.na(param))){
+      
+      mse_df <- compute_MSE_MAD(LFC_filtered, a$parameters[[1]], a$parameters[[4]],
+                                a$parameters[[3]], a$parameters [[2]],
+                                "FC", dose_var)
+      
+      results.df[[ix]] <- tibble( fit_name = "original_drc", 
+                                  Lower_Limit = as.numeric(a$parameters [[4]]),
+                                  Upper_Limit = as.numeric(a$parameters [[1]]),
+                                  Slope = as.numeric(a$parameters [[3]]),
+                                  Inflection = as.numeric(a$parameters [[2]]),
+                                  MSE = mse_df$mse, MAD = mse_df$mad, frac_var_explained = 1-mse_df$mse/var_data,
+                                  Input_Parameters = "default_original")
+      ix = ix + 1 
+      
+    }
+    
+
     return (dplyr::bind_rows(results.df))
 }
