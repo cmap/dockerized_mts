@@ -13,6 +13,8 @@ import argparse
 import numpy as np
 import pandas as pd
 from math import log2
+import hashlib
+import random
 
 logger = logging.getLogger('prep-portal-data')
 
@@ -87,6 +89,12 @@ Calculate based on max code of "ZZZZZZ999"
 """
 def screen_to_parti_col(screen):
     mo = re.match("([A-Z]+)([0-9]+)", screen.upper())
+
+    if mo is None: #incase build is named in an odd way
+        hash_code = hashlib.sha256(screen.encode()).hexdigest()
+        hash_integer = int(hash_code, 16)
+        return hash_integer % 1000 + 3000
+
     project = mo[1]
     numbers = mo[2]
 
@@ -98,6 +106,7 @@ def screen_to_parti_col(screen):
         return int(numbers) % 1000 + 1 + 2000
     else:
         return hash_project_code(project, 1000) + 3000 #will assign based on assay series
+
 
 def get_current_datetime():
     return datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")

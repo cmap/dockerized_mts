@@ -49,16 +49,24 @@ extract_baseplate <- function(instinfo, base_string="BASE",inst_column = "prism_
 }
 
 
-build_master_logMFI <- function(raw_matrix, inst_info, cell_info,
+build_master_logMFI <- function(raw_matrix, inst_info, cell_info, count_table,
                                 data_col = "logMFI"){
   
   master_logMFI = log2(raw_matrix) %>%
     reshape2::melt(varnames = c("rid", "profile_id"), value.name = data_col) %>%
     dplyr::filter(is.finite(logMFI)) %>%
     dplyr::inner_join(cell_info) %>%
-    dplyr::inner_join(inst_info)
+    dplyr::inner_join(inst_info) %>%
+    dplyr::inner_join(count_table)
   
   return(master_logMFI)
+}
+
+build_count_table <- function(count_matrix, data_col = "count"){
+  master_count = count_matrix %>%
+    reshape2::melt(varnames = c("rid", "profile_id"), value.name = data_col)
+
+  return(master_count)
 }
 
 #---- Compound tracking ----
