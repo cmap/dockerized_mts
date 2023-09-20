@@ -52,9 +52,6 @@ def flag_wells(mfi: pd.DataFrame, thresholds: dict = None):
     # Create a copy to avoid modifying the original DataFrame
     mfi = mfi.copy()
 
-    # Create identifiers
-    mfi['instance_id'] = mfi['profile_id'] + ':' + mfi['ccle_name']
-
     # Flag instances based on 'count'
     count_grouped_df = mfi.groupby(['profile_id']).median(numeric_only=True).reset_index()
     flagged_counts = count_grouped_df.loc[count_grouped_df['count'] < thresholds['mcount']].profile_id.unique()
