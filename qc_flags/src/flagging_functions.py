@@ -12,7 +12,7 @@ def flag_instances(mfi: pd.DataFrame, thresholds: dict = None):
     """
     # Set default thresholds if none are provided
     if thresholds is None:
-        thresholds = {'count': 20}
+        thresholds = {'count': 25}
 
     # Check if required columns are present in the DataFrame
     if not all(col in mfi.columns for col in ['profile_id', 'ccle_name', 'count']):

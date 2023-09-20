@@ -4,6 +4,7 @@ import os
 import src.flagging_functions as ff
 import argparse
 import glob
+import setup_logger as setup_logger
 
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
 
@@ -23,7 +24,7 @@ def build_parser():
 def main(args):
     build_path = args.build_path
     build_name = args.name
-    thresholds = args.thresholds # NEED TO UPDATE THIS TO PARSE STRING INTO DICT
+    thresholds = args.thresholds  # NEED TO UPDATE THIS TO PARSE INTO DICT
 
     if build_path:
         mfi = pd.read_csv(glob.glob(os.path.join(build_path, '*LEVEL3_LMFI*'))[0])
@@ -31,7 +32,7 @@ def main(args):
 
         qc_flag_table = ff.generate_flag_df(mfi=mfi,
                                             qc_table=qc_table,
-                                            thresholds=None)
+                                            thresholds=thresholds)
 
         qc_flag_table.to_csv(build_path + '/{}_QC_FLAG_TABLE.csv'.format(build_name))
 
