@@ -5,6 +5,8 @@ import src.flagging_functions as ff
 import argparse
 import glob
 
+logger = logging.getLogger(setup_logger.LOGGER_NAME)
+
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -38,6 +40,6 @@ if __name__ == "__main__":
     args = build_parser().parse_args()
     level = (logging.DEBUG if args.verbose else logging.INFO)
     logging.basicConfig(level=level)
-    #logger.info("args: {}".format(args))
+    logger.info("args: {}".format(args))
 
     main(args)
