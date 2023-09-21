@@ -1,9 +1,10 @@
 ---
 params:
-  data_dir: "/Users/anup/work/3_Resources/example_data/mts022_vivek_rangnekar/MTS022_VIVEK_RANGNEKAR/PMTS061/BRD-U00127224"
-  comp: "KTX-236_KTX-856"
-  is_combination: FALSE
-
+  #data_dir: "/Users/anup/work/1_Projects/CPS_in_Datawarehouse/CPS009_VALIDATION_COMPOUNDS_INTERNAL/PCPS019/BRD-K50731585/"
+  data_dir: "/Users/anup/work/1_Projects/CPS_in_Datawarehouse/CPS009_DMC_ABBVIE/PCPS019/PRC-009456043-391-12_PRC-007911117-663-95"
+  #comp: "BRD-K50731585"
+  comp: "PRC-009456043-391-12_PRC-007911117-663-95"
+  is_combination: TRUE
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -449,12 +450,58 @@ if (params$is_combination){
       facet_wrap(lineage ~ ., scales = "free_x") +
       theme(legend.position = "none") +
       labs(x = "Lineage", y = "Log-fold change")
-    write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
+    
+    # Commented because we columns change and we don't 
+    #write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
     p
   } else {
     print("Unable to show plots by lineage for AUC or a single dose.")
   }
 }
+
+if (exists("lineage_df") && !is.null(lineage_df) && length(lineage_df) > 0) {
+  # Define the required columns
+  required_columns <- c(
+    "pert_iname", "pert_id", "pert_idose", "ccle_name",
+    "culture", "depmap_id", "lin_abbreviation",
+    "lin_sub_abbreviation", "lineage", "lineage_subtype",
+    "pert_plate", "pert_time", "pool_id", "auc",
+    "log2.ic50", "LFC_cb", "data", "data_type"
+  )
+  
+  # Check if "LFC_cb" and "auc" columns exist
+  if ("LFC_cb" %in% colnames(lineage_df) && "auc" %in% colnames(lineage_df)) {
+    # Both columns exist, handle the case as needed
+    # For example, you can choose to keep one and drop the other
+    # In this example, I'll keep "LFC_cb" and drop "auc"
+    lineage_df$data <- lineage_df$LFC_cb
+    lineage_df$data_type <- ifelse(!is.na(lineage_df$LFC_cb), "LFC_cb", "auc")
+    lineage_df <- subset(lineage_df, select = -c(LFC_cb, auc))
+  } else if ("LFC_cb" %in% colnames(lineage_df)) {
+    # Only "LFC_cb" exists
+    lineage_df$data <- lineage_df$LFC_cb
+    lineage_df$data_type <- "LFC_cb"
+    lineage_df <- subset(lineage_df, select = -LFC_cb)
+  } else if ("auc" %in% colnames(lineage_df)) {
+    # Only "auc" exists
+    lineage_df$data <- lineage_df$auc
+    lineage_df$data_type <- "auc"
+    lineage_df <- subset(lineage_df, select = -auc)
+  }
+
+
+  # Rename columns with "varied_" to "pert_"
+  colnames(lineage_df) <- gsub("^varied_", "pert_", colnames(lineage_df))
+  
+  # Subset the DataFrame to the required columns
+  subset_df <- lineage_df %>%
+  select(any_of(required_columns))
+
+  write.csv(subset_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_v2.csv'), row.names=FALSE)
+} else {
+  # Code to execute if the variable doesn't exist or is empty
+}
+
 
 ```
 
