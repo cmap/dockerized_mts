@@ -55,6 +55,7 @@ get_best_fit <- function(LFC_filtered, dose_var,
     all_fits.df <- fit_4param_drc(LFC_filtered, dose_var,  var_data, 
                                   UL_low, UL_up, slope_decreasing)
     
+    all_fits.df %<>% dplyr::filter(!is.na(frac_var_explained)) ## remove entries with NA in variance explained 
     if (nrow(all_fits.df)>0){
         res.df <- all_fits.df %>%
             slice_max(frac_var_explained, n = 1, with_ties = FALSE) %>%  ## return best fit. if tied, return first of the ties
@@ -227,7 +228,7 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                   error = function(e) {print(e); return(NA)})
     
     # if it fits and doesn't converge grab robust fit
-    if (!is.na(a)) {
+    if (!all(is.na(a))) {
       if (!a$convergence) {
         a <- a$dr4pl.robust 
       }

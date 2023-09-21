@@ -173,11 +173,13 @@ for (i in 1:nrow(dosed_compounds)){
                   max_dose = max(d[[dose_var]]),
                   upper_limit = fit_result.df$Upper_Limit,
                   ec50 = fit_result.df$Inflection,
-                  slope = -fit_result.df$Slope,                 ##### sign of slope is made negative to remain compatible with  sign convention in report generation module
+                  slope = ifelse(is.na(fit_result.df$Slope), 
+                                 fit_result.df$Slope,-fit_result.df$Slope),  ##### sign of slope is made negative to remain compatible with  sign convention in report generation module
                   lower_limit = fit_result.df$Lower_Limit,
                   convergence = fit_result.df$successful_fit) %>%
-        dplyr::mutate(auc = compute_auc(lower_limit, upper_limit, ec50, slope,
-                                        min_dose, max_dose),
+        dplyr::mutate(auc = ifelse(is.na(fit_result.df$Slope),as.numeric(NA),
+                        compute_auc(lower_limit, upper_limit, ec50, slope,
+                                        min_dose, max_dose)),
                       log2.ic50 = as.numeric(NA),
                       auc_riemann=fit_result.df$auc_riemann,
                       mse = fit_result.df$MSE,
