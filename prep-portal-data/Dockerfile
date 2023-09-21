@@ -9,7 +9,7 @@ cd /
 
 SHELL ["conda", "run", "-n", "prism", "/bin/bash", "-c"]
 
-RUN apt-get install -y jq
+RUN apt-get install -y jq & pip install google-cloud-bigquery
 
 COPY prep_portal_data.py /clue/bin/prep_portal_data.py
 COPY aws_batch.sh /clue/bin/aws_batch

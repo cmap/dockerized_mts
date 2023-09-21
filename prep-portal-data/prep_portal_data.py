@@ -13,6 +13,8 @@ import argparse
 import numpy as np
 import pandas as pd
 from math import log2
+from google.cloud import bigquery
+
 
 logger = logging.getLogger('prep-portal-data')
 
@@ -143,11 +145,33 @@ def sanitize_colnames(df):
     df.columns = df.columns.str.replace(".", "_", regex=False)
     return
 
+
+def get_table_columns(project_id, dataset_id, table_id):
+    client = bigquery.Client()
+    table_ref = f"{project_id}.{dataset_id}.{table_id}"
+    table = client.get_table(table_ref)
+    return [field.name for field in table.schema]
+
+def subset_columns_to_bq_table(df, table_name):
+    project_id = 'prism-359612'
+    dataset_id = os.environ["BQ_DATASET_ID"]
+    table_id = table_name
+    table_cols = get_table_columns(project_id, dataset_id, table_id)
+
+    print(df.columns)
+    print(table_cols)
+    df = df[table_cols]
+    return df
+
+
 def read_write_files_with_required_columns(args, file, insertionDate):
     logging.info("Reading File from: " + file)
     df = pd.read_csv(file)
     df = add_required_cols(args, df, insertionDate=insertionDate)
     sanitize_colnames(df)
+
+    table_name = os.path.splitext(os.path.basename(file))[0]
+    df = subset_columns_to_bq_table(df, table_name)
 
     if len(df) > 0:
         if args.outfile:
