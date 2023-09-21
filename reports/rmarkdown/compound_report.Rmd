@@ -393,13 +393,13 @@ if (params$is_combination){
     m <- DRC %>%
       dplyr::group_by(varied_iname, added_compounds, added_doses) %>%
       dplyr::summarise(m = mean(auc), .groups = "drop")
-    df <- DRC %>%
+    lineage_df <- DRC %>%
       dplyr::inner_join(lineages, by = "ccle_name") %>%
       dplyr::inner_join(m, by = c("varied_iname", "added_compounds", "added_doses")) %>%
       dplyr::filter(lineage != "") %>%
       dplyr::distinct()
     
-    p <- df %>%
+    p <- lineage_df %>%
       ggplot(aes(y = auc, x = reorder(lin_sub_abbreviation, auc, function(x) mean(x, na.rm = T)),
                  color = added_doses)) +
       geom_boxplot(outlier.alpha = 0) +
@@ -408,6 +408,8 @@ if (params$is_combination){
       facet_wrap(lineage ~ ., scales = "free_x") +
       theme(axis.text.x = element_text(angle = 45)) +
       labs(y = "AUC", x = "Lineage", color = "Added doses")
+    
+    write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
     p
   } else {
     print("Unable to show plots by lineage for AUC or a single dose.")
