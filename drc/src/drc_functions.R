@@ -40,7 +40,7 @@ compute_MSE_MAD <- function(LFC,  UL, LL,  Slope, Inflection,
         dplyr::filter(is.finite(.[[FC_column]]),is.finite(.[[dose_column]]) ) %>% ## in case there are some na values accidentally passed.
         dplyr::mutate(FC.pred = UL  + (LL -UL )/(1 + (.[[dose_column]]/Inflection)^Slope) ) %>% 
         dplyr::mutate(squared_deviation = (.[[FC_column]]-FC.pred)^2, abs_deviation = abs(.[[FC_column]]-FC.pred)) %>%
-        dplyr::summarise(mse = mean(squared_deviation), mad= median(abs_deviation))
+        dplyr::summarise(mse = mean(squared_deviation,na.rm=T), mad= median(abs_deviation,na.rm=T))
     return (mse_compute)
 }
 
@@ -239,7 +239,6 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
       mse_df <- compute_MSE_MAD(LFC_filtered, a$parameters[[1]], a$parameters[[4]],
                                 a$parameters[[3]], a$parameters [[2]],
                                 "FC", dose_var)
-      
       results.df[[ix]] <- tibble( fit_name = "original_drc", 
                                   Lower_Limit = as.numeric(a$parameters [[4]]),
                                   Upper_Limit = as.numeric(a$parameters [[1]]),
@@ -248,7 +247,6 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
                                   MSE = mse_df$mse, MAD = mse_df$mad, frac_var_explained = 1-mse_df$mse/var_data,
                                   Input_Parameters = "default_original")
       ix = ix + 1 
-      
     }
     
 
