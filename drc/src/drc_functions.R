@@ -237,18 +237,19 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
     # get parameters
     param <- tryCatch(a$parameters, error = function(e) return(NA))
     if (!all(is.na(param))){
-      
-      mse_df <- compute_MSE_MAD(LFC_filtered, a$parameters[[1]], a$parameters[[4]],
-                                a$parameters[[3]], a$parameters [[2]],
-                                "FC", dose_var)
-      results.df[[ix]] <- tibble( fit_name = "original_drc", 
-                                  Lower_Limit = as.numeric(a$parameters [[4]]),
-                                  Upper_Limit = as.numeric(a$parameters [[1]]),
-                                  Slope = as.numeric(a$parameters [[3]]),
-                                  Inflection = as.numeric(a$parameters [[2]]),
-                                  MSE = mse_df$mse, MAD = mse_df$mad, frac_var_explained = 1-mse_df$mse/var_data,
-                                  Input_Parameters = "default_original")
-      ix = ix + 1 
+      if(as.numeric(a$parameters [[3]])<slope_bound){ ### while slope bound is not passed to this last optimizer, we do not accept a solution not within the bound
+        mse_df <- compute_MSE_MAD(LFC_filtered, a$parameters[[1]], a$parameters[[4]],
+                                  a$parameters[[3]], a$parameters [[2]],
+                                  "FC", dose_var)
+        results.df[[ix]] <- tibble( fit_name = "original_drc", 
+                                    Lower_Limit = as.numeric(a$parameters [[4]]),
+                                    Upper_Limit = as.numeric(a$parameters [[1]]),
+                                    Slope = as.numeric(a$parameters [[3]]),
+                                    Inflection = as.numeric(a$parameters [[2]]),
+                                    MSE = mse_df$mse, MAD = mse_df$mad, frac_var_explained = 1-mse_df$mse/var_data,
+                                    Input_Parameters = "default_original")
+        ix = ix + 1 
+      }
     }
     
 
