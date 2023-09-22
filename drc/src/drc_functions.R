@@ -70,7 +70,7 @@ get_best_fit <- function(LFC_filtered, dose_var,
 }
 
 fit_4param_drc <- function(LFC_filtered, dose_var,  var_data, 
-                                    UL_low=0.8, UL_up=1.001, slope_decreasing=TRUE) {
+                                    UL_low=0.8, UL_up=1.01, slope_decreasing=TRUE) {
     #fits a number of alternate models  to the DRC and passes the results to the calling function (which chooses the best fit.)
     
     # UL low is the lowerbound of UL we pass to the optimizer and UL_up is the upper bound of UL that we pass to the optimizer
