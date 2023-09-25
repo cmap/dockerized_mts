@@ -105,8 +105,8 @@ for (i in 1:nrow(dosed_compounds)){
     next
   }
   
-  # if this was a combination need to change fit limits accordingly
-  if (any(str_detect(colnames(df), "pert_id_"))) {
+  # if this was a combination study, we need to change fit limits accordingly 
+  if (any(str_detect(colnames(df), "pert_id_2"))) { ## a second pert existed.
     screen_type <- "CPS"
     print("Screen type was=CPS")
   }
