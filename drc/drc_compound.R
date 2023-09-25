@@ -136,6 +136,8 @@ for (i in 1:nrow(dosed_compounds)){
         stop("Error: undefined screen type")
     }
     
+
+    
     # get results if fit
     if (fit_result.df$successful_fit) {
 
@@ -234,6 +236,41 @@ for (i in 1:nrow(dosed_compounds)){
       #                   pert_time = df[j,]$pert_time,
       #                   pert_plate = df[j,]$pert_plate)
     }
+    
+    if (is.na(fit_result.df$successful_fit)){
+      x <- tibble(min_dose = min(d[[dose_var]]),######
+                             max_dose = max(d[[dose_var]]),
+                             upper_limit = as.numeric(NA),
+                             ec50 = as.numeric(NA),
+                             slope = as.numeric(NA),                 ##### sign of slope is made negative to remain compatible with  sign convention in report generation module
+                             lower_limit = as.numeric(NA),
+                             convergence = FALSE) %>%
+          dplyr::mutate(auc = as.numeric(NA),
+                        log2.ic50 = as.numeric(NA),
+                        auc_riemann=as.numeric(NA),
+                        mse = as.numeric(NA),
+                        R2 = as.numeric(NA),  ###  updated. old R^2 values used the variance of LFC and not FC in denominator
+                        best_fit_name = NA,
+                        varied_iname = comp$pert_iname,
+                        varied_id = comp$pert_id,
+                        ccle_name = df[j,]$ccle_name,
+                        culture = df[j,]$culture,
+                        pool_id = df[j,]$pool_id,
+                        pert_time = df[j,]$pert_time,
+                        pert_plate = df[j,]$pert_plate,
+                        screen_type= screen_type)
+      
+      if (any(str_detect(colnames(df), "pert_id_"))) {
+        added_comp_table <- df[j, ] %>%
+          tidyr::unite(col = added_compounds, starts_with("pert_iname_"), sep = "|") %>%
+          tidyr::unite(col = added_doses, starts_with("pert_dose_"), sep = "|") %>%
+          tidyr::unite(col = added_ids, starts_with("pert_id_"), sep = "|") %>%
+          dplyr::select(-n)
+        x %<>% dplyr::left_join(added_comp_table)%>% suppressMessages()
+      }
+      sub_DRC[[j]] <- x
+    }
+
   }
   
   sub_DRC %<>% dplyr::bind_rows()  # combine results
