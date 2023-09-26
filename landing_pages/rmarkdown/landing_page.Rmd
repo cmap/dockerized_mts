@@ -108,7 +108,7 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 <img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/>
 </a>
 <a href="https://www.theprismlab.org/">
-<img src="misc/prism_logo_tagline_side.png" width=300px align="right"/>
+<img src="misc/prism_logo_tagline_side.png" width=250px align="right"/>
 </a>
 <br><br><br>
 
@@ -120,7 +120,7 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 2. QC table containing all the dynamic range and error rate statistics, available: `Compound Data > QC metrics`.
 3. Normalized (log-fold change) cell-viability values with respect to negative control (`r neg_control`), available in long-table format (`Compound Data > Viability data`) and (`Compound Data > Replicate collapsed viability data`) for median-collapsed values across cell lines.
 4. Dose-response parameters for the compound, available: `Compound Data > Dose-response curve data`, and dose-response curves for each treatment/cell line in `Dose-Response Curves`. **Please note:** we are sometimes unable to fit a dose response curve for some cell lines so they will not be included in this file.
-5. Biomarker and correlation analysis using omics and genetic dependency data from [depmap.org](https://depmap.org/portal/download/all/). Biomarkers are identified by selecting the genomic features that best explain the observed profile of sensitivity in the PRISM cell line panel. Univariate analysis for continuous and discrete variables at `Biomarker Data > Continuous associations` and `Discrete associations` respectively. Multivariate analysis available at `Biomarker Data > Random forest features` and with model level statistics at `Biomarker Data > Random forest model statistics`.
+5. Biomarker and correlation analysis using omics and genetic dependency data from [depmap.org](https://depmap.org/portal/download/all/) (DepMap Public 23Q2). Biomarkers are identified by selecting the genomic features that best explain the observed profile of sensitivity in the PRISM cell line panel. Univariate analysis for continuous and discrete variables at `Biomarker Data > Continuous associations` and `Discrete associations` respectively. Multivariate analysis available at `Biomarker Data > Random forest features` and with model level statistics at `Biomarker Data > Random forest model statistics`.
 
 Explanations of the columns within each file are available on [GitHub](https://github.com/cmap/dockerized_mts/blob/master/info/ColumnHeaders.md)
 
