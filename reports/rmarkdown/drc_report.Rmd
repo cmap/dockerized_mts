@@ -141,7 +141,7 @@ lfc_table <- lfc %>%
                  dplyr::inner_join(drc_meta, by = c("ccle_name", "culture", "pert_plate", "pert_time")) %>%
                  dplyr::rename(dose = pert_dose) %>%
                  dplyr::mutate(Viability = 2^LFC_cb,
-                               Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
+                               Replicate = replicate) %>%
                  dplyr::distinct(ccle_name, culture, cell_id, dose, Viability, Replicate)
 
 lfc_all <- highlight_key(lfc_table, ~cell_id, group = "Dose-response")
