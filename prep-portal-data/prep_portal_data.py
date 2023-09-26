@@ -139,6 +139,8 @@ def prep_and_write_drc(args, drc_fp, insertionDate):
     drc['ic50'] = drc.apply(lambda row: 2**row['log2_ic50'], axis=1)
     drc = add_required_cols(args, drc, insertionDate)
 
+    table_name = os.path.splitext(os.path.basename(drc_fp))[0]
+    drc = subset_columns_to_bq_table(drc, table_name)
     out = drc.to_dict('records')
 
     # write to json
@@ -166,11 +168,15 @@ def subset_columns_to_bq_table(df, table_name):
     project_id = 'prism-359612'
     dataset_id = os.environ["BQ_DATASET_ID"]
     table_id = table_name
+    print("Table Name: " + table_name)
     table_cols = get_table_columns(project_id, dataset_id, table_id)
 
-    print(df.columns)
-    print(table_cols)
-    df = df[table_cols]
+    select_columns = list(set(df.columns).intersection(table_cols))
+
+    print("Dataframe Columns: " + str(list(df.columns)))
+    print("Table Columns: " + str(table_cols))
+    print("Subsetting to common columns: " + str(select_columns))
+    df = df[select_columns]
     return df
 
 
