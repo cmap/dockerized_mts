@@ -186,7 +186,14 @@ def subset_columns_to_bq_table(df, table_name):
     print("Table Name: " + table_name)
     table_cols = get_table_columns(project_id, dataset_id, table_id)
 
-    select_columns = list(set(df.columns).intersection(table_cols))
+    # Create a set of lowercase table columns
+    table_cols_lower = set(map(str.lower, table_cols))
+
+    # Find the intersection of lowercase DataFrame column names
+    common_columns_lower = set(df.columns.str.lower()).intersection(table_cols_lower)
+
+    # Preserve the original casing of the selected columns
+    select_columns = [col for col in df.columns if col.lower() in common_columns_lower]
 
     print("Dataframe Columns: " + str(list(df.columns)))
     print("Table Columns: " + str(table_cols))
