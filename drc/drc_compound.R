@@ -8,8 +8,8 @@ parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-i", "--input_dir", default="", help="Input directory with one level 4 LFC file")
 parser$add_argument("-o", "--out", default="", help="Output directory")
-parser$add_argument("-s", "--screen_type", 
-                    default="MTS", help = "what type of screen is it? (MTS, CPS, etc.)")
+# parser$add_argument("-s", "--screen_type", 
+#                     default="MTS", help = "what type of screen is it? (MTS, CPS, etc.)")
 ## For MTS UL of fit is close to 1 and DRC is always decreasing.
 ## For CPS UL is b/w 0 and 1 and DRC can increase. 
 
@@ -17,9 +17,12 @@ parser$add_argument("-s", "--screen_type",
 args <- parser$parse_args()
 lfc_dir <- args$input_dir
 out_dir <- args$out
-screen_type <- args$screen_type
+# screen_type <- args$screen_type
 
-print (paste("screen type_was= ", screen_type))
+screen_type <- "MTS" ## default screen type is MTS
+
+
+# print (paste("screen type_was= ", screen_type))
 # find level 4 file and return error if none or more than one
 lfc_files <- list.files(lfc_dir,pattern=("LEVEL4_LFC_.*\\.csv$"), full.names=T)
 if (length(lfc_files) != 1) {
@@ -102,6 +105,12 @@ for (i in 1:nrow(dosed_compounds)){
     next
   }
   
+  # if this was a combination study, we need to change fit limits accordingly 
+  if (any(str_detect(colnames(df), "pert_id_2"))) { ## a second pert existed.
+    screen_type <- "CPS"
+    print("Screen type was=CPS")
+  }
+  print (paste("screen type_was= ", screen_type))
   sub_DRC <- list()  # stores dose response results
   
   # for each cell line
@@ -109,24 +118,25 @@ for (i in 1:nrow(dosed_compounds)){
     
     # get LFC data
     d <- df[j, ] %>% dplyr::inner_join(LFC_TABLE.split) %>% suppressMessages()
-    
-   
+  
     d %<>% dplyr::filter(is.finite(.[[LFC_column]]),is.finite(.[[dose_var]]) ) # drop any infinite LFC values or undefined doses
     
     d$FC <- 2^d[[LFC_column]] # get fold-change values.
-    
+
     # fit curve. if MTS UL is close to 1 and slope is always decreasing. 
     # if CPS, UL can be further from 1 since anchor dose can be toxic and slope can increase
     if (screen_type=="MTS"|screen_type=="APS"){
         fit_result.df <- get_best_fit(d, dose_var,  
-                                UL_low=0.8, UL_up=1.001, slope_decreasing=TRUE)
+                                UL_low=0.8, UL_up=1.01, slope_decreasing=TRUE)
     }else if(screen_type=="CPS"){
         fit_result.df <- get_best_fit(d, dose_var,  
-                                      UL_low=0.0, UL_up=1.001, slope_decreasing=FALSE)
+                                      UL_low=0.0, UL_up=1.01, slope_decreasing=FALSE)
     }else{ ## if screen type has not been defined before, then stop, we need to add it here.
         print("undefined screen type")
         stop("Error: undefined screen type")
     }
+    
+
     
     # get results if fit
     if (fit_result.df$successful_fit) {
@@ -205,7 +215,6 @@ for (i in 1:nrow(dosed_compounds)){
       }
       sub_DRC[[j]] <- x
       
-      
       # sub_DRC[[j]] <- tibble(min_dose = min(d[[dose_var]]),######
       #                        max_dose = max(d[[dose_var]]),
       #                        upper_limit = as.numeric(NA),
@@ -227,6 +236,41 @@ for (i in 1:nrow(dosed_compounds)){
       #                   pert_time = df[j,]$pert_time,
       #                   pert_plate = df[j,]$pert_plate)
     }
+    
+    if (is.na(fit_result.df$successful_fit)){
+      x <- tibble(min_dose = min(d[[dose_var]]),######
+                             max_dose = max(d[[dose_var]]),
+                             upper_limit = as.numeric(NA),
+                             ec50 = as.numeric(NA),
+                             slope = as.numeric(NA),                 ##### sign of slope is made negative to remain compatible with  sign convention in report generation module
+                             lower_limit = as.numeric(NA),
+                             convergence = FALSE) %>%
+          dplyr::mutate(auc = as.numeric(NA),
+                        log2.ic50 = as.numeric(NA),
+                        auc_riemann=as.numeric(NA),
+                        mse = as.numeric(NA),
+                        R2 = as.numeric(NA),  ###  updated. old R^2 values used the variance of LFC and not FC in denominator
+                        best_fit_name = NA,
+                        varied_iname = comp$pert_iname,
+                        varied_id = comp$pert_id,
+                        ccle_name = df[j,]$ccle_name,
+                        culture = df[j,]$culture,
+                        pool_id = df[j,]$pool_id,
+                        pert_time = df[j,]$pert_time,
+                        pert_plate = df[j,]$pert_plate,
+                        screen_type= screen_type)
+      
+      if (any(str_detect(colnames(df), "pert_id_"))) {
+        added_comp_table <- df[j, ] %>%
+          tidyr::unite(col = added_compounds, starts_with("pert_iname_"), sep = "|") %>%
+          tidyr::unite(col = added_doses, starts_with("pert_dose_"), sep = "|") %>%
+          tidyr::unite(col = added_ids, starts_with("pert_id_"), sep = "|") %>%
+          dplyr::select(-n)
+        x %<>% dplyr::left_join(added_comp_table)%>% suppressMessages()
+      }
+      sub_DRC[[j]] <- x
+    }
+
   }
   
   sub_DRC %<>% dplyr::bind_rows()  # combine results

@@ -55,22 +55,22 @@ get_best_fit <- function(LFC_filtered, dose_var,
     all_fits.df <- fit_4param_drc(LFC_filtered, dose_var,  var_data, 
                                   UL_low, UL_up, slope_decreasing)
     
+    res.df  <- data.frame(successful_fit=FALSE, auc_riemann = riemann_AUC) ## default return value if fit is unsuccessful
+    
     if (nrow(all_fits.df)>0){all_fits.df %<>% dplyr::filter(!is.na(frac_var_explained))} ## remove entries with NA in variance explained 
     
     if (nrow(all_fits.df)>0){
         res.df <- all_fits.df %>%
             slice_max(frac_var_explained, n = 1, with_ties = FALSE) %>%  ## return best fit. if tied, return first of the ties
-            dplyr::mutate(successful_fit = frac_var_explained > 0.0, 
+            dplyr::mutate(successful_fit = TRUE, 
                           auc_riemann = as.numeric(riemann_AUC) ) ## fit has to be at least as good as predicting just the mean of the data to be called successful
-    }else{
-        res.df  <- data.frame(successful_fit=FALSE, auc_riemann = riemann_AUC)
     }
     
     return (res.df)
 }
 
 fit_4param_drc <- function(LFC_filtered, dose_var,  var_data, 
-                                    UL_low=0.8, UL_up=1.001, slope_decreasing=TRUE) {
+                                    UL_low=0.8, UL_up=1.01, slope_decreasing=TRUE) {
     #fits a number of alternate models  to the DRC and passes the results to the calling function (which chooses the best fit.)
     
     # UL low is the lowerbound of UL we pass to the optimizer and UL_up is the upper bound of UL that we pass to the optimizer
@@ -237,18 +237,19 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
     # get parameters
     param <- tryCatch(a$parameters, error = function(e) return(NA))
     if (!all(is.na(param))){
-      
-      mse_df <- compute_MSE_MAD(LFC_filtered, a$parameters[[1]], a$parameters[[4]],
-                                a$parameters[[3]], a$parameters [[2]],
-                                "FC", dose_var)
-      results.df[[ix]] <- tibble( fit_name = "original_drc", 
-                                  Lower_Limit = as.numeric(a$parameters [[4]]),
-                                  Upper_Limit = as.numeric(a$parameters [[1]]),
-                                  Slope = as.numeric(a$parameters [[3]]),
-                                  Inflection = as.numeric(a$parameters [[2]]),
-                                  MSE = mse_df$mse, MAD = mse_df$mad, frac_var_explained = 1-mse_df$mse/var_data,
-                                  Input_Parameters = "default_original")
-      ix = ix + 1 
+      if(as.numeric(a$parameters [[3]])<slope_bound){ ### while slope bound is not passed to this last optimizer, we do not accept a solution not within the bound
+        mse_df <- compute_MSE_MAD(LFC_filtered, a$parameters[[1]], a$parameters[[4]],
+                                  a$parameters[[3]], a$parameters [[2]],
+                                  "FC", dose_var)
+        results.df[[ix]] <- tibble( fit_name = "original_drc", 
+                                    Lower_Limit = as.numeric(a$parameters [[4]]),
+                                    Upper_Limit = as.numeric(a$parameters [[1]]),
+                                    Slope = as.numeric(a$parameters [[3]]),
+                                    Inflection = as.numeric(a$parameters [[2]]),
+                                    MSE = mse_df$mse, MAD = mse_df$mad, frac_var_explained = 1-mse_df$mse/var_data,
+                                    Input_Parameters = "default_original")
+        ix = ix + 1 
+      }
     }
     
 
