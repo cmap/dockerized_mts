@@ -5,6 +5,10 @@ LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
 RUN apt-get -y update --allow-releaseinfo-change
 
+RUN cd /cmap && \
+conda create -y --name prism python=3.6 numpy pandas simplejson  && \
+cd /
+
 SHELL ["conda", "run", "-n", "prism", "/bin/bash", "-c"]
 
 RUN apt-get install -y jq & pip install google-cloud-bigquery && \

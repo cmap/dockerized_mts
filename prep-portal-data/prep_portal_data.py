@@ -164,10 +164,25 @@ def get_table_columns(project_id, dataset_id, table_id):
     table = client.get_table(table_ref)
     return [field.name for field in table.schema]
 
+
 def subset_columns_to_bq_table(df, table_name):
+    """
+        Subset the columns of a DataFrame to match the columns of a BigQuery table.
+
+        This function takes a DataFrame and a table name as input, retrieves the list
+        of columns for the specified BigQuery table, and returns a DataFrame with only
+        the columns that are common to both the input DataFrame and the BigQuery table.
+
+        Args:
+            df (pandas.DataFrame): The input DataFrame.
+            table_name (str): The name of the BigQuery table to match columns with.
+
+        Returns:
+            pandas.DataFrame: A DataFrame containing only the common columns.
+        """
     project_id = 'prism-359612'
     dataset_id = os.environ["BQ_DATASET_ID"]
-    table_id = table_name
+    table_id = "dose_response_curves" if (table_name == "DRC_TABLE") else table_name
     print("Table Name: " + table_name)
     table_cols = get_table_columns(project_id, dataset_id, table_id)
 
