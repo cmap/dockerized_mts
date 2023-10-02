@@ -317,7 +317,7 @@ spread_lfc_table <- highlight_key(spread_lfc %>% dplyr::select(ccle_name, cultur
 dt <- DT::datatable(spread_lfc_table, style="bootstrap", extensions = 'Buttons', options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))), colnames = c("Cell Line", "Culture", "Varied Compound | Anchor Compound", "Varied Dose | Anchor Dose", "Synergy", "Dynamic Range", "Artificial Antagonism Flag", "q"), selection = "single", filter = "top")%>%
   DT::formatSignif(columns = c("S", "dr", "q"), digits = 3)
 
-  export_spread_lfc <- spread_lfc %>% dplyr::select(ccle_name, culture, pert_iname, pert_dose, S, dr, flag, q)
+  export_spread_lfc <- spread_lfc %>% dplyr::mutate(neg_log10_qval = -log10(q)) %>% dplyr::select(ccle_name, culture, pert_iname, pert_dose, S, dr, flag, q, neg_log10_qval)
 
 
   # save for portal 
