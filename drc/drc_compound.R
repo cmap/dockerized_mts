@@ -83,7 +83,12 @@ LFC_TABLE.split <- LFC_TABLE %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_id", "pert_dose"),
                           sep = "|", fixed = T,
                           direction = "wide", drop = F, type.convert = T)
-
+# if this was a combination study, we need to change fit limits accordingly 
+if (any(str_detect(colnames(LFC_TABLE.split), "pert_id_2"))) { ## a second pert existed.
+  screen_type <- "CPS"
+  print("Screen type was=CPS")
+}
+print (paste("screen type_was= ", screen_type))
 
 #---- Compute dose-response parameters ----
 DRC <- list()  # stores dose response results
@@ -105,12 +110,6 @@ for (i in 1:nrow(dosed_compounds)){
     next
   }
   
-  # if this was a combination study, we need to change fit limits accordingly 
-  if (any(str_detect(colnames(df), "pert_id_2"))) { ## a second pert existed.
-    screen_type <- "CPS"
-    print("Screen type was=CPS")
-  }
-  print (paste("screen type_was= ", screen_type))
   sub_DRC <- list()  # stores dose response results
   
   # for each cell line
@@ -181,20 +180,17 @@ for (i in 1:nrow(dosed_compounds)){
       
       x <- tibble(min_dose = min(d[[dose_var]]),
                   max_dose = max(d[[dose_var]]),
-                  upper_limit = fit_result.df$Upper_Limit,
-                  ec50 = fit_result.df$Inflection,
-                  slope = ifelse(is.na(fit_result.df$Slope), 
-                                 fit_result.df$Slope,-fit_result.df$Slope),  ##### sign of slope is made negative to remain compatible with  sign convention in report generation module
-                  lower_limit = fit_result.df$Lower_Limit,
+                  upper_limit = as.numeric(NA),
+                  ec50 = as.numeric(NA),
+                  slope = as.numeric(NA),  
+                  lower_limit =as.numeric(NA),
                   convergence = fit_result.df$successful_fit) %>%
-        dplyr::mutate(auc = ifelse(is.na(fit_result.df$Slope),as.numeric(NA),
-                        compute_auc(lower_limit, upper_limit, ec50, slope,
-                                        min_dose, max_dose)),
+        dplyr::mutate(auc = as.numeric(NA),
                       log2.ic50 = as.numeric(NA),
                       auc_riemann=fit_result.df$auc_riemann,
-                      mse = fit_result.df$MSE,
-                      R2 = fit_result.df$frac_var_explained,  ###  updated. old R^2 values used the variance of LFC and not FC in denominator
-                      best_fit_name = fit_result.df$fit_name,
+                      mse = as.numeric(NA),
+                      R2 = as.numeric(NA),  
+                      best_fit_name = NA,
                       varied_iname = comp$pert_iname,
                       varied_id = comp$pert_id,
                       ccle_name = df[j,]$ccle_name,
