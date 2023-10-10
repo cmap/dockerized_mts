@@ -73,4 +73,4 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
 
 #---- Write data ----
 # Write QC table
-write.csv(qc_table, paste0(out_dir, "/", build_name, "_QC_TABLE.csv"), row.names=FALSE)
+write.csv(qc_table, paste0(out_dir, "/", build_name, "_QC_TABLE.csv"), row.names=FALSE) #TODO: This will be added as a db table

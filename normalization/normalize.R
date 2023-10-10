@@ -13,6 +13,7 @@ parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default
 parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
 parser$add_argument("-n", "--name", default="", help="Build name. Default is none")
 parser$add_argument("-x", "--exclude_bcids", default=NULL, help="comma separated values of control barcode ids to exclude from normalization")
+parser$add_argument("-r", "--exclude_instance_ids", default=NULL, help="newline separated list of instance_ids to exclude from the dataset")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
@@ -113,6 +114,12 @@ if(nrow(logMFI_base) > 0) {
 # join with other info (LMFI is normalized, logMFI is not)
 logMFI_normalized %<>%
   dplyr::left_join(master_logMFI)
+
+# remove custom defined instance ids if desired
+exclude_instance_ids <- readLines(args$exclude_instance_ids)
+if exclude_instance_ids:
+  logMFI_normalized %<>%
+    filter(!instance_id %in% exclude_instance_ids)
 
 #---- Write data ----
 logMFI_normalized %>%

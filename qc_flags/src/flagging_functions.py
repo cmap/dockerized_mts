@@ -21,13 +21,11 @@ def flag_instances(mfi: pd.DataFrame, thresholds: dict = None):
     # Create a copy to avoid modifying the original DataFrame
     df = mfi.copy()
 
-    # Create identifiers
-    df['instance_id'] = df['profile_id'] + ':' + df['ccle_name']
-
     # Flag instances based on 'count'
-    lst_inst_count_flag = df.loc[df['count'] < thresholds['count']].instance_id.unique()
+    inst_count_flag_df = df.loc[df['count'] < thresholds['count']][['instance_id','count']].rename(columns={'count':'instance_count'}) # TODO: this will become a db table
+    lst_inst_count_flag = list(inst_count_flag_df.instance_id.unique())
 
-    return list(lst_inst_count_flag)
+    return lst_inst_count_flag
 
 
 def flag_wells(mfi: pd.DataFrame, thresholds: dict = None):
@@ -53,15 +51,24 @@ def flag_wells(mfi: pd.DataFrame, thresholds: dict = None):
     mfi = mfi.copy()
 
     # Flag instances based on 'count'
-    count_grouped_df = mfi.groupby(['profile_id']).median(numeric_only=True).reset_index()
-    flagged_counts = count_grouped_df.loc[count_grouped_df['count'] < thresholds['mcount']].profile_id.unique()
-    lst_well_count_flag = mfi.loc[mfi.profile_id.isin(flagged_counts)].instance_id.unique()
+    count_grouped_df = \
+    mfi.groupby(['profile_id']).median(numeric_only=True).reset_index().rename(columns={'count': 'well_count'})[
+        ['profile_id', 'well_count']]
+    flagged_counts_df = count_grouped_df.loc[count_grouped_df['well_count'] < thresholds['mcount']]
+    flagged_counts = flagged_counts_df.profile_id.unique()
+    lst_well_count_flag = list(mfi.loc[mfi.profile_id.isin(flagged_counts)].instance_id.unique())
 
     # Flag instances based on 'ctl_mmfi'
     mmfi_grouped_df = mfi[mfi.ccle_name == 'prism invariant 5'].groupby(
-        ['profile_id', 'ccle_name']).median(numeric_only=True).reset_index()
-    flagged_ctl = mmfi_grouped_df.loc[mmfi_grouped_df['logMFI'] < thresholds['ctl_mmfi']].profile_id.unique()
-    lst_well_ctl_flag = mfi.loc[mfi.profile_id.isin(flagged_ctl)].instance_id.unique()
+        ['profile_id']).median(numeric_only=True).reset_index().rename(columns={'logMFI': 'cbc5_mfi'})[
+        ['profile_id', 'cbc5_mfi']]
+    flagged_ctl_df = mmfi_grouped_df.loc[mmfi_grouped_df['cbc5_mfi'] < thresholds['ctl_mmfi']][
+        ['profile_id', 'cbc5_mfi']]
+    flagged_ctl = flagged_ctl_df.profile_id.unique()
+    lst_well_ctl_flag = list(mfi.loc[mfi.profile_id.isin(flagged_ctl)].instance_id.unique())
+
+    # Create qc dataframe for addition to db
+    well_qc_df = count_grouped_df.merge(mmfi_grouped_df, on='profile_id')  # TODO: this will become a db table
 
     return lst_well_count_flag, lst_well_ctl_flag
 
@@ -88,7 +95,6 @@ def flag_cell_lines(mfi: pd.DataFrame, qc_table: pd.DataFrame, thresholds: dict 
     # Create identifiers
     mfi = mfi.copy()
     qc_table = qc_table.copy()
-    mfi['instance_id'] = mfi['profile_id'] + ':' + mfi['ccle_name']
     mfi['cell_plate'] = mfi['ccle_name'] + ':' + mfi['prism_replicate']
     qc_table['cell_plate'] = qc_table['ccle_name'] + ':' + qc_table['prism_replicate']
 
