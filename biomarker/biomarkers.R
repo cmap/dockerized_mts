@@ -10,7 +10,7 @@ parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-b", "--base_dir", default="", help="Input directory.")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output directory. Default is working directory.")
-parser$add_argument("-d", "--biomarker_dir", default="https://s3.amazonaws.com/biomarker.clue.io/.cache", help="Directory containing biomarker files.")
+parser$add_argument("-d", "--biomarker_dir", default="https://s3.amazonaws.com/biomarker.clue.io/2023-Q2", help="Directory containing biomarker files.")
 parser$add_argument("-f", "--biomarker_file", default=NULL, help="Name of biomarker file. Optional")
 parser$add_argument("-q", "--qc", default=NULL, help = "Path to QC file to be used as confounders")
 
