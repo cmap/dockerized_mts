@@ -3,7 +3,7 @@ REPO="prismcmap"
 NAME="prep-portal-data"
 
 #VERSION="v1.1.1" #change the version number for each new build
-TAG="testing"
+TAG="develop"
 
 #change the version number for each new build
 docker build --platform linux/amd64 -t $REPO/$NAME:$TAG --rm=true .

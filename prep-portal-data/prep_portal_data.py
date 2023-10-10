@@ -165,6 +165,18 @@ def get_table_columns(project_id, dataset_id, table_id):
     return [field.name for field in table.schema]
 
 
+def catch_table_name_exceptions(table_name):
+    """
+    Catch exceptions for table names that are not the same as the BigQuery table names.
+    """
+    if table_name == "DRC_TABLE":
+        return "dose_response_curves"
+    elif "QC_TABLE" in table_name:
+        return "qc_table"
+    else:
+        return table_name
+
+
 def subset_columns_to_bq_table(df, table_name):
     """
         Subset the columns of a DataFrame to match the columns of a BigQuery table.
@@ -182,7 +194,8 @@ def subset_columns_to_bq_table(df, table_name):
         """
     project_id = 'prism-359612'
     dataset_id = os.environ["BQ_DATASET_ID"]
-    table_id = "dose_response_curves" if (table_name == "DRC_TABLE") else table_name
+    table_id = catch_table_name_exceptions(table_name);
+
     print("Table Name: " + table_name)
     table_cols = get_table_columns(project_id, dataset_id, table_id)
 
