@@ -66,6 +66,8 @@ def calc_drc_points(row, n):
     return points
 
 def dr_func(d, x):
+    if pd.isnull(d["slope"]):
+        return -666
     return float(d["lower_limit"]) + (float(d["upper_limit"]) - float(d["lower_limit"]))/(1 + (2**x/float(d["ec50"]))**float(d["slope"]))
 
 def char_to_number(char):
