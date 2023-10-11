@@ -12,12 +12,20 @@ library(reshape2)
 library(argparse)
 library(splitstackshape)
 
-## NOTE the functions here use a sign convention for the slope parameter consistent with dr4pl package
-## The data is finally saved and passed to future modules with the opposite sign convention for the slope parameter (based on drc package)
+## NOTE: The sign conventions for the slope parameter in the drc and dr4pl packages are opposite to each other. i.e slope_drc=-slope_dr4pl
+## The data is eventually saved by the drc_compound.R script and passed to future modules with the sign convention of the drc package
+## The functions "compute_log_ic50" and "compute_auc"  use a sign convention for the slope parameter consistent with drc package and are called from outside this script.
+## The function "compute_MSE_MAD", called from within this script using the sign convention of the dr4pl package.
+
 #---- Dose-Response Parameters ----
+# l or LL is the lower limit
+# u or UL is the upper limit
+# Slope or h is the slope 
+# EC50 or Inflection is the inflection point, which is also called EC50
+
 # area under curve given dose-response parameters
 compute_auc <- function(l, u, ec50, h, md, MD) {
-  f1 = function(x) pmax(pmin((l + (u - l)/(1 + (2^x/ec50)^h)), 1, na.rm = T), 0, na.rm = T)
+  f1 = function(x) pmax(pmin((l + (u - l)/(1 + (2^x/ec50)^h)), 1, na.rm = T), 0, na.rm = T) ## slope sign convention of the drc package
   return(tryCatch(integrate(f1, log2(md), log2(MD))$value/(log2(MD/md)),
                   error = function(e) {print(e); NA}))
 }
@@ -27,7 +35,7 @@ compute_log_ic50 <- function(l, u, ec50, h, md, MD) {
   if((l >= 0.5) | (u <= 0.5)) {
     return(NA)
   } else {
-    f1 = function(x) (l + (u - l)/(1 + (2^x/ec50)^h) - 0.5)
+    f1 = function(x) (l + (u - l)/(1 + (2^x/ec50)^h) - 0.5) ## slope sign convention of the drc package
     return(tryCatch(uniroot(f1, c(log2(md), log2(MD)))$root,
                     error = function(x) NA))
   }
@@ -38,7 +46,7 @@ compute_MSE_MAD <- function(LFC,  UL, LL,  Slope, Inflection,
                             FC_column="FC", dose_column="dose") {
     mse_compute <- LFC %>% 
         dplyr::filter(is.finite(.[[FC_column]]),is.finite(.[[dose_column]]) ) %>% ## in case there are some na values accidentally passed.
-        dplyr::mutate(FC.pred = UL  + (LL -UL )/(1 + (.[[dose_column]]/Inflection)^Slope) ) %>% 
+        dplyr::mutate(FC.pred = UL  + (LL -UL )/(1 + (.[[dose_column]]/Inflection)^Slope) ) %>% ## slope sign convention of the dr4pl package 
         dplyr::mutate(squared_deviation = (.[[FC_column]]-FC.pred)^2, abs_deviation = abs(.[[FC_column]]-FC.pred)) %>%
         dplyr::summarise(mse = mean(squared_deviation,na.rm=T), mad= median(abs_deviation,na.rm=T))
     return (mse_compute)
@@ -339,7 +347,7 @@ fit_4param_drc <- function(LFC_filtered, dose_var,  var_data,
       results.df[[ix]] <- tibble( fit_name = "drc_drm",
                                   Lower_Limit = as.numeric(drc_model$coefficients [[2]]),
                                   Upper_Limit = as.numeric(drc_model$coefficients [[3]]),
-                                  Slope = -as.numeric(drc_model$coefficients [[1]]),
+                                  Slope = -as.numeric(drc_model$coefficients [[1]]),# "slope" in drc package is -ve of slope in dr4pl package 
                                   Inflection = as.numeric(drc_model$coefficients [[4]]),
                                   MSE = mse_df$mse, MAD = mse_df$mad, frac_var_explained = 1-mse_df$mse/var_data,
                                   Input_Parameters = "constrained-drc")
