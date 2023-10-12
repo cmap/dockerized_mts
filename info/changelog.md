@@ -8,6 +8,8 @@
 
 * Updated pipeline to use latest version of biomarker references... found [here](link_to_dataset)
 
+* Single-compound report and combination_solo report to use the same Rmd file
+q
 ## MTS023, CPS009
 ***
 
