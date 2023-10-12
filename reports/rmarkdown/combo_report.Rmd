@@ -772,7 +772,14 @@ dt
 ```
 
 ```{r}
+out_df <- sub_models %>% dplyr::inner_join(sub_rf, by = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose")) %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore,
+                feature, RF.imp.mean, rank) %>%
+  dplyr::mutate(condition = paste(pert_iname, added_compounds, added_doses)) %>%
+  dplyr::mutate_at(vars(R2, PearsonScore, RF.imp.mean),
+                   funs(signif(., 3)))
+
 random_forest_path = file.path(plot_files_dir, 'random_forest_models')
 dir.create(random_forest_path, showWarnings = FALSE)
-write.csv(df, file.path(random_forest_path, 'combo_random_forest_models.csv'), row.names=FALSE)
+write.csv(out_df, file.path(random_forest_path, 'combo_random_forest_models.csv'), row.names=FALSE)
 ```
