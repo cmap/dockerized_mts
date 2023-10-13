@@ -4,7 +4,10 @@
 ***
 
 * Dose Response 
-  * Adjusted our dose response curve fitting module to use...
+The dose response curve fitting module was revised substantially, motivated by examples where poor DRC fits were returned. Changes include:
+  1. The module now attempts to fit the data points using a number of optimization methods and initializations using the dr4pl and drc packages. It then returns the fit with the lowest Mean Squared Error (MSE).
+  2. The module constrains fits on single agent screens to have a decreasing slope, which reflects the assumption that the assay aims to detect the reduction of cell viability by test agents. For combination screens, fits can have an increasing slope to detect antagonistic effects between agents.
+  3. The Riemann AUC is also provided in the DRC table for each profile. In scenarios where a fit does not succeed, fit parameters are NA but the Riemann AUC is still provided.
 
 * Updated pipeline to use latest version of biomarker references... found [here](link_to_dataset)
 
