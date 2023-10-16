@@ -12,6 +12,9 @@ The dose response curve fitting module was revised substantially, motivated by e
 * Updated pipeline to use latest version of biomarker references... found [here](link_to_dataset)
 
 * Single-compound report and combination_solo report to use the same Rmd file
+
+* In rare occurrences where wells were reported skipped during the plate preparation, data for those wells are not filtered out  
+
 ## MTS023, CPS009
 ***
 

@@ -755,7 +755,6 @@ p2 <- sub_rf %>%
 df <- sub_models %>% dplyr::inner_join(sub_rf, by = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose")) %>%
   dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore,
                 feature, RF.imp.mean) %>%
-  dplyr::mutate(condition = paste(pert_iname, added_compounds, added_doses)) %>%
   dplyr::mutate_at(vars(R2, PearsonScore, RF.imp.mean),
                    funs(signif(., 3)))
 
