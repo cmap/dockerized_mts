@@ -9,11 +9,9 @@ The dose response curve fitting module was revised substantially, motivated by e
   2. The module constrains fits on single agent screens to have a decreasing slope, which reflects the assumption that the assay aims to detect the reduction of cell viability by test agents. For combination screens, fits can have an increasing slope to detect antagonistic effects between agents.
   3. The Riemann AUC is also provided in the DRC table for each profile. In scenarios where a fit does not succeed, fit parameters are NA but the Riemann AUC is still provided.
 
-* Updated pipeline to use latest version of biomarker references... found [here](link_to_dataset)
-
 * Single-compound report and combination_solo report to use the same Rmd file
 
-* In rare occurrences where wells were reported skipped during the plate preparation, data for those wells are not filtered out  
+* In rare occurrences where wells were reported skipped during the plate preparation, data for those wells are now filtered out  
 
 ## MTS023, CPS009
 ***
