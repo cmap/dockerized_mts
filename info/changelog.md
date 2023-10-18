@@ -11,8 +11,11 @@ The dose response curve fitting module was revised substantially, motivated by e
 
 * Single-compound report and combination_solo report to use the same Rmd file
 
-* In rare occurrences where wells were reported skipped during the plate preparation, data for those wells are now filtered out  
+* In rare occurrences where wells were reported skipped during the plate preparation, data for those wells are now filtered out
+* Lineages subabbreviations and abbreviations using OncoTree notation
+* Gene Expression (GE) controlling for lineage is an avaialble continuous association feature 
+
 
 ## MTS023, CPS009
 ***
-
+* Biomarkers updated to DepMap 23Q2 data 
