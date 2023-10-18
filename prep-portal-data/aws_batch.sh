@@ -119,9 +119,14 @@ fi
 #setup environment
 source activate prism
 
+echo aws s3 sync s3://portal-data.prism.org/google-credentials/ /prism/data/.random/
+aws s3 sync s3://portal-data.prism.org/google-credentials/ /prism/data/.random/
+
+ls /prism/data/.random/
+
+
 echo python /clue/bin/prep_portal_data.py  "${args[@]}"
 python /clue/bin/prep_portal_data.py  "${args[@]}"
-
 
 exit_code=$?
 echo "$exit_code"

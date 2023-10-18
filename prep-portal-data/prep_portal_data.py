@@ -13,8 +13,11 @@ import argparse
 import numpy as np
 import pandas as pd
 from math import log2
+from google.cloud import bigquery
+
 import hashlib
 import random
+
 
 logger = logging.getLogger('prep-portal-data')
 
@@ -63,6 +66,8 @@ def calc_drc_points(row, n):
     return points
 
 def dr_func(d, x):
+    if pd.isnull(d["slope"]):
+        return -666
     return float(d["lower_limit"]) + (float(d["upper_limit"]) - float(d["lower_limit"]))/(1 + (2**x/float(d["ec50"]))**float(d["slope"]))
 
 def char_to_number(char):
@@ -136,6 +141,8 @@ def prep_and_write_drc(args, drc_fp, insertionDate):
     drc['ic50'] = drc.apply(lambda row: 2**row['log2_ic50'], axis=1)
     drc = add_required_cols(args, drc, insertionDate)
 
+    table_name = os.path.splitext(os.path.basename(drc_fp))[0]
+    drc = subset_columns_to_bq_table(drc, table_name)
     out = drc.to_dict('records')
 
     # write to json
@@ -152,11 +159,72 @@ def sanitize_colnames(df):
     df.columns = df.columns.str.replace(".", "_", regex=False)
     return
 
+
+def get_table_columns(project_id, dataset_id, table_id):
+    client = bigquery.Client()
+    table_ref = f"{project_id}.{dataset_id}.{table_id}"
+    table = client.get_table(table_ref)
+    return [field.name for field in table.schema]
+
+
+def catch_table_name_exceptions(table_name):
+    """
+    Catch exceptions for table names that are not the same as the BigQuery table names.
+    """
+    if table_name == "DRC_TABLE":
+        return "dose_response_curves"
+    elif "QC_TABLE" in table_name:
+        return "qc_table"
+    else:
+        return table_name
+
+
+def subset_columns_to_bq_table(df, table_name):
+    """
+        Subset the columns of a DataFrame to match the columns of a BigQuery table.
+
+        This function takes a DataFrame and a table name as input, retrieves the list
+        of columns for the specified BigQuery table, and returns a DataFrame with only
+        the columns that are common to both the input DataFrame and the BigQuery table.
+
+        Args:
+            df (pandas.DataFrame): The input DataFrame.
+            table_name (str): The name of the BigQuery table to match columns with.
+
+        Returns:
+            pandas.DataFrame: A DataFrame containing only the common columns.
+        """
+    project_id = 'prism-359612'
+    dataset_id = os.environ["BQ_DATASET_ID"]
+    table_id = catch_table_name_exceptions(table_name);
+
+    print("Table Name: " + table_name)
+    table_cols = get_table_columns(project_id, dataset_id, table_id)
+
+    # Create a set of lowercase table columns
+    table_cols_lower = set(map(str.lower, table_cols))
+
+    # Find the intersection of lowercase DataFrame column names
+    common_columns_lower = set(df.columns.str.lower()).intersection(table_cols_lower)
+
+    # Preserve the original casing of the selected columns
+    select_columns = [col for col in df.columns if col.lower() in common_columns_lower]
+
+    print("Dataframe Columns: " + str(list(df.columns)))
+    print("Table Columns: " + str(table_cols))
+    print("Subsetting to common columns: " + str(select_columns))
+    df = df[select_columns]
+    return df
+
+
 def read_write_files_with_required_columns(args, file, insertionDate):
     logging.info("Reading File from: " + file)
     df = pd.read_csv(file)
     df = add_required_cols(args, df, insertionDate=insertionDate)
     sanitize_colnames(df)
+
+    table_name = os.path.splitext(os.path.basename(file))[0]
+    df = subset_columns_to_bq_table(df, table_name)
 
     if len(df) > 0:
         if args.outfile:

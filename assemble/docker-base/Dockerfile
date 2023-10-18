@@ -10,7 +10,7 @@ cd /cmap/merino/
 RUN which python
 
 RUN cd /cmap && \
-conda create -y --name prism -c bioconda python=3.6 numpy pandas yaml h5py requests setuptools argparse  pathlib  yaml pyyaml jinja2  && \
+conda create -y --name prism -c bioconda python=3.6 numpy pandas yaml h5py requests setuptools argparse  pathlib  yaml pyyaml jinja2  simplejson && \
 git clone https://github.com/cmap/cmapPy.git && \
 cd /
 

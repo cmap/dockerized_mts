@@ -270,16 +270,28 @@ for (i in 1:length(constituents)) {
     dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
+  
+  new_cols <- colnames(df)
+  new_cols <- case_when(
+      "pert_iname" == new_cols  ~ paste("pert_iname", i, sep = "_"),
+      "pert_dose" == new_cols  ~ paste("pert_dose", i, sep = "_"),
+      "LFC_cb" == new_cols  ~ paste("LFC_cb", i, sep = "_"),
+      TRUE ~ as.character(new_cols)
+    )
+  colnames(df) <- new_cols
 
-  new_cols <- paste(colnames(df), i, sep = "_")
-  colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
+  # new_cols <- paste(colnames(df), i, sep = "_")
+  # colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
 
   spread_lfc %<>% dplyr::left_join(df)
 }
 
 # bliss expected fold change (capped FCs at 1)
-B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
-spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+B <- apply(2^spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')], 1, function(x) prod(pmin(x, 1)))
+spread_lfc %<>% dplyr::mutate(S = LFC_cb_1 + LFC_cb_2 - LFC_cb)
+# B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1))) ## remove hardcoded indexing.
+# spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+
 spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
 spread_lfc$B <- B
 spread_lfc %<>%
@@ -382,10 +394,11 @@ The second plot shows the AUC of the combination versus the Bliss expected AUC. 
 
 
 **How are the dose response curves fitted? What are the parameters for fitting?** <br> 
-We fit a robust four-parameter logistic curve to the response of each cell line to treatment. The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
+We fit a robust four-parameter logistic curve to the response of each cell line to treatment. The four parameters are upper limit($a$), lower limit ($b$), slope ($s$), and EC50. The equation for the curve is defined:
 
 $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
-This is implemented using R's dr4pl package, specifying an upper limit between 0.99-1.01 and a positive slope. 
+
+The curve fitting procedure minimizes the squared deviation of the observed viabilities at each dose. The fits are constrained such that the upper-limit lies within the range (0.8,1.001) and the lower limit lies within (0,1). Further, we restrict the predicted viability to always decrease with increasing dose by constraining the slope. Since the nonlinear optimization underlying the fitting procedure may return parameters a local optimum, we fit using four different methods implemented in the dr4pl and drc packages and report parameters with the lowest mean squared error. Fit parameters are only reported if the best fit explains at least 5% of the variance of the fold-change data. An IC50 is only reported if the drc fit crosses 0.5 within the dose range of the experiment. 
 
 **What are the three curves in the dose response graph?** <br> 
 Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself <br> 
@@ -541,8 +554,8 @@ for (comp in varied_comps) {
 
   cat(htmltools::knit_print.shiny.tag(p))
 
-  compounds_all <- highlight_key(drc_meta %>%
-                                   dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+compounds_all <- highlight_key(drc_meta %>%
+                                   dplyr::filter(varied_iname == comp) %>%
                                    dplyr::arrange(auc),
                                  ~cell_id, group = comp)
   

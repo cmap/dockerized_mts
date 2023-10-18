@@ -12,3 +12,5 @@ docker build --platform linux/amd64 -t $REPO/$NAME:$TAG -t $REPO/$NAME:$VERSION 
 #docker push $REPO/$NAME:$TAG
 
 #v1.0.2 - changed base Dockerfile to include conda env
+
+# trigger

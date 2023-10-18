@@ -142,7 +142,7 @@ lfc_table <- lfc %>%
                  dplyr::inner_join(drc_meta, by = c("ccle_name", "culture", "pert_plate", "pert_time")) %>%
                  dplyr::rename(dose = pert_dose) %>%
                  dplyr::mutate(Viability = 2^LFC_cb,
-                               Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
+                               Replicate = replicate) %>%
                  dplyr::distinct(ccle_name, culture, cell_id, dose, Viability, Replicate)
 
 lfc_all <- highlight_key(lfc_table, ~cell_id, group = "Dose-response")
@@ -172,10 +172,10 @@ p <- plot_ly() %>%
             opacityDim = 1, defaultValues = "",
             selected = attrs_selected(opacity = 1))
 
-compounds_all <- highlight_key(drc_meta %>% 
-                                 dplyr::filter(is.finite(auc)) %>% 
+compounds_all <- highlight_key(drc_meta %>%
                                  dplyr::arrange(auc),
                                ~cell_id, group = "Dose-response")
+
 dt <- DT::datatable(compounds_all, style="bootstrap",
                     options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
                                    columnDefs = list(list(visible = FALSE, targets = c(11)))),

@@ -1,7 +1,10 @@
 ---
 params:
-  data_dir: "/Users/shiker/Documents/trouble_shoot/aps001/aps001_validation_compounds/APS001_VALIDATION_COMPOUNDS/PAPS001/BRD-K51313569"
-  comp: "BRD-K51313569"
+  #data_dir: "/Users/anup/work/1_Projects/CPS_in_Datawarehouse/CPS009_VALIDATION_COMPOUNDS_INTERNAL/PCPS019/BRD-K50731585/"
+  data_dir: "/Users/anup/work/1_Projects/CPS_in_Datawarehouse/CPS009_DMC_ABBVIE/PCPS019/PRC-009456043-391-12_PRC-007911117-663-95"
+  #comp: "BRD-K50731585"
+  comp: "PRC-009456043-391-12_PRC-007911117-663-95"
+  is_combination: TRUE
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
 output:
   html_document:
@@ -51,8 +54,16 @@ if (length(lfc_path) == 1) {
 # read in DRC if available
 if (length(drc_path) == 1) {
   DRC <- data.table::fread(drc_path)
+  DRC %<>% tidyr::drop_na(auc) ## drop cell lines without a fit, these will have auc=na
 } else {
   DRC <- NULL
+}
+
+
+if (params$is_combination){
+  model_join_columns = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose")
+} else{
+  model_join_columns = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "pert_dose")
 }
 
 # read in biomarker tables
@@ -62,7 +73,7 @@ disc_table <- data.table::fread(file.path(params$data_dir, "discrete_association
   dplyr::mutate(feature = word(feature, 2, -1, sep = "_"))
 model_table <- data.table::fread(file.path(params$data_dir, "model_table.csv"))
 rf_table <- data.table::fread(file.path(params$data_dir, "RF_table.csv")) %>%
-  dplyr::left_join(model_table, by = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "pert_dose"))
+  dplyr::left_join(model_table, by = model_join_columns)
 
 if (all(is.na(corr_table$pert_time)) || all(corr_table$pert_time == "")) {
   corr_table %<>% dplyr::mutate(pert_time = "120H")
@@ -83,13 +94,22 @@ n_days <- LFC$pert_time %>%
   as.numeric() / 24
 
 # factorize dosing scheme
-LFC$pert_dose <- signif(LFC$pert_dose, 5)
-dose_factors <- LFC$pert_dose %>% unique() %>% sort()
-dose_factors <- c(dose_factors, "log2.auc", "log2.ic50")
+if (params$is_combination){
+  LFC$pert_dose_sort <- stringr::word(LFC$pert_dose, 1, sep = fixed("|"))
+  LFC$pert_dose_sort_2 <- stringr::word(LFC$pert_dose, 2, sep = fixed("|"))
+  LFC %<>% dplyr::arrange(as.numeric(pert_dose_sort), as.numeric(pert_dose_sort_2))
+  dose_factors <- LFC$pert_dose %>% unique() %>% sort()
+} else {
+  LFC$pert_dose <- signif(LFC$pert_dose, 5)
+  dose_factors <- LFC$pert_dose %>% unique() %>% sort()
+  dose_factors <- c(dose_factors, "log2.auc", "log2.ic50")
+}
+
 corr_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
                                    pert_dose))
+
 disc_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
@@ -106,15 +126,44 @@ rf_table %<>%
   dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
                                    signif(as.numeric(pert_dose), 5),
                                    pert_dose))
+
+if (params$is_combination){
+  corr_table %<>%
+    dplyr::mutate(
+      pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                         paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
+                         pert_dose),
+      pert_iname = unique(LFC$pert_iname))
+  
+  disc_table %<>%
+    dplyr::mutate(
+      pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                         paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
+                         pert_dose),
+      pert_iname = unique(LFC$pert_iname))
+    
+  rf_table %<>%
+    dplyr::mutate(
+      pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                         paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
+                         pert_dose),
+      pert_iname = unique(LFC$pert_iname))
+  
+  dose_factors <- dplyr::union(dose_factors, corr_table$pert_dose %>% unique())
+  LFC$pert_dose <- factor(LFC$pert_dose, levels = dose_factors)
+}
+
 corr_table$pert_dose <- factor(corr_table$pert_dose, levels = dose_factors)
 disc_table$pert_dose <- factor(disc_table$pert_dose, levels = dose_factors)
 model_table$pert_dose <- factor(model_table$pert_dose, levels = dose_factors)
 rf_table$pert_dose <- factor(rf_table$pert_dose, levels = dose_factors)
 
-if (all(is.na(corr_table$pert_dose %>% unique()))) corr_table$pert_dose <- "NA"
-if (all(is.na(disc_table$pert_dose %>% unique()))) disc_table$pert_dose <- "NA"
-if (all(is.na(model_table$pert_dose %>% unique()))) model_table$pert_dose <- "NA"
-if (all(is.na(rf_table$pert_dose %>% unique()))) rf_table$pert_dose <- "NA"
+if (!params$is_combination){
+  if (all(is.na(corr_table$pert_dose %>% unique()))) corr_table$pert_dose <- "NA"
+  if (all(is.na(disc_table$pert_dose %>% unique()))) disc_table$pert_dose <- "NA"
+  if (all(is.na(model_table$pert_dose %>% unique()))) model_table$pert_dose <- "NA"
+  if (all(is.na(rf_table$pert_dose %>% unique()))) rf_table$pert_dose <- "NA"
+}
 
 # feature types to loop through
 feature_full <- c("GE" = "Gene expression",
@@ -138,7 +187,7 @@ compounds <- LFC %>%
   dplyr::arrange(pert_dose)
 
 # lineage and mutation table
-lineages <- data.table::fread(file.path(params$meta_folder, "lineages.csv")) %>%
+lineages <- data.table::fread(file.path(params$meta_folder, "2023-08-23", "lineages.csv")) %>%
   dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
 mutations <- data.table::fread(file.path(params$meta_folder, "mutations.csv")) %>%
   dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
@@ -235,7 +284,14 @@ DT::datatable(viability_table_dt,
               filter = "top", rownames = F,
               colnames = c("Cell line", "Culture", "Pool", "Dose",
                            "Vehicle", "log2-fold change", "Viability"),
-              options = list(dom = "tp"))
+              extensions = 'Buttons',
+              options = list(
+                dom = 'Blfrtip',
+                buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), 
+                lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))
+              )
+        )
+
 
 
 viability_path = file.path(plot_files_dir, 'viability')
@@ -305,15 +361,21 @@ if(nrow(p_table) > 0){
 
 lin_tab_dt = lin_tab %>%
                 dplyr::filter(n_lines >= 5) %>%
-                dplyr::distinct(lineage, lin_abbreviation, n_lines,
-                                effect_size, q.value, pert_iname, pert_dose, neg_log10_qval) %>%
+                dplyr::distinct(lineage, lin_abbreviation,
+                                effect_size, q.value, pert_iname, pert_dose, n_lines, neg_log10_qval) %>%
                 dplyr::arrange(q.value) %>%
                 dplyr::mutate(
                     effect_size = signif(effect_size, 3),
                     q.value = signif(q.value, 3)
                 )
 DT::datatable(lin_tab_dt,
-              filter = "top", rownames = F, options = list(dom = "tp"),
+              filter = "top", rownames = F, 
+              extensions = 'Buttons',
+              options = list(
+                    dom = 'Blfrtip',
+                    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                    lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))
+              ),
               colnames = c("Lineage", "Abbreviation", "Effect size", "q value", "Compound", "Dose", "# lines", "-log10(q)"))
 
 
@@ -327,44 +389,117 @@ write.csv(lin_tab_dt, file.path(lineage_enrichment_path, 'lineage_enrichment_vol
 The AUC or log-fold change (when AUC is unavailable) of each cell line is shown in the boxplots below. Each square represents a lineage and the individual boxplots are sub-lineages. The black dashed line is the mean value across all cell lines.
 
 ```{r, fig.height=14}
-if (!is.null(DRC)) {
-  m <- mean(DRC$auc)
-  lineage_df <- DRC %>%
-    dplyr::inner_join(lineages, by = "ccle_name") %>%
-    dplyr::filter(lineage != "") %>%
-    dplyr::distinct()
+if (params$is_combination){
+  if (!is.null(DRC) && length(DRC$varied_iname %>% unique()) == 1) {
+    m <- DRC %>%
+      dplyr::group_by(varied_iname, added_compounds, added_doses) %>%
+      dplyr::summarise(m = mean(auc), .groups = "drop")
+    lineage_df <- DRC %>%
+      dplyr::inner_join(lineages, by = "ccle_name") %>%
+      dplyr::inner_join(m, by = c("varied_iname", "added_compounds", "added_doses")) %>%
+      dplyr::filter(lineage != "") %>%
+      dplyr::distinct()
+    
+    p <- lineage_df %>%
+      ggplot(aes(y = auc, x = reorder(lin_sub_abbreviation, auc, function(x) mean(x, na.rm = T)),
+                 color = added_doses)) +
+      geom_boxplot(outlier.alpha = 0) +
+      geom_hline(aes(yintercept = m), linetype = "dashed") +
+      geom_jitter() +
+      facet_wrap(lineage ~ ., scales = "free_x") +
+      theme(axis.text.x = element_text(angle = 45)) +
+      labs(y = "AUC", x = "Lineage", color = "Added doses")
+    
+    write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
+    p
+  } else {
+    print("Unable to show plots by lineage for AUC or a single dose.")
+  }
+}else{
+  if (!is.null(DRC)) {
+    m <- mean(DRC$auc)
+    lineage_df <- DRC %>%
+      dplyr::inner_join(lineages, by = "ccle_name") %>%
+      dplyr::filter(lineage != "") %>%
+      dplyr::distinct()
+    
+    p <- lineage_df %>%
+      ggplot(aes(y = auc, x = reorder(lin_sub_abbreviation, auc, function(x) mean(x, na.rm = T)),
+                 color = lin_sub_abbreviation)) +
+      geom_boxplot(outlier.alpha = 0) +
+      geom_hline(yintercept = m, linetype = "dashed") +
+      geom_jitter() +
+      facet_wrap(lineage ~ ., scales = "free_x") +
+      theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
+      labs(x = "Lineage", y = "AUC")
+    write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
+    p
+  } else if (n_doses == 1) {
+    m <- mean(LFC$LFC_cb)
+    lineage_df <- LFC %>%
+      dplyr::inner_join(lineages, by = "ccle_name") %>%
+      dplyr::filter(lineage != "") %>%
+      dplyr::distinct()
+    
+    p <- lineage_df %>%
+      ggplot(aes(y = LFC_cb, x = reorder(lin_sub_abbreviation, LFC_cb, function(x) mean(x, na.rm = T)),
+                 color = lin_sub_abbreviation)) +
+      geom_boxplot(outlier.alpha = 0) +
+      geom_hline(yintercept = m, linetype = "dashed") +
+      geom_jitter() +
+      facet_wrap(lineage ~ ., scales = "free_x") +
+      theme(legend.position = "none") +
+      labs(x = "Lineage", y = "Log-fold change")
+    
+    # Commented because we columns change and we don't 
+    #write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
+    p
+  } else {
+    print("Unable to show plots by lineage for AUC or a single dose.")
+  }
+}
+
+if (exists("lineage_df") && !is.null(lineage_df) && length(lineage_df) > 0) {
+  # Define the required columns
+  required_columns <- c(
+    "pert_iname", "pert_id", "pert_idose", "ccle_name",
+    "culture", "depmap_id", "lin_abbreviation",
+    "lin_sub_abbreviation", "lineage", "lineage_subtype",
+    "pert_plate", "pert_time", "pool_id", "auc",
+    "log2.ic50", "LFC_cb", "data", "data_type"
+  )
   
-  p <- lineage_df %>%
-    ggplot(aes(y = auc, x = reorder(lin_sub_abbreviation, auc, function(x) mean(x, na.rm = T)),
-               color = lin_sub_abbreviation)) +
-    geom_boxplot(outlier.alpha = 0) +
-    geom_hline(yintercept = m, linetype = "dashed") +
-    geom_jitter() +
-    facet_wrap(lineage ~ ., scales = "free_x") +
-    theme(legend.position = "none", axis.text.x = element_text(angle = 45)) +
-    labs(x = "Lineage", y = "AUC")
-  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
-  p
-} else if (n_doses == 1) {
-  m <- mean(LFC$LFC_cb)
-  lineage_df <- LFC %>%
-    dplyr::inner_join(lineages, by = "ccle_name") %>%
-    dplyr::filter(lineage != "") %>%
-    dplyr::distinct()
+  # Check if "LFC_cb" and "auc" columns exist
+  if ("LFC_cb" %in% colnames(lineage_df) && "auc" %in% colnames(lineage_df)) {
+    # Both columns exist, handle the case as needed
+    # For example, you can choose to keep one and drop the other
+    # In this example, I'll keep "LFC_cb" and drop "auc"
+    lineage_df$data <- lineage_df$LFC_cb
+    lineage_df$data_type <- ifelse(!is.na(lineage_df$LFC_cb), "LFC_cb", "auc")
+    lineage_df <- subset(lineage_df, select = -c(LFC_cb, auc))
+  } else if ("LFC_cb" %in% colnames(lineage_df)) {
+    # Only "LFC_cb" exists
+    lineage_df$data <- lineage_df$LFC_cb
+    lineage_df$data_type <- "LFC_cb"
+    lineage_df <- subset(lineage_df, select = -LFC_cb)
+  } else if ("auc" %in% colnames(lineage_df)) {
+    # Only "auc" exists
+    lineage_df$data <- lineage_df$auc
+    lineage_df$data_type <- "auc"
+    lineage_df <- subset(lineage_df, select = -auc)
+  }
+
+
+  # Rename columns with "varied_" to "pert_"
+  colnames(lineage_df) <- gsub("^varied_", "pert_", colnames(lineage_df))
   
-  p <- lineage_df %>%
-    ggplot(aes(y = LFC_cb, x = reorder(lin_sub_abbreviation, LFC_cb, function(x) mean(x, na.rm = T)),
-               color = lin_sub_abbreviation)) +
-    geom_boxplot(outlier.alpha = 0) +
-    geom_hline(yintercept = m, linetype = "dashed") +
-    geom_jitter() +
-    facet_wrap(lineage ~ ., scales = "free_x") +
-    theme(legend.position = "none") +
-    labs(x = "Lineage", y = "Log-fold change")
-  write.csv(lineage_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot.csv'), row.names=FALSE)
-  p
+  # Subset the DataFrame to the required columns
+  subset_df <- lineage_df %>%
+  select(any_of(required_columns))
+
+  write.csv(subset_df, file.path(lineage_enrichment_path, 'lineage_enrichment_boxplot_v2.csv'), row.names=FALSE)
 } else {
-  print("Unable to show plots by lineage for AUC or a single dose.")
+  # Code to execute if the variable doesn't exist or is empty
 }
 
 
@@ -421,11 +556,13 @@ if(nrow(p_table) > 0){
 }
 
 DT::datatable(p_table %>%
-                dplyr::distinct(feature, n_lines,
-                                effect_size, q.value, pert_iname, pert_dose) %>%
+                dplyr::distinct(feature,
+                                effect_size, q.value, pert_iname, pert_dose,  n_lines) %>%
                 dplyr::mutate(effect_size = signif(effect_size, 3),
                               q.value = signif(q.value, 3)),
-              filter = "top", rownames = F, options = list(dom = "tp"),
+              filter = "top", rownames = F,
+              extensions = 'Buttons',
+              options = list(dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
               colnames = c("Mutation", "Effect size", "q value", "Compound", "Dose", "# lines")
 )
 ```
@@ -454,7 +591,7 @@ if (!is.null(DRC)) {
   
   
   top_muts <- MUT_table %>% 
-    dplyr::filter(pert_dose == "log2.auc", feature %in% muts) %>% # picking dose of log2.auc and mutations within muts 
+    dplyr::filter(grepl('log2.auc', pert_dose), feature %in% muts) %>% # picking dose of log2.auc and mutations within muts 
     dplyr::mutate(gene = word(feature, 2, sep = fixed("_")), # creating gene column 
                   mut.type = word(feature,1,-2, sep = fixed("_"))) # creating mutation type column 
   
@@ -483,9 +620,6 @@ if (!is.null(DRC)) {
     dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) %>% # renaming columns 
     dplyr::left_join(top.genes, by = "gene") # adding minimum q values for top genes 
   
-  
-  
-  
   plot_data <- top_muts %>%
     dplyr::left_join(DRC %>% dplyr::distinct(ccle_name, auc),  by = "ccle_name") %>% 
     dplyr::mutate(gene = reorder(gene, minq)) 
@@ -505,6 +639,7 @@ if (!is.null(DRC)) {
   write.csv(plot_data, file.path(mutations_path, 'mutation_effect_boxplot_data.csv'), row.names=FALSE)
   p
 } else if (n_doses == 1) {
+
   m <- mean(LFC$LFC_cb)
   
   dose <- LFC %>% dplyr::distinct(pert_dose) %>% pull()
@@ -703,7 +838,9 @@ ccle_dt = df %>%
                 dplyr::arrange(rank)
 
 DT::datatable(ccle_dt,
-              filter = "top", rownames = F, options = list(dom = "tp"),
+              filter = "top", rownames = F,
+              extensions = 'Buttons',
+              options = list(dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
               colnames = c("Feature", "r-squared", "Rank", "Feature importance", "Feature stability",
                            "Feature importance SD", "Compound", "Dose"))
 

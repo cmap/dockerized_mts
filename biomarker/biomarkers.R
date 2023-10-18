@@ -56,7 +56,7 @@ if (length(drc_path == 1)) {
     dplyr::select(-auc) %>%
     tidyr::pivot_longer(cols = c("log2.auc", "log2.ic50"),
                         names_to = "pert_dose", values_to = "response") %>%
-    dplyr::mutate(pert_dose = as.character(pert_dose)) %>%
+    dplyr::mutate(pert_dose = as.character(pert_dose),pert_time = as.character(pert_time)) %>%
     dplyr::filter(is.finite(response)) %>%
     dplyr::rename(pert_iname = varied_iname, pert_id = varied_id)
 } else {
@@ -69,7 +69,7 @@ if (length(lfc_path) == 1) {
   LFC <- data.table::fread(lfc_path) %>%
     dplyr::distinct(across(any_of(c("ccle_name", "culture", "pool_id", "pert_id", "pert_time",
                                     "pert_iname", "pert_dose", "pert_plate", "LFC", "LFC_cb")))) %>%
-    dplyr::mutate(pert_dose = as.character(pert_dose))
+    dplyr::mutate(pert_dose = as.character(pert_dose),pert_time = as.character(pert_time))
 
   if ("LFC_cb" %in% colnames(LFC)) {
     LFC %<>%
@@ -111,7 +111,8 @@ if (is.null(biomarker_file) || biomarker_file == "rep") {
 
 # get lineage principal components to use as confounder
 if (is.null(biomarker_file) || biomarker_file == "ge") {
-  LIN_PCs <- data.table::fread(paste0(biomarker_dir, "/linPCA.csv"))
+  LIN_PCs <- data.table::fread(paste0(biomarker_dir, "/linPCA.csv")) %>%
+    column_to_rownames("V1") %>% as.matrix()
   confounder_overlap <- intersect(rownames(LIN_PCs), rownames(qc_table))
   if (!is.null(qc_table)) LIN_PCs <- cbind(LIN_PCs[confounder_overlap, ], qc_table[confounder_overlap, ])
 }

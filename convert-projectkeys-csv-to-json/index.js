@@ -1,6 +1,20 @@
 const _ = require("underscore");
+const { ArgumentParser } = require('argparse');
 const fsPromises = require("fs/promises");
 const Buffer = require("buffer");
+
+const LEVELS = [
+    'inst_info',
+    'cell_info',
+    'QC_TABLE',
+    'LEVEL2_COUNT',
+    'LEVEL2_MFI',
+    'LEVEL3_LMFI',
+    'LEVEL4_LFC',
+    'LEVEL4_LFC_COMBAT',
+    'LEVEL5_LFC',
+    'LEVEL5_LFC_COMBAT'
+];
 
 /**
  *
@@ -89,21 +103,9 @@ const uniques= async function(projectKeys,fileName){
  * @param fileName
  * @returns {Promise<*>}
  */
-const levels = async function(projectKeys,fileName){
+const levels = async function(projectKeys,fileName, LEVELS){
     const outPath = fileName.replace(".json","_levels.json");
     const uniqueProjectKeys = uniqueProjects(projectKeys)
-    const LEVELS = [
-        'inst_info',
-        'cell_info',
-        'QC_TABLE',
-        'LEVEL2_COUNT',
-        'LEVEL2_MFI',
-        'LEVEL3_LMFI',
-        'LEVEL4_LFC',
-        'LEVEL4_LFC_COMBAT',
-        'LEVEL5_LFC',
-        'LEVEL5_LFC_COMBAT'
-    ];
     const projects = [];
     for (let index = 0; index < uniqueProjectKeys.length; index++) {
         const currentProject = uniqueProjectKeys[index];
@@ -254,16 +256,17 @@ const searchProjectPatterns = async function(projectKeys,fileName){
  * @param projectKeyPath
  * @returns {Promise<string>}
  */
-const doAll = async function(projectKeyPath){
+const doAll = async function(projectKeyPath,args){
     const promises = [];
     const projKeys = await fsPromises.readFile(projectKeyPath,'utf-8');
     const projectKeys = JSON.parse(projKeys);
+    const LEVELS = args.levels.split(',');
     detectCombinations(projectKeys)
 
     promises.push(uniqueProjectsWithSearch(projectKeys,projectKeyPath));
     promises.push(uniqueProjectsWithCombinationSearch(projectKeys,projectKeyPath));
     promises.push(uniques(projectKeys,projectKeyPath));
-    promises.push(levels(projectKeys,projectKeyPath));
+    promises.push(levels(projectKeys,projectKeyPath,LEVELS));
     promises.push(features(projectKeys,projectKeyPath));
     promises.push(searchProjectPatterns(projectKeys,projectKeyPath));
     promises.push(uniqueProjectKeysWithPertPlates(projectKeys,projectKeyPath));
@@ -271,14 +274,25 @@ const doAll = async function(projectKeyPath){
     const p = await Promise.all(promises);
     return "done";
 }
-const allARGS = process.argv;
-if(allARGS.length != 3){
-    console.log("node projectKeys <compound_key_json>");
-    process.exit(1);
-}
+const parser = new ArgumentParser({
+    description: 'Argparse example'
+  });
+   
+parser.add_argument('-f', '--compound_key_file', { required: true, help: 'Compound key file' });
+parser.add_argument('-l', '--levels', { default: LEVELS.join(','), help: 'Comma separated list of Levels' });
 
-const projectKey = allARGS[2];
-const p = doAll(projectKey);
+const args=parser.parse_args()
+console.log(args.levels)
+
+// const allARGS = process.argv;
+// if(allARGS.length != 3){
+//     console.log("node projectKeys <compound_key_json>");
+//     process.exit(1);
+// }
+
+const projectKey = args.compound_key_file;
+
+const p = doAll(projectKey,args);
 
 p.then(function(data){
     console.log(data);
