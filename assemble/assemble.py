@@ -53,11 +53,14 @@ def build_parser():
     parser.add_argument("-csv_filepath", "-csv", help="full path to csv", type=str,  required=True)
     parser.add_argument("-assay_type", "-at", help="assay data was profiled in",
                         type=str, required=False)
+    parser.add_argument("-beadset", "-bs", help="Bead set used in detection",
+                        type=str, default=None, required=False)
     parser.add_argument("-plate_map_path", "-pmp",
                         help="path to file containing plate map describing perturbagens used", type=str, required=False)
     parser.add_argument("-map_src_plate", "-map",
                         help="Pert Plate with replicate map name. Searches database, using API KEY environment variable",
                         type=str, required=False)
+
 
     # These arguments are optional. Some may be superfluous now and might be removed.
     parser.add_argument("-verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
@@ -117,8 +120,14 @@ def main(args, all_perturbagens=None, assay_plates=None):
     prism_replicate_name = os.path.basename(args.csv_filepath).rsplit(".", 1)[0]
     (_, assay, tp, replicate_number, bead) = prism_replicate_name.rsplit("_")
 
-    if bead is not None and args.assay_type is None:
-        api_call = os.path.join('https://api.clue.io/api', 'beadset', bead)
+    if args.beadset:
+        beadset = args.beadset
+    else:
+        beadset = bead
+
+
+    if beadset is not None and args.assay_type is None:
+        api_call = os.path.join('https://api.clue.io/api', 'beadset', beadset)
         db_entry = requests.get(api_call)
         args.assay_type = json.loads(db_entry.text)['assay_variant']
 
@@ -151,7 +160,7 @@ def main(args, all_perturbagens=None, assay_plates=None):
         pert.validate_properties(pert_column_metadata_fields)
 
     #read actual data from relevant csv files, associate it with davepool ID
-    prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type, api_url=api_url)
+    prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type, beadset, api_url=api_url)
 
     #prism_cell_list = prism_metadata.build_prism_cell_list(cp, cell_set_file)
 

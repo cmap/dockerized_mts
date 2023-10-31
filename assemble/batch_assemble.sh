@@ -29,6 +29,10 @@ while test $# -gt 0; do
       shift # past argument
       ASSAY_TYPE="$1"
       ;;
+    -beadset|--beadset)
+      shift # past argument
+      BEADSET="$1"
+      ;;
     --default)
       DEFAULT=YES
       ;;
@@ -90,6 +94,11 @@ args=(
 if [[ -n $DEV ]]
 then
   args+=(--dev)
+fi
+
+if [[ -n $BEADSET ]]
+then
+  args+=(--beadset $BEADSET)
 fi
 
 echo python /clue/bin/assemble/assemble.py "${args[@]}"
