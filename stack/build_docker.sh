@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 #change the version number for each new build
-docker build --platform linux/amd64 -t prismcmap/stack:latest -t prismcmap/stack:v0.2.0 --rm=true .
+docker build --platform linux/amd64 -t prismcmap/stack:develop --rm=true .
