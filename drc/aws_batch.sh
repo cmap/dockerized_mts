@@ -42,10 +42,10 @@ args=(
   -o "${out}"
 )
 
-if [[ ! -z $screen ]]
-then
-  args+=(-s "${screen}")
-fi
+# if [[ ! -z $screen ]]
+# then
+#   args+=(-s "${screen}")
+# fi
 
 echo "${data}" "${out}"
 if [[ "$pert_id" == "DMSO" ]]
