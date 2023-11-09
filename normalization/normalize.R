@@ -13,7 +13,7 @@ parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default
 parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
 parser$add_argument("-n", "--name", default="", help="Build name. Default is none")
 parser$add_argument("-x", "--exclude_bcids", default=NULL, help="comma separated values of control barcode ids to exclude from normalization")
-parser$add_argument("-r", "--remove_instances", default=NULL, help"comma seperated values of instances to filter from level3 onwards")
+parser$add_argument("-r", "--remove_instances", default=NULL, help="comma seperated values of instances to filter from level3 onwards")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
