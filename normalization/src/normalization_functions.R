@@ -52,7 +52,7 @@ extract_baseplate <- function(instinfo, base_string="BASE",inst_column = "prism_
 build_master_logMFI <- function(raw_matrix, inst_info, cell_info, count_table,
                                 data_col = "logMFI"){
   
-  master_logMFI = log2(raw_matrix) %>%
+  master_logMFI = log2(raw_matrix + 1) %>%
     reshape2::melt(varnames = c("rid", "profile_id"), value.name = data_col) %>%
     dplyr::filter(is.finite(logMFI)) %>%
     dplyr::inner_join(cell_info) %>%
