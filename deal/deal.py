@@ -10,7 +10,7 @@ import glob
 import logging
 import argparse
 import pandas as pd
-from cmapPy.pandasGEXpress.parse import parse
+# from cmapPy.pandasGEXpress.parse import parse
 
 logger = logging.getLogger('deal')
 CTL_TYPES = ['ctl_vehicle']
@@ -44,6 +44,12 @@ build_contents_dict = {
     },
     'LEVEL3_LMFI': {
         'search_pattern': '*_LEVEL3_LMFI*.csv',
+        'type': 'data',
+        'annotated': True,
+        'format': 'csv'
+    },
+    'LEVEL3_NORMALIZED_COUNTS': {
+        'search_pattern': '*_LEVEL3_NORMALIZED_COUNTS*.csv',
         'type': 'data',
         'annotated': True,
         'format': 'csv'
@@ -85,7 +91,7 @@ def build_parser():
                         help='Comma separated list of col names to create sig_ids if not present',
                         default='pert_plate,culture,pert_id,pert_idose,pert_time',
                         )
-    # parser.add_argument('--ignore_missing', action="store_true", default=False)
+    parser.add_argument('--ignore_missing', action="store_true", default=False)
     parser.add_argument('--out', '-o', help='Output for collated build')
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true",
                         default=False)
@@ -178,7 +184,10 @@ def main(args):
         dl_dict = build_contents_dict[key]
         proj_dir = os.path.join(outpath, project, 'data')
         if key == 'inst_info':
-            inst = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0],
+            file_paths = glob.glob(os.path.join(build_path, dl_dict['search_pattern']))
+            if args.ignore_missing and len(file_paths) < 1:
+                return
+            inst = pd.read_csv(file_paths[0],
                                sep='\t',
                                dtype={'pert_dose': 'str', 'pert_idose': 'str'}
                                )
@@ -193,6 +202,9 @@ def main(args):
                 os.path.join(proj_dir, '{}_cell_info.txt'.format(project))
             )
         elif key == 'QC_TABLE':
+            file_paths = glob.glob(os.path.join(build_path, dl_dict['search_pattern']))
+            if args.ignore_missing and len(file_paths) < 1:
+                return
             inst = pd.read_csv(
                 glob.glob(os.path.join(build_path, build_contents_dict['inst_info']['search_pattern']))[0],
                 sep='\t',
@@ -206,6 +218,9 @@ def main(args):
                              )
             qc.loc[qc['prism_replicate'].isin(preps)].to_csv(os.path.join(proj_dir, '{}_{}.csv'.format(project, key)))
         else:
+            file_paths = glob.glob(os.path.join(build_path, dl_dict['search_pattern']))
+            if args.ignore_missing and len(file_paths) < 1:
+                return
             data = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0])
             slice_and_write_project(data, key, project, outpath, args)
 

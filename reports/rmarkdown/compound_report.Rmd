@@ -3,6 +3,7 @@ params:
   data_dir: "/Users/shiker/Documents/trouble_shoot/aps001/aps001_validation_compounds/APS001_VALIDATION_COMPOUNDS/PAPS001/BRD-K51313569"
   comp: "BRD-K51313569"
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
+  lfc_five_pattern: "LEVEL5_LFC_COMBAT"
 output:
   html_document:
     toc: false
@@ -29,7 +30,7 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 
 ```{r preprocessing, include=F}
 # file paths
-lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+lfc_path <- list.files(params$data_dir, params$lfc_five_pattern, full.names = T)
 drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
 inst_info <- data.table::fread(list.files(file.path(dirname(dirname(params$data_dir)), "data"), pattern = "inst_info", full.names = T)) 

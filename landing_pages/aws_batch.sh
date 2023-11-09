@@ -30,6 +30,14 @@ while test $# -gt 0; do
       shift
       val_link=$1
       ;;
+    -qc| --no_mts_qc)
+      shift
+      no_mts_qc=$1
+      ;;
+    -bc| --no_batch_correct)
+      shift
+      no_batch_correct=$1
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -42,6 +50,11 @@ done
 combination=${combination:-0}
 echo $combination
 
+no_mts_qc=${no_mts_qc:-0}
+echo no_mts_qc
+
+no_batch_correct=${no_batch_correct:-0}
+echo no_batch_correct
 
 batch_index=0
 if [[ ! -z $projects ]]
@@ -72,7 +85,20 @@ args=(
   -b "${build_name}"
   -l "${val_link}"
   -c "${combination}"
+  -qc "${no_mts_qc}"
+  -bc "${no_batch_correct}"
 )
+
+#if [[ ! -z $no_mts_qc ]]
+#then
+#  args+=(--no_mts_qc)
+#fi
+#
+#if [[ ! -z $no_batch_correct ]]
+#then
+#  args+=(--no_batch_correct)
+#fi
+#echo no_batch_correct
 
 echo Rscript /render_reports.R "${args[@]}"
 Rscript /render_reports.R "${args[@]}"

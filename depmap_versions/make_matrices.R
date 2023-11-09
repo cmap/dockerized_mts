@@ -10,6 +10,8 @@ parser <- ArgumentParser()
 parser$add_argument("-p", "--project_dir", default="", help="Project directory")
 parser$add_argument("-o", "--out", default="", help="Output directory")
 parser$add_argument("-n", "--name", default="", help = "Build name. Default is none")
+parser$add_argument("-lp", "--lfc_pattern", default="LEVEL5_LFC_COMBAT", help = "LFC file search pattern")
+parser$add_argument("-lc", "--lfc_column", default="LFC_cb", help = "LFC column to use")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
@@ -17,9 +19,11 @@ args <- parser$parse_args()
 proj_dir <- args$project_dir
 out_dir <- args$out
 build_name <- args$name
+lfc_pattern <- args$lfc_pattern
+lfc_column <- args$lfc_column
 
 # get paths to LFC and DRC
-lfc_path <- list.files(proj_dir, pattern = "LEVEL5_LFC_COMBAT", full.names = T)
+lfc_path <- list.files(proj_dir, pattern = lfc_pattern, full.names = T)
 stopifnot(length(lfc_path) == 1)  # need LFC
 drc_path <- list.files(proj_dir, pattern = "DRC_TABLE", full.names = T)
 
@@ -31,7 +35,7 @@ lfc_tab <- data.table::fread(lfc_path) %>%
 print("line 31")
 # pivot
 lfc_mat <- reshape2::acast(lfc_tab, ccle_name ~ pert_iname + pert_idose,
-                           value.var = "LFC_cb",
+                           value.var = lfc_column,
                            fun.aggregate = function(x) mean(x, na.rm = TRUE))
 # write LFC
 write.csv(lfc_mat, paste0(out_dir, "/", build_name, "_LFC_MATRIX.csv"))

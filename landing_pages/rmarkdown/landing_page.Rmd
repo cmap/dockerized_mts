@@ -5,6 +5,8 @@ params:
   build_name: PAPS 
   val_link: ~/Desktop/cps005_validation_compounds/CPS005_VALIDATION_COMPOUNDS
   combination_project: TRUE
+  run_mts_qc: TRUE
+  batch_correct: TRUE
 title: "`r params$project` Overview"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -32,6 +34,8 @@ data_filesp <- paste0("./", data_files)
 data_files <- paste0("./", params$project_name,"/","data","/",data_files)
 proj_length <- length(strsplit(params$project_name, split = "_", fixed = T)[[1]])
 names(data_files) <- stringr::word(data_filesp, proj_length + 1, -2, sep = fixed("_"))
+
+if (params$batch_correct) {
 file_text <- c(
   "QC" = "QC metrics",
   "LEVEL3_LMFI" = "Raw and normalized fluorescence values",
@@ -39,6 +43,15 @@ file_text <- c(
   "LEVEL5_LFC_COMBAT" = "Replicate-collapsed viability data",
   "DRC" = "Dose response curve data"
 )
+} else {
+  file_text <- c(
+  "QC" = "QC metrics",
+  "LEVEL3_NORMALIZED_COUNTS" = "Normalized counts",
+  "LEVEL4_LFC" = "Viability data",
+  "LEVEL5_LFC" = "Replicate-collapsed viability data",
+  "DRC" = "Dose response curve data"
+)
+}
 
 biomarker_text <- c(
   "continuous" = "Continuous associations",
@@ -79,11 +92,14 @@ names(name_map) <- stringr::str_replace_all(inst$pert_id, pattern = fixed("|"), 
 # get paths to html files
 plates <- list.dirs(params$data_dir, recursive = F)
 report_list <- list()
+print(plates)
 for (i in 1:length(plates)) {
-
+  print(plates[[i]])
   plate <- stringr::word(plates[[i]], -1, sep = "/")
+  print(plate)
   if (plate == "data") next
   report_files <- list.files(plates[[i]], pattern = "_report.html", recursive = T)
+  print(report_files)
   if (length(report_files) > 0) {
     report_list[[plate]] <-  paste0("./", params$project_name, "/", plate, "/", report_files)
   }
@@ -108,7 +124,7 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 <img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/>
 </a>
 <a href="https://www.theprismlab.org/">
-<img src="misc/prism_logo_tagline_side.png" width=300px align="right"/>
+<img src="misc/prism_logo_tagline_side.png" width=250px align="right"/>
 </a>
 <br><br><br>
 
@@ -120,7 +136,7 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 2. QC table containing all the dynamic range and error rate statistics, available: `Compound Data > QC metrics`.
 3. Normalized (log-fold change) cell-viability values with respect to negative control (`r neg_control`), available in long-table format (`Compound Data > Viability data`) and (`Compound Data > Replicate collapsed viability data`) for median-collapsed values across cell lines.
 4. Dose-response parameters for the compound, available: `Compound Data > Dose-response curve data`, and dose-response curves for each treatment/cell line in `Dose-Response Curves`. **Please note:** we are sometimes unable to fit a dose response curve for some cell lines so they will not be included in this file.
-5. Biomarker and correlation analysis using omics and genetic dependency data from [depmap.org](https://depmap.org/portal/download/all/). Biomarkers are identified by selecting the genomic features that best explain the observed profile of sensitivity in the PRISM cell line panel. Univariate analysis for continuous and discrete variables at `Biomarker Data > Continuous associations` and `Discrete associations` respectively. Multivariate analysis available at `Biomarker Data > Random forest features` and with model level statistics at `Biomarker Data > Random forest model statistics`.
+5. Biomarker and correlation analysis using omics and genetic dependency data from [depmap.org](https://depmap.org/portal/download/all/) (DepMap Public 23Q2). Biomarkers are identified by selecting the genomic features that best explain the observed profile of sensitivity in the PRISM cell line panel. Univariate analysis for continuous and discrete variables at `Biomarker Data > Continuous associations` and `Discrete associations` respectively. Multivariate analysis available at `Biomarker Data > Random forest features` and with model level statistics at `Biomarker Data > Random forest model statistics`.
 
 Explanations of the columns within each file are available on [GitHub](https://github.com/cmap/dockerized_mts/blob/master/info/ColumnHeaders.md)
 
@@ -328,11 +344,12 @@ download_files %<>% add_row(
 write.csv(download_files, file.path(params$data_dir, "data", "downloads.csv"), row.names=FALSE)
 ```
 
+
 ## QC Information
 
 For each cell line screened we compute the error rate, which is based on the overlap between positive and negative control distributions and dynamic range, which is the difference between positive and negative control medians (see Data Processing section for more details). These values are plotted below on the left with cell line replicate pairs that pass QC shown in blue and failing pairs in red. On the right the percentage and number of passing lines is shown for each plate relevant to this project. The complete list of these statistics, including other measures of spread, is tabulated and presented below.
 
-```{r qc, fig.width=12}
+```{r qc, fig.width=12,eval=params$run_mts_qc}
 # aesthetics
 theme_set(theme_bw())
 dodger = position_dodge(width = 0.9)
