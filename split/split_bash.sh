@@ -44,6 +44,10 @@ while test $# -gt 0; do
       shift
       BUILD_DIR=$1
       ;;
+    -sp|--search_patterns)
+      shift
+      SEARCH_PATTERNS=$1
+      ;;
     -v| --verbose)
       shift
       VERBOSE=true
@@ -97,6 +101,13 @@ then
   )
 fi
 
+if [[ ! -z $SEARCH_PATTERNS ]]
+then
+  args+=(
+    -sp "$SEARCH_PATTERNS"
+  )
+fi
+
 if [[ "$PERT" == "DMSO" ]]
 then
    echo "Skipping DMSO"
@@ -104,6 +115,7 @@ else
   echo python /clue/bin/split.py "${args[@]}"
   python /clue/bin/split.py "${args[@]}"
 fi
+
 
 
 exit_code=$?
