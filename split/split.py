@@ -20,6 +20,10 @@ def build_parser():
         help='Comma separated list of col names to create sig_ids if not present',
         default='pert_plate,culture,pert_id,pert_idose,pert_time',
         )
+    parser.add_argument('--search_patterns', '-sp',
+                        help='Comma separated list of search patterns',
+                        default='LEVEL4_LFC_COMBAT,LEVEL5_LFC_COMBAT',
+                        )
     parser.add_argument('--out', '-o', help='Output for project level folders', required=True)
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
 
@@ -68,85 +72,49 @@ def make_compound_slice(data, out, project, pert_plate, pert, outfile_prefix):
     )
 
 def read_build_file(search_pattern, args):
-    fstr = os.path.join(args.build_path, search_pattern)
+    fstr = os.path.join(args.build_path, "*" + search_pattern +"*")
     fmatch = glob.glob(fstr)
-    assert (len(fmatch) == 1) , "Too many files found: {}".format(fmatch)
+    assert (len(fmatch) == 1), "Incorrect number of files found: {}".format(fmatch)
     return pd.read_csv(fmatch[0])
 
 def main(args):
-    try:
-        fstr = os.path.join(args.build_path, '*LEVEL4_LFC_COMBAT*')
-        fmatch = glob.glob(fstr)
-        assert (len(fmatch) == 1) , "Too many files found"
-        level4 = read_build_file('*LEVEL4_LFC_COMBAT*.csv', args)
-        level5 = read_build_file('*LEVEL5_LFC_COMBAT*.csv', args)
-
-        if 'sig_id' not in level5.columns:
-            level5 = make_sig_id(level5, args.sig_id_cols)
-
-    except IndexError as err:
-        logger.error(err)
-        logger.error("Index Error: No file found Check --build_path arg")
-        raise
-
-    out = args.out
+    patterns = args.search_patterns.split(',')
 
     if all([args.pert, args.pert_plate, args.project]):
-        make_compound_slice(
-            data=level4,
-            out = args.out,
-            project = args.project,
-            pert_plate = args.pert_plate,
-            pert = args.pert,
-            outfile_prefix = 'LEVEL4_LFC_COMBAT'
-        )
-
-        make_compound_slice(
-            data=level5,
-            out = args.out,
-            project = args.project,
-            pert_plate = args.pert_plate,
-            pert = args.pert,
-            outfile_prefix = 'LEVEL5_LFC_COMBAT'
-        )
-
+        for pattern in patterns:
+            data = read_build_file(pattern, args)
+            make_compound_slice(
+                data=data,
+                out = args.out,
+                project = args.project,
+                pert_plate = args.pert_plate,
+                pert = args.pert,
+                outfile_prefix = pattern
+            )
     else:
-        #compound_key = pd.read_csv(glob.glob(os.path.join(args.build_path, '*compound_key.csv'))[0])
-        logger.debug("Projects: {}".format( level4.x_project_id.unique()))
-        for project in level4.x_project_id.unique():
+        compound_key = pd.read_csv(glob.glob(os.path.join(args.build_path, '*compound_key.csv'))[0])
+        logger.debug("Projects: {}".format(compound_key.x_project_id.unique()))
+        for project in compound_key.x_project_id.unique():
             logger.debug(project)
-
-            project_data = level4.loc[
-                level4['x_project_id'] == project
+            project_data = compound_key.loc[
+                compound_key['x_project_id'] == project
             ]
-
             logger.debug("Project data size: {}".format(len(project_data)))
-
             project_perts = project_data['pert_id'].unique()
-
             logger.info("\nPROJECT: {} \nPROJECT PERT_IDS: {}\n".format(project, list(project_perts)))
             for pert in project_perts:
                 logger.debug(pert)
                 for pert_plate in project_data[project_data['pert_id'] == pert].pert_plate.unique():
-                    make_compound_slice(
-                        data = project_data,
-                        out = args.out,
-                        project = project,
-                        pert_plate = pert_plate,
-                        pert = pert,
-                        outfile_prefix = 'LEVEL4_LFC_COMBAT'
-                    )
-                    make_compound_slice(
-                        data=level5,
-                        out = args.out,
-                        project = project,
-                        pert_plate = pert_plate,
-                        pert = pert,
-                        outfile_prefix = 'LEVEL5_LFC_COMBAT'
-                    )
-
-
-
+                    for pattern in patterns:
+                        data = read_build_file(pattern, args)
+                        make_compound_slice(
+                            data=data,
+                            out=args.out,
+                            project=project,
+                            pert_plate=pert_plate,
+                            pert=pert,
+                            outfile_prefix=pattern
+                        )
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])

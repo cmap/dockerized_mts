@@ -18,6 +18,14 @@ while test $# -gt 0; do
       shift
       output_dir=$1
       ;;
+    -lp| --lfc_pattern)
+      shift
+      lfc_pattern=$1
+      ;;
+    -lc| --lfc_column)
+      shift
+      lfc_column=$1
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -47,6 +55,17 @@ args=(
   -o "${output_dir}"
   -n "${build_name}"
 )
+
+
+if [[ ! -z $lfc_pattern ]]
+then
+  args+=(-lp "${lfc_pattern}")
+fi
+
+if [[ ! -z $lfc_column ]]
+then
+  args+=(-lc "${$lfc_column}")
+fi
 
 if [[ "$sanitized_pert_id" == "DMSO" ]]
 then
