@@ -44,6 +44,7 @@ pos_control <- ifelse(screen == "APS", "Puromycin", "Bortezomib")
 # read in LFC
 if (length(lfc_path) == 1) {
   LFC <- data.table::fread(lfc_path)
+  LFC$LFC_cb = LFC$LFC
 } else {
   message("No LFC file found")
   quit(save = "no")
