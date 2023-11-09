@@ -57,7 +57,8 @@ build_master_logMFI <- function(raw_matrix, inst_info, cell_info, count_table,
     dplyr::filter(is.finite(logMFI)) %>%
     dplyr::inner_join(cell_info) %>%
     dplyr::inner_join(inst_info) %>%
-    dplyr::inner_join(count_table)
+    dplyr::inner_join(count_table) %>%
+    dplyr::mutate(instance_id = paste(profile_id, ccle_name, sep=":"))
   
   return(master_logMFI)
 }

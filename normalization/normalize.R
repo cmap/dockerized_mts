@@ -13,6 +13,7 @@ parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default
 parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
 parser$add_argument("-n", "--name", default="", help="Build name. Default is none")
 parser$add_argument("-x", "--exclude_bcids", default=NULL, help="comma separated values of control barcode ids to exclude from normalization")
+parser$add_argument("-r", "--remove_instances", default=NULL, help"comma seperated values of instances to filter from level3 onwards")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
@@ -63,9 +64,26 @@ raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 count_table <- build_count_table(count_matrix)
 master_logMFI <- build_master_logMFI(raw_matrix, inst_info, cell_info, count_table)
 
+# remove barcodes if desired
 if (!is.null(args$exclude_bcids)){
     exclude_bcids = unlist(strsplit(args$exclude_bcids, ","))
     master_logMFI %<>% dplyr::filter(!(barcode_id %in% exclude_bcids))
+}
+
+# Check if there are any instances to remove
+if (!is.null(args$remove_instances) && nzchar(args$remove_instances)) {
+    remove_instances <- unlist(strsplit(args$remove_instances, ","))
+    # Extract the instance_ids to remove
+    removed_instance_ids <- master_logMFI$instance_id[master_logMFI$instance_id %in% remove_instances]
+    
+    if (length(removed_instance_ids) > 0) {
+        # Write the removed instance_ids to a text file
+        writeLines(removed_instance_ids, paste0(out_dir, "/removed_instance_ids.txt"))
+        # Filter out the instances from master_logMFI
+        master_logMFI <- master_logMFI[!master_logMFI$instance_id %in% remove_instances, ]
+    } else {
+        print("No instance_ids matched the criteria for removal.")
+    }
 }
 
 # create barcode tables
