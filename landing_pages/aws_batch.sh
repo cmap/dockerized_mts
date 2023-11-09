@@ -89,17 +89,6 @@ args=(
   -bc "${no_batch_correct}"
 )
 
-#if [[ ! -z $no_mts_qc ]]
-#then
-#  args+=(--no_mts_qc)
-#fi
-#
-#if [[ ! -z $no_batch_correct ]]
-#then
-#  args+=(--no_batch_correct)
-#fi
-#echo no_batch_correct
-
 echo Rscript /render_reports.R "${args[@]}"
 Rscript /render_reports.R "${args[@]}"
 
