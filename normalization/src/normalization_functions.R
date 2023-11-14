@@ -12,6 +12,8 @@ library(hdf5r)
 library(reshape2)
 library(splitstackshape)
 library(R.utils)
+library(httr)
+library(jsonlite)
 
 #---- Reading ----
 # HDF5 file reader
@@ -172,4 +174,44 @@ normalize_base <- function(df, barcodes, threshold) {
     dplyr::select(-logMFI)
   
   return(normalized)
+}
+
+make_request_url_filter <- function(endpoint_url, where=NULL) {
+  if (!is.null(where)) {
+    # Manually construct the filter string
+    filter_str <- sprintf('{"where":{"%s":"%s"}}', names(where), where[[1]])
+    
+    # Manually replace characters to match exact URL encoding
+    filter_encoded <- gsub("\\{", "%7B", filter_str)
+    filter_encoded <- gsub("\\}", "%7D", filter_encoded)
+    filter_encoded <- gsub(":", "%3A", filter_encoded)
+    filter_encoded <- gsub("\"", "%22", filter_encoded)
+    
+    # Construct the full URL
+    request_url <- sprintf('%s?filter=%s', gsub("/$", "", endpoint_url), filter_encoded)
+    return(request_url)
+  } else {
+    return(endpoint_url)
+  }
+}
+
+
+get_data_from_db <- function(endpoint_url, user_key, where=NULL) {
+  # Construct the request URL using the make_request_url_filter function
+  request_url <- make_request_url_filter(endpoint_url, where)
+  cat("Request URL:", request_url, "\n")  # Print the request URL for verification
+  
+  # Make the HTTP GET request using the httr package
+  response <- GET(url = request_url, add_headers(user_key = user_key))
+  
+  # Check if the request was successful
+  if (response$status_code == 200) {
+    # Parse and return the JSON content from the response
+    return(fromJSON(content(response, "text")))
+  } else {
+    # Handle errors
+    cat("Error in the request: ", response$status_code, "\n")
+    cat("Response content: ", content(response, "text"), "\n")
+    stop("Request failed")
+  }
 }

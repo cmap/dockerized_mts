@@ -22,6 +22,8 @@ base_dir <- args$base_dir
 out_dir <- args$out
 assay <- args$assay
 build_name <- args$name
+endpoint_url <- "https://dev-api.clue.io/api/data"
+user_key <- Sys.getenv("API_KEY")
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
@@ -35,7 +37,6 @@ path_inst_info <- list.files(base_dir, pattern = "*_inst_info*", full.names = T)
 #---- Load the data ----
 
 # read in logMFI data
-# TODO: get raw_matrix for count instead of MFI
 print(path_data)
 count_matrix <- read_hdf5(path_count)
 rownames(count_matrix) <- paste0(rownames(count_matrix), "_", assay)
@@ -64,23 +65,31 @@ raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 count_table <- build_count_table(count_matrix)
 master_logMFI <- build_master_logMFI(raw_matrix, inst_info, cell_info, count_table)
 
-# remove barcodes if desired
-if (!is.null(args$exclude_bcids)){
+# get build metadata
+where_clause <- list(screen = build_name)
+request_url <- make_request_url_filter(endpoint_url, where_clause)
+build_data <- get_data_from_db(endpoint_url, user_key, where_clause)
+
+
+# remove barcodes if necessary
+exclude_bcids <- build_data$exclude_bcids[[1]]
+if (!is.null(exclude_bcids)){
     exclude_bcids = unlist(strsplit(args$exclude_bcids, ","))
     master_logMFI %<>% dplyr::filter(!(barcode_id %in% exclude_bcids))
 }
 
-# Check if there are any instances to remove
-if (!is.null(args$remove_instances) && nzchar(args$remove_instances)) {
-    remove_instances <- unlist(strsplit(args$remove_instances, ","))
+# Remove instances if necessary
+remove_instances <- build_data$remove_instances[[1]]
+if (!is.null(remove_instances)) {
     # Extract the instance_ids to remove
     removed_instance_ids <- master_logMFI$instance_id[master_logMFI$instance_id %in% remove_instances]
     
     if (length(removed_instance_ids) > 0) {
         # Write the removed instance_ids to a text file
-        writeLines(removed_instance_ids, paste0(out_dir, "/removed_instance_ids.txt"))
+        writeLines(removed_instance_ids, paste0(out_dir, "/", build_name, "_removed_instance_ids.txt"))
         # Filter out the instances from master_logMFI
-        master_logMFI <- master_logMFI[!master_logMFI$instance_id %in% remove_instances, ]
+        master_logMFI %<>% dplyr::filter(!(instance_id %in% remove_instances))
+        #master_logMFI <- master_logMFI[!master_logMFI$instance_id %in% remove_instances, ]
     } else {
         print("No instance_ids matched the criteria for removal.")
     }
@@ -90,7 +99,9 @@ if (!is.null(args$remove_instances) && nzchar(args$remove_instances)) {
 barcodes <- master_logMFI %>%
   dplyr::filter(pool_id == "CTLBC")
 
-
+# Add cellset information
+cell_set <- build_data$assay_type[1]
+master_logMFI$cell_set <- cell_set
 
 if (nrow(barcodes) == 0) stop("No control barcodes detected. Unable to normalize")
 
