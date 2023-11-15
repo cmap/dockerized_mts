@@ -20,7 +20,7 @@ base_dir <- args$base_dir
 out_dir <- args$out
 assay <- args$assay
 build_name <- args$name
-endpoint_url <- "https://dev-api.clue.io/api/data"
+endpoint_url <- Sys.getenv("API_URL")
 user_key <- Sys.getenv("API_KEY")
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
