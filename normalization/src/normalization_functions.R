@@ -177,6 +177,7 @@ normalize_base <- function(df, barcodes, threshold) {
 }
 
 make_request_url_filter <- function(endpoint_url, where=NULL) {
+  full_url <- paste0(endpoint_url, "/api/data/")
   if (!is.null(where)) {
     # Manually construct the filter string
     filter_str <- sprintf('{"where":{"%s":"%s"}}', names(where), where[[1]])
@@ -188,17 +189,18 @@ make_request_url_filter <- function(endpoint_url, where=NULL) {
     filter_encoded <- gsub("\"", "%22", filter_encoded)
     
     # Construct the full URL
-    request_url <- sprintf('%s?filter=%s', gsub("/$", "", endpoint_url), filter_encoded)
+    request_url <- sprintf('%s?filter=%s', gsub("/$", "", full_url), filter_encoded)
     return(request_url)
   } else {
-    return(endpoint_url)
+    return(full_url)
   }
 }
 
 
 get_data_from_db <- function(endpoint_url, user_key, where=NULL) {
   # Construct the request URL using the make_request_url_filter function
-  request_url <- make_request_url_filter(endpoint_url, where)
+  full_url = paste0(endpoint_url, "/api/data/")
+  request_url <- make_request_url_filter(full_url, where)
   cat("Request URL:", request_url, "\n")  # Print the request URL for verification
   
   # Make the HTTP GET request using the httr package
