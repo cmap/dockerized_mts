@@ -199,8 +199,7 @@ make_request_url_filter <- function(endpoint_url, where=NULL) {
 
 get_data_from_db <- function(endpoint_url, user_key, where=NULL) {
   # Construct the request URL using the make_request_url_filter function
-  full_url = paste0(endpoint_url, "/api/data/")
-  request_url <- make_request_url_filter(full_url, where)
+  request_url <- make_request_url_filter(endpoint_url, where)
   cat("Request URL:", request_url, "\n")  # Print the request URL for verification
   
   # Make the HTTP GET request using the httr package
