@@ -107,10 +107,10 @@ def process_data(data, plates):
                         indicator=True)
 
     # Filter out the rows that are present in both dataframes
-    level3_data_filtered = merged[merged['__merge'] == 'left_only'].drop(columns=['_merge'])
+    level3_data_filtered = merged[merged['_merge'] == 'left_only'].drop(columns=['_merge'])
 
     # Filter the rows that are present in both dataframes to get the values that are filtered out
-    filtered_out_values = merged[merged['__merge'] == 'both'].drop(columns=['_merge'])
+    filtered_out_values = merged[merged['_merge'] == 'both'].drop(columns=['_merge'])
 
     return level3_data_filtered, filtered_out_values
 
