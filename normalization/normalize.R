@@ -12,6 +12,7 @@ parser$add_argument("-b", "--base_dir", default="", help="Input Directory")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output path. Default is working directory")
 parser$add_argument("-a", "--assay", default="", help="Assay string (e.g. PR500)")
 parser$add_argument("-n", "--name", default="", help="Build name. Default is none")
+parser$add_argument("-c", "--api_call", default=FALSE, help="Get build metadata from clue API")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
@@ -20,8 +21,9 @@ base_dir <- args$base_dir
 out_dir <- args$out
 assay <- args$assay
 build_name <- args$name
-endpoint_url <- Sys.getenv("API_URL")
-user_key <- Sys.getenv("API_KEY")
+api_call <- args$api_call
+
+cat("API_CALL: ", {api_call}, "\n")
 
 if (!dir.exists(out_dir)) {dir.create(out_dir, recursive = T)}
 
@@ -63,42 +65,58 @@ raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 count_table <- build_count_table(count_matrix)
 master_logMFI <- build_master_logMFI(raw_matrix, inst_info, cell_info, count_table)
 
-# get build metadata
-where_clause <- list(screen = build_name)
-request_url <- make_request_url_filter(endpoint_url, where_clause)
-build_data <- get_data_from_db(endpoint_url, user_key, where_clause)
+# get build metadata if call can be made to clue API
+if (api_call) {
+  print("Making call to clue API....")
+  # Get url and credentials
+  endpoint_url <- Sys.getenv("API_URL")
+  cat("Endpoint URL: ", {endpoint_url}, "\n")
+  user_key <- Sys.getenv("API_KEY")
 
+  where_clause <- list(screen = build_name)
+  request_url <- make_request_url_filter(endpoint_url, where_clause)
+  build_data <- get_data_from_db(endpoint_url, user_key, where_clause)
 
-# remove barcodes if necessary
-exclude_bcids <- build_data$exclude_bcids[[1]]
-if (!is.null(exclude_bcids)){
-    master_logMFI %<>% dplyr::filter(!(barcode_id %in% exclude_bcids))
-}
+  # Add cellset information
+  cell_set <- build_data$assay_type[1]
+  master_logMFI$cell_set <- cell_set
 
-# Remove instances if necessary
-remove_instances <- build_data$remove_instances[[1]]
-if (!is.null(remove_instances)) {
+  # Remove BCIDs if necessary
+  exclude_bcids <- build_data$exclude_bcids[[1]]
+  if (!is.null(exclude_bcids)){
+    # Extract the BCIDs to remove
+    removed_bc_ids <- master_logMFI$barcode_id[master_logMFI$barcode_id %in% exclude_bcids]
+    cat("Removing barcodes ", {removed_bc_ids}, "\n")
+    if (length(removed_bc_ids) > 0){
+      # Write file of removed BCIDs
+      writeLines(removed_bc_ids, paste0(out_dir, "/", build_name, "_removed_bcids.txt"))
+      # Filter removed BCIDs from master_logMFI
+      master_logMFI %<>% dplyr::filter(!(barcode_id %in% removed_bc_ids))
+      }
+    }
+
+  # Remove instances if necessary
+  remove_instances <- build_data$remove_instances[[1]]
+  if (!is.null(remove_instances)) {
     # Extract the instance_ids to remove
     removed_instance_ids <- master_logMFI$instance_id[master_logMFI$instance_id %in% remove_instances]
-    
+    cat("Removing instances ", {removed_instance_ids}, "\n")
+
     if (length(removed_instance_ids) > 0) {
-        # Write the removed instance_ids to a text file
-        writeLines(removed_instance_ids, paste0(out_dir, "/", build_name, "_removed_instance_ids.txt"))
-        # Filter out the instances from master_logMFI
-        master_logMFI %<>% dplyr::filter(!(instance_id %in% remove_instances))
-        #master_logMFI <- master_logMFI[!master_logMFI$instance_id %in% remove_instances, ]
+      # Write the removed instance_ids to a text file
+      writeLines(removed_instance_ids, paste0(out_dir, "/", build_name, "_removed_instance_ids.txt"))
+      # Filter out the instances from master_logMFI
+      master_logMFI %<>% dplyr::filter(!(instance_id %in% remove_instances))
+      #master_logMFI <- master_logMFI[!master_logMFI$instance_id %in% remove_instances, ]
     } else {
         print("No instance_ids matched the criteria for removal.")
     }
+  }
 }
 
 # create barcode tables
 barcodes <- master_logMFI %>%
   dplyr::filter(pool_id == "CTLBC")
-
-# Add cellset information
-cell_set <- build_data$assay_type[1]
-master_logMFI$cell_set <- cell_set
 
 if (nrow(barcodes) == 0) stop("No control barcodes detected. Unable to normalize")
 
