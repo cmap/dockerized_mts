@@ -73,7 +73,7 @@ def remove_ic50_doses_from_biomarker(project_dir):
 
 
 def main(args):
-    # remove_ic50_from_drc_table(args.project_dir)
+    remove_ic50_from_drc_table(args.project_dir)
     delete_ic50_matrix_file(args.project_dir)
     remove_ic50_doses_from_biomarker(args.project_dir)
     return
