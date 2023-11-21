@@ -15,6 +15,8 @@ The dose response curve fitting module was revised substantially, motivated by e
 * Lineages subabbreviations and abbreviations using OncoTree notation
 * Gene Expression (GE) controlling for lineage is an avaialble continuous association feature 
 
+## EPS001
+* Removed IC50 values from Extended Day Data Processing
 
 ## MTS023, CPS009
 ***
