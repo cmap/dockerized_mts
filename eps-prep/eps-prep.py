@@ -30,22 +30,31 @@ def build_parser():
 Drops the ic50 column from the DRC_TABLE file, replaces file in place
 """
 def remove_ic50_from_drc_table(project_dir):
-    file = glob.glob(os.path.join(project_dir, "*", "data", "*DRC_TABLE*"))
-    assert(len(file) == 1)
+    search_path = os.path.join(project_dir, "*", "data", "*DRC_TABLE*")
+    file = glob.glob(search_path)
+    assert(len(file) == 1), f"Expected to find one file matching pattern: {search_path}"
     df = pd.read_csv(file[0])
-    df = df.drop(columns=['log2.ic50'])
-    df.to_csv(file[0], index=False)
-    return
+    if 'log2.ic50' in df.columns:
+        df = df.drop(columns=['log2.ic50'])
+        df.to_csv(file[0], index=False)
+        return
+    else:
+        print("IC50 columns not present")
 
 
 """
 Deletes the IC50_MATRIX file
 """
-def delete_ic50_matric_file(project_dir):
-    file = glob.glob(os.path.join(project_dir,"*", "data","*IC50_MATRIX*"))
-    assert(len(file) == 1)
-    os.remove(file[0])
-    return
+def delete_ic50_matrix_file(project_dir):
+    search_path = os.path.join(project_dir, "*", "data", "*IC50_MATRIX*")
+    file = glob.glob(search_path)
+    if len(file) == 0:
+        print("No IC50_MATRIX file found, skipping")
+        return
+    else:
+        assert(len(file) == 1), f"Expected to find one file matching pattern: {search_path}"
+        os.remove(file[0])
+        return
 
 """
 Removes all ic50 dose rows from biomarker files
@@ -64,8 +73,8 @@ def remove_ic50_doses_from_biomarker(project_dir):
 
 
 def main(args):
-    remove_ic50_from_drc_table(args.project_dir)
-    delete_ic50_matric_file(args.project_dir)
+    # remove_ic50_from_drc_table(args.project_dir)
+    delete_ic50_matrix_file(args.project_dir)
     remove_ic50_doses_from_biomarker(args.project_dir)
     return
 

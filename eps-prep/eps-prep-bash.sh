@@ -52,7 +52,7 @@ args=()
 if [[ ! -z $projects ]]
 then
     PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
-    DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"
+    DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/
 fi
 
 
@@ -60,6 +60,7 @@ args+=(
   -d "$DATA_DIR"
 )
 
+echo python /clue/bin/eps-prep.py "${args[@]}"
 python /clue/bin/eps-prep.py "${args[@]}"
 
 exit_code=$?
