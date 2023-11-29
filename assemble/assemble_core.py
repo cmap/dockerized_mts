@@ -60,7 +60,9 @@ def build_data_by_cell(cells, davepool_data_obj):
                 analyte_id = str(c.analyte_id).capitalize()
                 # Check if this analyte is already in use
                 if analyte_id in seen_analyte_ids:
-                    raise ValueError(f"{analyte_id} has been used twice, check the cell and beadset composition and resolve.")
+                    msg = f"{analyte_id} has been used twice, check the cell and beadset composition and resolve."
+                    logger.error(msg)
+                    raise ValueError(msg)
                 seen_analyte_ids.add(analyte_id)
 
                 cell_header_map[c] = headers.index(analyte_id)
