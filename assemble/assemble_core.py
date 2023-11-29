@@ -48,7 +48,6 @@ def build_data_by_cell(cells, davepool_data_obj):
     cell_to_count_data_map = {}
     count_wells = []
     seen_analyte_ids = set() # Track analyte_ids
-    duplicate_analyte_ids = set() # Track duplicates
 
     ld = [(cell_to_median_data_map, median_wells, davepool_data_obj.median_headers, davepool_data_obj.median_data),
           (cell_to_count_data_map, count_wells, davepool_data_obj.count_headers, davepool_data_obj.count_data)]
@@ -61,9 +60,10 @@ def build_data_by_cell(cells, davepool_data_obj):
                 analyte_id = str(c.analyte_id).capitalize()
                 # Check if this analyte is already in use
                 if analyte_id in seen_analyte_ids:
-                    duplicate_analyte_ids.add(analyte_id)
-                else:
-                    seen_analyte_ids.add(analyte_id)
+                    msg = f"{analyte_id} has been used twice, check the cell and beadset composition and resolve."
+                    logger.error(msg)
+                    raise ValueError(msg)
+                seen_analyte_ids.add(analyte_id)
 
                 cell_header_map[c] = headers.index(analyte_id)
             cell_data_map[c] = []
@@ -78,11 +78,6 @@ def build_data_by_cell(cells, davepool_data_obj):
                     datum = float('nan')
 
                 cell_data_map[c].append(datum)
-
-    if duplicate_analyte_ids:
-        msg = f"Duplicate analyte_id(s) detected: {', '.join(duplicate_analyte_ids)}, check the cell and beadset composition and resolve."
-        logger.error(msg)
-        raise ValueError(msg)
 
     return (DataByCell(cell_to_median_data_map, median_wells), DataByCell(cell_to_count_data_map, count_wells))
 
