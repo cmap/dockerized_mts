@@ -91,7 +91,7 @@ def check_for_duplicate_analytes(prism_cell_list):
     seen_analytes = set()
     duplicated_analytes = set()
     for i in range(0,len(prism_cell_list)):
-        analyte_id = df[i].analyte_id
+        analyte_id = prism_cell_list[i].analyte_id
         if analyte_id in seen_analytes:
             duplicated_analytes.add(analyte_id)
         else:
