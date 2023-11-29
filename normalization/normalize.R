@@ -73,7 +73,7 @@ if (api_call) {
   cat("Endpoint URL: ", {endpoint_url}, "\n")
   user_key <- Sys.getenv("API_KEY")
 
-  where_clause <- list(screen = build_name)
+  where_clause <- list(name = build_name)
   request_url <- make_request_url_filter(endpoint_url, where_clause)
   build_data <- get_data_from_db(endpoint_url, user_key, where_clause)
 
