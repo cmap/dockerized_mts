@@ -86,7 +86,7 @@ if (api_call) {
   if (!is.null(exclude_bcids)){
     # Extract the BCIDs to remove
     removed_bc_ids <- master_logMFI$barcode_id[master_logMFI$barcode_id %in% exclude_bcids]
-    cat("Removing barcodes ", {removed_bc_ids}, "\n")
+    cat("Removing barcodes: ", {removed_bc_ids}, "\n")
     if (length(removed_bc_ids) > 0){
       # Write file of removed BCIDs
       writeLines(removed_bc_ids, paste0(out_dir, "/", build_name, "_removed_bcids.txt"))
@@ -98,9 +98,17 @@ if (api_call) {
   # Remove instances if necessary
   remove_instances <- build_data$remove_instances[[1]]
   if (!is.null(remove_instances)) {
+    if (!all(remove_instances %in% master_logMFI$instance_id)) {
+      unmatched_instances <- remove_instances[!remove_instances %in% master_logMFI$instance_id]
+      msg <- paste("There are instance_ids requested for removal that do not exist in the data: ",
+                               paste(unmatched_instances, collapse="\n"), sep="\n")
+      stop(msg)
+    }
+
     # Extract the instance_ids to remove
     removed_instance_ids <- master_logMFI$instance_id[master_logMFI$instance_id %in% remove_instances]
-    cat("Removing instances ", {removed_instance_ids}, "\n")
+    msg <- paste("Removing instances:", paste(removed_instance_ids, collapse="\n"), sep="\n")
+    cat(msg, "\n")
 
     if (length(removed_instance_ids) > 0) {
       # Write the removed instance_ids to a text file
