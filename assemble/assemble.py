@@ -87,6 +87,20 @@ def read_csv(csv_filepath, assay_type):
     pd.davepool_id = assay_type
     return pd
 
+def check_for_duplicate_analytes(prism_cell_list):
+    seen_analytes = set()
+    duplicated_analytes = set()
+    for i in range(0,len(prism_cell_list)):
+        analyte_id = prism_cell_list[i].analyte_id
+        if analyte_id in seen_analytes:
+            duplicated_analytes.add(analyte_id)
+        else:
+            seen_analytes.add(analyte_id)
+    if duplicated_analytes:
+        msg = f"The following analytes are duplicated: {', '.join(duplicated_analytes)}, check cell set database."
+        logger.error(msg)
+        raise KeyError(msg)
+
 '''
 There are some cases in which we are subsetting plates into different groups, ie. more than one gct per plate.
 This was the case for PPCN. As such, we need a function to truncate the data to match the plate map which is given.
@@ -161,6 +175,9 @@ def main(args, all_perturbagens=None, assay_plates=None):
 
     #read actual data from relevant csv files, associate it with davepool ID
     prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type, beadset, api_url=api_url)
+
+    # check if any analytes are duplicated and if so raise an exception
+    check_for_duplicate_analytes(prism_cell_list)
 
     #prism_cell_list = prism_metadata.build_prism_cell_list(cp, cell_set_file)
 

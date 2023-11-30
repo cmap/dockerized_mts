@@ -84,18 +84,27 @@ def process_data(data, plates):
                                             user_key=API_KEY,
                                             where={"pert_plate": plates}))
 
+    # Check if sw_data is empty, and if it is, print a warning and return
+    if sw_data.empty:
+        print(f"Warning: No matching records returned for plates {plates}. No merge performed. This is fine if there are no expected skipped wells.")
+        return data, pd.DataFrame()  # Return the original data and an empty DataFrame for filtered_out_values
 
-
+    # Rename columns if they exist
     sw_data.rename(columns={'assay_well_position': 'pert_well'}, inplace=True)
-
-    # columns to match on
+    
+    # Columns to match on
     cols_to_match = ['screen', 'pert_plate', 'pert_well', 'pool_id', 'replicate']
+
+    # Check if all cols_to_match are in sw_data columns
+    if not all(col in sw_data.columns for col in cols_to_match):
+        print(f"Warning: Not all columns to match are present in the sw_data. No merge performed.")
+        return data, pd.DataFrame()
 
     # Merge the two dataframes on the specified columns with the indicator argument
     merged = data.merge(sw_data[cols_to_match],
-                               on=cols_to_match,
-                               how='left',
-                               indicator=True)
+                        on=cols_to_match,
+                        how='left',
+                        indicator=True)
 
     # Filter out the rows that are present in both dataframes
     level3_data_filtered = merged[merged['_merge'] == 'left_only'].drop(columns=['_merge'])
@@ -150,5 +159,10 @@ if __name__ == "__main__":
 
     # Write the filtered data to a csv
     level3_data_filtered.to_csv(fps[0], index=False)
-    filtered_out_values.to_csv("removed_wells.csv", index=False)
+
+    # Check if filtered_out_values is not empty before writing
+    if not filtered_out_values.empty:
+        filtered_out_values.to_csv("removed_wells.csv", index=False)
+    else:
+        print("No wells were removed. 'removed_wells.csv' was not created.")
 

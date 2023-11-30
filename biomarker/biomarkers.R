@@ -186,45 +186,45 @@ for(feat in 1:length(linear_data)) {
     }
   }
 
-  # gene expression with lineage as confounder
-  if (linear_data[feat] == "ge") {
-
-    # for each perturbation get results
-    for(i in 1:nrow(runs)) {
-      # filter down to current dose (run)
-      run <- runs[i,]
-      Y <- all_Y %>%
-        dplyr::inner_join(run)
-      y <- Y$response; names(y) <- Y$ccle_name
-      y <- y[is.finite(y)]
-
-      overlap <- dplyr::intersect(rownames(X), names(y)) %>%
-        dplyr::intersect(., rownames(LIN_PCs))
-      y <- y[overlap]
-
-      if (length(y) < 10 | min(y) == max(y)) {
-        next
-      } else {
-        # check that there are unique confounders
-        if (all(apply(LIN_PCs[overlap,], 2, function(x) length(unique(x)) == 1))) {
-          next
-        } else {
-          res.lin <- cdsrmodels::lin_associations(X[overlap,], y, W = LIN_PCs[overlap,])
-          res.cor <- res.lin$res.table %>%
-            cbind(., rho=res.lin$rho[rownames(.),], q.val=res.lin$q.val[rownames(.),]) %>%
-            tibble::as_tibble() %>%
-            dplyr::rename(feature = ind.var, coef = rho) %>%
-            dplyr::arrange(q.val) %>%
-            dplyr::mutate(rank = 1:n(),
-                          feature_type = "GE_noLIN") %>%
-            dplyr::filter(rank <= 1000 | q.val < 0.1) %>%
-            dplyr::bind_cols(run)
-
-          linear_table[[ix]] <- res.cor; ix <- ix + 1
-        }
-      }
-    }
-  }
+  # gene expression with lineage as confounder - not currently computed in biomarker analysis 
+  # if (linear_data[feat] == "ge") {
+  # 
+  #   # for each perturbation get results
+  #   for(i in 1:nrow(runs)) {
+  #     # filter down to current dose (run)
+  #     run <- runs[i,]
+  #     Y <- all_Y %>%
+  #       dplyr::inner_join(run)
+  #     y <- Y$response; names(y) <- Y$ccle_name
+  #     y <- y[is.finite(y)]
+  # 
+  #     overlap <- dplyr::intersect(rownames(X), names(y)) %>%
+  #       dplyr::intersect(., rownames(LIN_PCs))
+  #     y <- y[overlap]
+  # 
+  #     if (length(y) < 10 | min(y) == max(y)) {
+  #       next
+  #     } else {
+  #       # check that there are unique confounders
+  #       if (all(apply(LIN_PCs[overlap,], 2, function(x) length(unique(x)) == 1))) {
+  #         next
+  #       } else {
+  #         res.lin <- cdsrmodels::lin_associations(X[overlap,], y, W = LIN_PCs[overlap,])
+  #         res.cor <- res.lin$res.table %>%
+  #           cbind(., rho=res.lin$rho[rownames(.),], q.val=res.lin$q.val[rownames(.),]) %>%
+  #           tibble::as_tibble() %>%
+  #           dplyr::rename(feature = ind.var, coef = rho) %>%
+  #           dplyr::arrange(q.val) %>%
+  #           dplyr::mutate(rank = 1:n(),
+  #                         feature_type = "GE_noLIN") %>%
+  #           dplyr::filter(rank <= 1000 | q.val < 0.1) %>%
+  #           dplyr::bind_cols(run)
+  # 
+  #         linear_table[[ix]] <- res.cor; ix <- ix + 1
+  #       }
+  #     }
+  #   }
+  # }
 }
 if (length(linear_table) > 0) {
   linear_table %<>% dplyr::bind_rows()

@@ -17,6 +17,8 @@ The dose response curve fitting module was revised substantially, motivated by e
 
 * A value of 1 is now added to all mfi values in the raw_data matrix to prevent log(0)
 
+## EPS001
+* Removed IC50 values from Extended Day Data Processing
 
 ## MTS023, CPS009
 ***

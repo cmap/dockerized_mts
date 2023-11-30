@@ -56,7 +56,9 @@ def build_data_by_cell(cells, davepool_data_obj):
         cell_header_map = {}
         for c in cells:
             if c.ignore == False:
-                cell_header_map[c] = headers.index(str(c.analyte_id).capitalize())
+                analyte_id = str(c.analyte_id).capitalize()
+                
+                cell_header_map[c] = headers.index(analyte_id)
             cell_data_map[c] = []
 
         for d in data.keys():
