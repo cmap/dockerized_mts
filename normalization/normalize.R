@@ -45,11 +45,12 @@ rownames(raw_matrix) <- paste0(rownames(raw_matrix), "_", assay)
 
 # read in cell line info
 cell_info <- data.table::fread(path_cell_info, colClasses = "character") %>%
-  dplyr::distinct(rid, ccle_name, pool_id) %>%
+  dplyr::distinct(rid, ccle_name, pool_id, barcode_id) %>%
   dplyr::mutate(culture = assay) %>%
   dplyr::mutate(rid = paste0(rid, "_", assay)) %>%
   dplyr::mutate(pool_id = ifelse(pool_id == "" | pool_id == -666,
                                  "CTLBC", pool_id))
+
 
 # read in inst_info
 inst_info <- data.table::fread(path_inst_info, colClasses = "character")
@@ -83,22 +84,35 @@ if (api_call) {
 
   # Remove BCIDs if necessary
   exclude_bcids <- build_data$exclude_bcids[[1]]
-  if (!is.null(exclude_bcids)){
-    # Extract the BCIDs to remove
-    removed_bc_ids <- master_logMFI$barcode_id[master_logMFI$barcode_id %in% exclude_bcids]
-    cat("Removing barcodes: ", {removed_bc_ids}, "\n")
-    if (length(removed_bc_ids) > 0){
-      # Write file of removed BCIDs
-      writeLines(removed_bc_ids, paste0(out_dir, "/", build_name, "_removed_bcids.txt"))
-      # Filter removed BCIDs from master_logMFI
-      master_logMFI %<>% dplyr::filter(!(barcode_id %in% removed_bc_ids))
-      }
+  if (!is.null(exclude_bcids)) {
+    # Check if all exclude_bcids are in cell_info
+    if (!all(exclude_bcids %in% cell_info$barcode_id)) {
+      non_existant_bcids <- exclude_bcids[!exclude_bcids %in% cell_info$barcode_id]
+      msg = paste("There are barcode_ids requested for removal that do not exist in the data: ",
+      paste(non_existant_bcids, collapse="\n"), sep="\n")
+      stop(msg)
     }
+
+    # Find the ccle_names corresponding to the barcode_ids in cell_info
+    matching_ccle_names <- cell_info$ccle_name[cell_info$barcode_id %in% exclude_bcids]
+
+    cat("Removing ccle_names corresponding to barcodes: ", paste(exclude_bcids, collapse=", "), "\n")
+    
+    if (length(matching_ccle_names) > 0) {
+      # Write file of removed ccle_names
+      writeLines(matching_ccle_names, paste0(out_dir, "/", build_name, "_removed_ccle_names.txt"))
+      
+      # Filter out the rows with these ccle_names from master_logMFI
+      master_logMFI <- dplyr::filter(master_logMFI, !(ccle_name %in% matching_ccle_names))
+    }
+  }
+
 
   # Remove instances if necessary
   remove_instances <- build_data$remove_instances[[1]]
   if (!is.null(remove_instances)) {
     if (!all(remove_instances %in% master_logMFI$instance_id)) {
+      # check that all of the entries exist
       unmatched_instances <- remove_instances[!remove_instances %in% master_logMFI$instance_id]
       msg <- paste("There are instance_ids requested for removal that do not exist in the data: ",
                                paste(unmatched_instances, collapse="\n"), sep="\n")
@@ -107,7 +121,7 @@ if (api_call) {
 
     # Extract the instance_ids to remove
     removed_instance_ids <- master_logMFI$instance_id[master_logMFI$instance_id %in% remove_instances]
-    msg <- paste("Removing instances:", paste(removed_instance_ids, collapse="\n"), sep="\n")
+    msg <- paste("Removing instances: ", paste(removed_instance_ids, collapse="\n"), sep="\n")
     cat(msg, "\n")
 
     if (length(removed_instance_ids) > 0) {
