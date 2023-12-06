@@ -216,3 +216,43 @@ get_data_from_db <- function(endpoint_url, user_key, where=NULL) {
     stop("Request failed")
   }
 }
+
+
+filter_lowcounts <- function(df, min_count = 10, threshold = 0.25) {
+  # Find instances with count < min_count
+  cat("Finding instances with count < min_count...\n")
+  low_count_instances <- df %>%
+    filter(count < min_count) %>%
+    pull(instance_id)
+
+  # Calculate fraction of instances to remove per combination
+  cat("Calculating fraction of instances to remove per combination...\n")
+  fraction_to_remove <- df %>%
+    group_by(prism_replicate, pert_well) %>%
+    summarise(n_low_count = sum(count < min_count)) %>%
+    mutate(n_total = n()) %>%
+    mutate(fraction_to_remove = n_low_count / n_total)
+
+  # Identify combinations exceeding removal threshold
+  cat("Identifying combinations exceeding removal threshold...\n")
+  combinations_to_remove <- fraction_to_remove %>%
+    filter(fraction_to_remove >= threshold) %>%
+    # Convert to data.frame
+    data.frame() %>%
+    # Add column names
+    mutate(prism_replicate = prism_replicate,
+           pert_well = pert_well)
+
+  # Filter out unwanted instances and combinations
+  cat("Filtering instances and combinations...\n")
+  filtered_df <- df %>%
+    filter(!(instance_id %in% low_count_instances)) %>%
+    filter(!((prism_replicate %in% combinations_to_remove$prism_replicate) &
+               (pert_well %in% combinations_to_remove$pert_well)))
+
+  # Return filtered dataframe and lists
+  well_df <- combinations_to_remove[c('prism_replicate','pert_well')]
+  return(list(filtered_df = filtered_df,
+               removed_instances = low_count_instances,
+               removed_wells = well_df))
+}

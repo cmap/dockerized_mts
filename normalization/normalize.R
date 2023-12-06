@@ -66,6 +66,28 @@ raw_matrix <- raw_matrix[, inst_info$profile_id %>% unique()]
 count_table <- build_count_table(count_matrix)
 master_logMFI <- build_master_logMFI(raw_matrix, inst_info, cell_info, count_table)
 
+#------Count filtering-------
+print("Filtering and recording low counts wells")
+# filter low count wells
+filter_results <- filter_lowcounts(master_logMFI)
+master_logMFI <- filter_results$filtered_df
+
+# write record of removed instances and wells
+removed_instances_cnt <- filter_results$removed_instances
+if (length(removed_instances_cnt) > 0) {
+  cat(paste("Removing instances", removed_instances_cnt, "\n"))
+  # Write file of removed ccle_names
+  writeLines(removed_instances_cnt, paste0(out_dir, "/", build_name, "_removed_instances_count.txt"))
+}
+
+
+removed_pert_wells_cnt <- filter_results$removed_wells
+if (length(removed_pert_wells_cnt) > 0) {
+  # Write file of removed ccle_names
+  write.csv(removed_pert_wells_cnt, paste0(out_dir, "/", build_name, "_removed_wells_count.csv"))
+}
+
+#--------Manual instance removal-----------
 # get build metadata if call can be made to clue API
 if (api_call) {
   print("Making call to clue API....")
