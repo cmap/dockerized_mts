@@ -78,7 +78,7 @@ build_count_table <- function(count_matrix, data_col = "count"){
 write_key <- function(df, out_dir, build_name) {
   df %>%
     dplyr::filter(!pert_type %in% c("trt_poscon", "ctl_vehicle")) %>%
-    dplyr::select(pert_iname, pert_id, pert_plate, pert_dose, any_of("x_project_id")) %>%
+    dplyr::select(pert_iname, pert_id, pert_plate, pert_dose, pert_vehicle, any_of("x_project_id")) %>%
     dplyr::distinct() %>%
     splitstackshape::cSplit(splitCols = "pert_dose",
                             sep = "|", fixed = T,
@@ -96,9 +96,9 @@ write_key <- function(df, out_dir, build_name) {
 control_medians <- function(df) {
   ref <- df %>%
     dplyr::filter(pert_type == "ctl_vehicle") %>%  # look at controls
-    dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::group_by(prism_replicate, pert_well, pert_vehicle) %>%
     dplyr::mutate(mLMFI = median(logMFI)) %>%  # median of each well on replicate
-    dplyr::group_by(prism_replicate, rid) %>%  # median well on each replicate
+    dplyr::group_by(prism_replicate, pert_vehicle, rid) %>%  # median well on each replicate
     dplyr::mutate(mmLMFI = logMFI - mLMFI + median(mLMFI)) %>%  # normalized value for rep (to median well)
     dplyr::summarise(rLMFI = median(mmLMFI), .groups = "drop") %>%  # median normalized value across reps
     dplyr::left_join(df)
@@ -109,11 +109,10 @@ control_medians <- function(df) {
 # fit scam to control barcode profiles and normalize other data
 normalize <- function(df, barcodes, threshold) {
   normalized <- df %>%
-    dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::group_by(prism_replicate, pert_well, pert_vehicle) %>%
     dplyr::mutate(n = n()) %>%
     dplyr::filter(n >= threshold) %>%
     dplyr::select(-n) %>%
-    # try with k=4 and 5 (to avoid hanging), try again with linear model
     dplyr::mutate(logMFI_norm = tryCatch(
       expr = {tryCatch(
         expr = {
@@ -149,10 +148,11 @@ normalize <- function(df, barcodes, threshold) {
   return(normalized)
 }
 
+
 # fit scam to control barcode profiles and normalize other data
 normalize_base <- function(df, barcodes, threshold) {
   normalized <- df %>%
-    dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::group_by(prism_replicate, pert_well, pert_vehicle) %>%
     dplyr::mutate(n = n()) %>%
     dplyr::filter(n >= threshold) %>%
     dplyr::select(-n) %>%
