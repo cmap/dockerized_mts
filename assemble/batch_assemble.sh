@@ -39,6 +39,9 @@ while test $# -gt 0; do
     --dev)
       DEV=TRUE
       ;;
+    --verbose|-v)
+      VERBOSE=TRUE
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -99,6 +102,11 @@ fi
 if [[ -n $BEADSET ]]
 then
   args+=(--beadset $BEADSET)
+fi
+
+if [[ -n $VERBOSE ]]
+then
+  args+=(-verbose)
 fi
 
 echo python /clue/bin/assemble/assemble.py "${args[@]}"

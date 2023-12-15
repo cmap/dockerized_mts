@@ -193,11 +193,13 @@ def main(args, all_perturbagens=None, assay_plates=None):
     # Pass python objects to the core assembly module (this is where command line and automated assembly intersect)
     # here the outfile for automation is defined as project_dir/prism_replicate_set_name
     try:
-        assemble_core.main(prism_replicate_name, args.outfile, all_perturbagens, davepool_data_objects, prism_cell_list)
+        assemble_core.main(prism_replicate_name, args.outfile, all_perturbagens, davepool_data_objects, prism_cell_list, verbose=args.verbose)
 
     except Exception as e:
         failure_path = os.path.join(args.outfile, "assemble", prism_replicate_name,  "failure.txt")
         ex_type, ex, tb = sys.exc_info()
+        print("plate {} failed for reason: {}: {}".format(prism_replicate_name, ex_type, ex))
+        traceback.print_tb(tb)
         with open(failure_path, "w") as file:
             file.write("plate {} failed for reason: {}: {}\n".format(prism_replicate_name, ex_type, ex))
             file.write("\ntraceback:\n")
