@@ -23,7 +23,7 @@ These files can be found in your project landing page under Reports and Download
 3. QC file: “QC metrics”
 
 <p align="center">
-  <img src="reports/rmarkdown/misc/portal_download_files.png">
+  <img src="../reports/rmarkdown/misc/portal_download_files.png">
 </p>
 
 
