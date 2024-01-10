@@ -69,6 +69,11 @@ def main(args):
             'search_pattern': '*_cell_info.txt',
             'type': 'metadata'
         },
+        'EPS_QC_TABLE': {
+            'search_pattern': '*QC_TABLE*.csv',
+            'type': 'report',
+            'format': 'csv'
+        },
         'QC_TABLE': {
             'search_pattern': '*QC_TABLE*.csv',
             'type': 'report',
