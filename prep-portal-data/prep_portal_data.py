@@ -173,6 +173,8 @@ def catch_table_name_exceptions(table_name):
     """
     if table_name == "DRC_TABLE":
         return "dose_response_curves"
+    elif "EPS_QC_TABLE" in table_name:
+        return "eps_qc_table"
     elif "QC_TABLE" in table_name:
         return "qc_table"
     else:
