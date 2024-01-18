@@ -75,7 +75,7 @@ master_logMFI <- filter_results$filtered_df
 # write record of removed instances and wells
 removed_instances_cnt <- filter_results$removed_instances
 if (length(removed_instances_cnt) > 0) {
-  cat(paste("Removing instances", removed_instances_cnt, "\n"))
+  cat(paste("Removing instance", removed_instances_cnt, "\n"))
   # Write file of removed ccle_names
   writeLines(removed_instances_cnt, paste0(out_dir, "/", build_name, "_removed_instances_count.txt"))
 }
@@ -143,7 +143,7 @@ if (api_call) {
 
     # Extract the instance_ids to remove
     removed_instance_ids <- master_logMFI$instance_id[master_logMFI$instance_id %in% remove_instances]
-    msg <- paste("Removing instances: ", paste(removed_instance_ids, collapse="\n"), sep="\n")
+    msg <- paste("Removing instance: ", paste(removed_instance_ids, collapse="\n"), sep="\n")
     cat(msg, "\n")
 
     if (length(removed_instance_ids) > 0) {
