@@ -11,7 +11,6 @@ import argparse
 import pandas as pd
 from math import log2
 
-
 logger = logging.getLogger('remove-data')
 
 def build_parser():
@@ -110,7 +109,9 @@ def main(args):
 
 if __name__ == "__main__":
     parser = build_parser()
+    logger.debug("command line args:{}".format(sys.argv))
     args = parser.parse_args(sys.argv[1:])
+    logger.debug("Parsed args:{}".format(args))
     if not (args.data_dir or args.file):
         parser.error("--file or --data_directory required")
 
