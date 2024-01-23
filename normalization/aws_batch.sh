@@ -19,6 +19,7 @@ done
 chmod +x /normalize.R
 chmod +x /src/normalization_functions.R
 export HDF5_USE_FILE_LOCKING=FALSE
+export API_URL="https://api.clue.io"
 echo "${data_dir}" "${output_dir}" "${assay}" "${build_name}" "${api_call}"
 
 args=(

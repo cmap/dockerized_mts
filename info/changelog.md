@@ -13,7 +13,9 @@ The dose response curve fitting module was revised substantially, motivated by e
 
 * In rare occurrences where wells were reported skipped during the plate preparation, data for those wells are now filtered out
 * Lineages subabbreviations and abbreviations using OncoTree notation
-* Gene Expression (GE) controlling for lineage is an avaialble continuous association feature 
+* Biomarkers updated to DepMap 23Q4 data
+
+* A value of 1 is now added to all mfi values in the raw_data matrix to prevent log(0)
 
 ## EPS001
 * Removed IC50 values from Extended Day Data Processing
