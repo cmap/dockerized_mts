@@ -1,6 +1,20 @@
 const _ = require("underscore");
+const { ArgumentParser } = require('argparse');
 const fsPromises = require("fs/promises");
 const Buffer = require("buffer");
+
+const LEVELS = [
+    'inst_info',
+    'cell_info',
+    'QC_TABLE',
+    'LEVEL2_COUNT',
+    'LEVEL2_MFI',
+    'LEVEL3_LMFI',
+    'LEVEL4_LFC',
+    'LEVEL4_LFC_COMBAT',
+    'LEVEL5_LFC',
+    'LEVEL5_LFC_COMBAT'
+];
 
 /**
  *
@@ -11,15 +25,36 @@ const Buffer = require("buffer");
 const writeOutput = async function(fileName,projects){
     return await fsPromises.writeFile(fileName,JSON.stringify(projects));
 }
+
+const getProjectsWithCombinations = function(projectKeys){
+    return _.pluck(_.uniq(projectKeys.filter(function(projectKey){
+        return projectKey.is_combination === '1';
+    }), function (projectKey) {
+        return projectKey.x_project_id;
+    }), "x_project_id");
+}
+
 /**
  *
  * @param projectKeys
  * @returns {*}
  */
 const uniqueProjects= function(projectKeys){
-    return _.uniq(projectKeys, function (projectKey) {
+    const projectsWithCombinations =  getProjectsWithCombinations(projectKeys);
+
+    const out = _.uniq(projectKeys, function (projectKey) {
         return projectKey.x_project_id;
-    });
+    })
+
+    out.forEach((project) => {
+        if (projectsWithCombinations.includes(project.x_project_id)) {
+            project.combination_project = '1'
+        } else {
+            project.combination_project = '0'
+        }
+    })
+
+    return out;
 }
 
 const uniquePertPlates = function (projectKeys) {
@@ -27,6 +62,18 @@ const uniquePertPlates = function (projectKeys) {
         return projectKey.pert_plate;
     });
 }
+
+const detectCombinations = function (projectKeys) {
+    return projectKeys.forEach((compound) => {
+            //check if compound.pert_iname has | character
+            if (compound.pert_iname.includes("|")) {
+                compound.is_combination = '1'
+            } else{
+                compound.is_combination = '0'
+            }
+        })
+}
+
 const uniqueProjectKeysWithPertPlates = async function(projectKeys,fileName){
     const outPath = fileName.replace(".json","_uniq_pert_plates.json");
     const projectsPertPlates = _.map(
@@ -56,21 +103,9 @@ const uniques= async function(projectKeys,fileName){
  * @param fileName
  * @returns {Promise<*>}
  */
-const levels = async function(projectKeys,fileName){
+const levels = async function(projectKeys,fileName, LEVELS){
     const outPath = fileName.replace(".json","_levels.json");
     const uniqueProjectKeys = uniqueProjects(projectKeys)
-    const LEVELS = [
-        'inst_info',
-        'cell_info',
-        'QC_TABLE',
-        'LEVEL2_COUNT',
-        'LEVEL2_MFI',
-        'LEVEL3_LMFI',
-        'LEVEL4_LFC',
-        'LEVEL4_LFC_COMBAT',
-        'LEVEL5_LFC',
-        'LEVEL5_LFC_COMBAT'
-    ];
     const projects = [];
     for (let index = 0; index < uniqueProjectKeys.length; index++) {
         const currentProject = uniqueProjectKeys[index];
@@ -186,6 +221,19 @@ const uniqueProjectsWithSearch = async function(projectKeys,fileName){
     const projects = searchPatterns(patterns,uniqueProjectKeys);
     return await writeOutput(outPath,projects);
 }
+const uniqueProjectsWithCombinationSearch = async function(projectKeys,fileName){
+    const outPath = fileName.replace(".json","_comb_search_pattern.json");
+    const combinationsOnly = projectKeys.filter(function(projectKey){
+        return projectKey.is_combination === '1';
+    })
+    const uniqueProjectKeys = uniqueProjects(combinationsOnly);
+    const patterns = [
+        "synergy_table.csv",
+        "bliss_mss_table.csv"
+    ];
+    const projects = searchPatterns(patterns,uniqueProjectKeys);
+    return await writeOutput(outPath,projects);
+}
 /**
  *
  * @param projectKeys
@@ -208,14 +256,17 @@ const searchProjectPatterns = async function(projectKeys,fileName){
  * @param projectKeyPath
  * @returns {Promise<string>}
  */
-const doAll = async function(projectKeyPath){
+const doAll = async function(projectKeyPath,args){
     const promises = [];
     const projKeys = await fsPromises.readFile(projectKeyPath,'utf-8');
     const projectKeys = JSON.parse(projKeys);
+    const LEVELS = args.levels.split(',');
+    detectCombinations(projectKeys)
 
     promises.push(uniqueProjectsWithSearch(projectKeys,projectKeyPath));
+    promises.push(uniqueProjectsWithCombinationSearch(projectKeys,projectKeyPath));
     promises.push(uniques(projectKeys,projectKeyPath));
-    promises.push(levels(projectKeys,projectKeyPath));
+    promises.push(levels(projectKeys,projectKeyPath,LEVELS));
     promises.push(features(projectKeys,projectKeyPath));
     promises.push(searchProjectPatterns(projectKeys,projectKeyPath));
     promises.push(uniqueProjectKeysWithPertPlates(projectKeys,projectKeyPath));
@@ -223,14 +274,25 @@ const doAll = async function(projectKeyPath){
     const p = await Promise.all(promises);
     return "done";
 }
-const allARGS = process.argv;
-if(allARGS.length != 3){
-    console.log("node projectKeys <compound_key_json>");
-    process.exit(1);
-}
+const parser = new ArgumentParser({
+    description: 'Argparse example'
+  });
+   
+parser.add_argument('-f', '--compound_key_file', { required: true, help: 'Compound key file' });
+parser.add_argument('-l', '--levels', { default: LEVELS.join(','), help: 'Comma separated list of Levels' });
 
-const projectKey = allARGS[2];
-const p = doAll(projectKey);
+const args=parser.parse_args()
+console.log(args.levels)
+
+// const allARGS = process.argv;
+// if(allARGS.length != 3){
+//     console.log("node projectKeys <compound_key_json>");
+//     process.exit(1);
+// }
+
+const projectKey = args.compound_key_file;
+
+const p = doAll(projectKey,args);
 
 p.then(function(data){
     console.log(data);

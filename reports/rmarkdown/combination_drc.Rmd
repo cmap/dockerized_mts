@@ -1,8 +1,9 @@
 ---
 params:
-  data_dir: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_repare/CPS007_DMC_REPARE/CPS011/COMPOUND-Y_COMPOUND-Z'
-  comp: 'COMPOUND-Y_COMPOUND-Z'
-  qc_path: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_repare/CPS007_DMC_REPARE/data/CPS007_DMC_REPARE_QC_TABLE.csv'
+  data_dir: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_bms2/cps007_dmc_bms/CPS007_DMC_BMS/CPS011/BMS-I1_DOCETAXEL'
+  comp: 'BMS-I1_DOCETAXEL'
+  qc_path: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_bms2/cps007_dmc_bms/CPS007_DMC_BMS/data/CPS007_DMC_BMS_QC_TABLE.csv'
+
   
 output:
   html_document:
@@ -12,7 +13,7 @@ output:
 ---
 
 <img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/>
-<img src="misc/prism_logo_tagline_side.png" width=300px align="right"/>
+<img src="misc/prism_logo_tagline_side.png" width=250px align="right"/>
 <br><br><br>
 
 Return to [compound report](`r paste0("./", params$comp, "_report.html")`)
@@ -56,8 +57,8 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 lfc_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
 drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
-
 lfc_path <- list.files(params$data_dir, "LEVEL5", full.names = T)
+
 # read in LFC
 if (length(lfc_path) == 1) {
   lfc <- data.table::fread(lfc_path)
@@ -90,14 +91,15 @@ drc_plots <- list()
 for (i in 1:nrow(conditions)) {
   condition <- conditions[i,]
 
-  d <- drc %>% dplyr::inner_join(condition)
+  d <- drc %>% dplyr::inner_join(condition, by = c("varied_iname", "ccle_name", "culture", "pert_time", "added_compounds", "added_doses"))
   xx = seq(log2(min(d$min_dose)), log2(max(d$max_dose)), length.out = 40)
   res <- apply(d, 1, function(p) dr_func(p, xx))
   func_tab <- cbind(xx, res)
   func_tab %<>% as_tibble() %>%
     dplyr::rename(x = 1, y = 2) %>%
     dplyr::bind_cols(condition) %>%
-    dplyr::left_join(drc)
+    dplyr::left_join(drc,  by = c("varied_iname", "ccle_name", "culture", "pert_time", "added_compounds",
+"added_doses"))
   drc_plots[[i]] <- func_tab
 }
 drc_plots %<>%
@@ -152,14 +154,14 @@ drc_plots_const <- list()
 for (i in 1:nrow(conditions_const)) {
   condition_const <- conditions_const[i,]
   
-  d_const <- drc_const %>% dplyr::inner_join(condition_const)
+  d_const <- drc_const %>% dplyr::inner_join(condition_const, by= c("varied_iname", "ccle_name", "culture", "pert_time"))
   xx_const = seq(log2(min(d_const$min_dose)), log2(max(d_const$max_dose)), length.out = 40)
   res_const <- apply(d_const, 1, function(p) dr_func(p, xx_const))
   func_tab_const <- cbind(xx_const, res_const)
   func_tab_const %<>% as_tibble() %>%
     dplyr::rename(x = 1, y = 2) %>%
     dplyr::bind_cols(condition_const) %>%
-    dplyr::left_join(drc_const)
+    dplyr::left_join(drc_const, by = c("varied_iname", "ccle_name", "culture", "pert_time"))
   drc_plots_const[[i]] <- func_tab_const
 }
 drc_plots_const %<>% 
@@ -195,7 +197,7 @@ for (const in constituents) {
 }
 
 
-bliss_data_const <- lfc_const %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_const) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+bliss_data_const <- lfc_const %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_const, by = c("ccle_name", "culture")) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
 
 
@@ -248,14 +250,14 @@ for (const in constituents) {
 
 
 # non-combination values
-solo_lfc <- dplyr::anti_join(LFC_table, combo_lfc)
+solo_lfc <- dplyr::anti_join(LFC_table, combo_lfc, by = c("rid", "ccle_name", "culture", "pool_id", "pert_iname", "pert_id", "pert_dose", "pert_idose", "pert_plate", "pert_vehicle","pert_time", "pert_type", "sig_id", "x_project_id", "LFC", "LFC_cb"))
 
 # split combination perts
 spread_lfc <- combo_lfc %>%
   dplyr::inner_join(qc_table %>%
                       dplyr::group_by(ccle_name, culture) %>%
                       dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad),
-                                       .groups = "drop")) %>%  # QC info
+                                       .groups = "drop"), by = c("ccle_name", "culture")) %>%  # QC info
   dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
                           sep = "|", fixed = T,
@@ -268,16 +270,28 @@ for (i in 1:length(constituents)) {
     dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
     dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
     dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
+  
+  new_cols <- colnames(df)
+  new_cols <- case_when(
+      "pert_iname" == new_cols  ~ paste("pert_iname", i, sep = "_"),
+      "pert_dose" == new_cols  ~ paste("pert_dose", i, sep = "_"),
+      "LFC_cb" == new_cols  ~ paste("LFC_cb", i, sep = "_"),
+      TRUE ~ as.character(new_cols)
+    )
+  colnames(df) <- new_cols
 
-  new_cols <- paste(colnames(df), i, sep = "_")
-  colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
+  # new_cols <- paste(colnames(df), i, sep = "_")
+  # colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
 
   spread_lfc %<>% dplyr::left_join(df)
 }
 
 # bliss expected fold change (capped FCs at 1)
-B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1)))
-spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+B <- apply(2^spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')], 1, function(x) prod(pmin(x, 1)))
+spread_lfc %<>% dplyr::mutate(S = LFC_cb_1 + LFC_cb_2 - LFC_cb)
+# B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1))) ## remove hardcoded indexing.
+# spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+
 spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
 spread_lfc$B <- B
 spread_lfc %<>%
@@ -300,6 +314,7 @@ combos <- spread_lfc %>%
   dplyr::distinct(pert_dose)
 
 #spread_lfc %<>% dplyr::group_by(ccle_name) %>% dplyr::mutate(mean_S = round(log2(mean(2^S)), 3))
+
 spread_lfc %<>% dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
 
 
@@ -314,7 +329,8 @@ pseudo_auc_1 <- spread_lfc %>%
   dplyr::ungroup() %>%
   dplyr::select(-pert_dose_1) %>%
   dplyr::rename(pert_dose = pert_dose_2) %>%
-  dplyr::filter(n >= 4)
+  dplyr::filter(n >= 4) %>%
+  dplyr::mutate(added_compound = spread_lfc$pert_iname_2 %>% unique())
 
 # group by dose 1 to calculate AUC and expected for comp 2
 pseudo_auc_2 <- spread_lfc %>%
@@ -328,7 +344,8 @@ pseudo_auc_2 <- spread_lfc %>%
   dplyr::ungroup() %>%
   dplyr::select(-pert_dose_2) %>%
   dplyr::rename(pert_dose = pert_dose_1) %>%
-  dplyr::filter(n >= 4)
+  dplyr::filter(n >= 4) %>%
+  dplyr::mutate(added_compound = spread_lfc$pert_iname_1 %>% unique())
 
 pseudo_auc <- dplyr::bind_rows(pseudo_auc_1, pseudo_auc_2) %>%
   dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
@@ -350,9 +367,9 @@ drc_plots_const_2 <- drc_plots_const %>% dplyr::filter(varied_iname == constitue
 
 
 
-bliss_data_const_1 <- lfc_const %>% dplyr::filter(pert_iname == constituents[2]) %>% filter(round(pert_dose, 10) %in% anchor_2_doses) %>% dplyr::inner_join(drc_plots_const_1) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+bliss_data_const_1 <- lfc_const %>% dplyr::filter(pert_iname == constituents[2]) %>% filter(round(pert_dose, 10) %in% anchor_2_doses) %>% dplyr::inner_join(drc_plots_const_1,  by = c("ccle_name", "culture", "pool_id", "pert_plate", "pert_time")) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
-bliss_data_const_2 <- lfc_const %>% dplyr::filter(pert_iname == constituents[1]) %>% filter(round(pert_dose, 10) %in% anchor_1_doses) %>% dplyr::inner_join(drc_plots_const_2) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+bliss_data_const_2 <- lfc_const %>% dplyr::filter(pert_iname == constituents[1]) %>% filter(round(pert_dose, 10) %in% anchor_1_doses) %>% dplyr::inner_join(drc_plots_const_2, by =  c("ccle_name", "culture", "pool_id", "pert_plate", "pert_time")) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
 
 
 bliss_data_const <- rbind(bliss_data_const_1, bliss_data_const_2)
@@ -377,21 +394,27 @@ The second plot shows the AUC of the combination versus the Bliss expected AUC. 
 
 
 **How are the dose response curves fitted? What are the parameters for fitting?** <br> 
-We fit a robust four-parameter logistic curve to the response of each cell line to treatment. The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
+We fit a robust four-parameter logistic curve to the response of each cell line to treatment. The four parameters are upper limit($a$), lower limit ($b$), slope ($s$), and EC50. The equation for the curve is defined:
 
 $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
-This is implemented using R's dr4pl package, specifying an upper limit between 0.99-1.01 and a positive slope. 
+
+The curve fitting procedure minimizes the squared deviation of the observed viabilities at each dose. The fits are constrained such that the upper-limit lies within the range (0.8,1.001) and the lower limit lies within (0,1). Further, we restrict the predicted viability to always decrease with increasing dose by constraining the slope. Since the nonlinear optimization underlying the fitting procedure may return parameters a local optimum, we fit using four different methods implemented in the dr4pl and drc packages and report parameters with the lowest mean squared error. Fit parameters are only reported if the best fit explains at least 5% of the variance of the fold-change data. An IC50 is only reported if the drc fit crosses 0.5 within the dose range of the experiment. 
 
 **What are the three curves in the dose response graph?** <br> 
 Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself <br> 
 Combination - Dose response curve of the compound being varied with an anchor compound and dose  <br> 
 Bliss - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. As such, the model assumes the log fold changes (LFCs) of the single compound and anchor compound for respective fixed doses are additive (i.e. their fold changes (FCs) are multiplicative). 
 
-**How is AUC calculated for combination and expected Bliss?**
+**How is AUC calculated for combination and expected Bliss?** <br>
 
-$$AUC_{combo} \approx \frac{1}{n}\sum_{i=1}^nFC_{c_i}$$
+<center>
 
-$$AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$$
+Riemann-Sums $AUC_{combo} \approx \frac{1}{n}\sum_{i=1}^nFC_{c_i}$ <br>
+
+Riemann-Sums $AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$
+
+
+</center>
 
 
 where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose.
@@ -449,12 +472,12 @@ pseudo_auc %<>% dplyr::mutate(MSS = log2(B/FC)) %>% rename(varied_iname = pert_i
 drc_meta %<>% dplyr::mutate(added_doses = round(added_doses, 10))
 pseudo_auc %<>% dplyr::mutate(added_doses = round(added_doses, 10))
 
-drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname, added_doses) %>% dplyr::distinct(cell_id, MSS, varied_iname, added_doses))
+drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname, added_doses) %>% dplyr::distinct(cell_id, MSS, varied_iname, added_doses), by = c("varied_iname", "added_doses", "cell_id"))
 
 # round to the 10th place because R saves added_doses (pert_dose in this case) values differently in different dataframes 
 bliss_data_const %<>% dplyr::mutate(pert_dose = round(pert_dose, 10))
 
-drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::rename(added_doses = pert_dose) %>% dplyr::select(cell_id, FC_cb, varied_iname, added_doses) %>% dplyr::distinct(cell_id, FC_cb, varied_iname, added_doses))
+drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::rename(added_doses = pert_dose) %>% dplyr::select(cell_id, FC_cb, varied_iname, added_doses) %>% dplyr::distinct(cell_id, FC_cb, varied_iname, added_doses), by = c("varied_iname", "added_doses", "cell_id"))
 
 # creating titles for legend per trace per anchor dose 
 drc_plots %<>% dplyr::mutate(combination_string = 'Combo ') %>% dplyr::mutate(combo_title = paste0(combination_string, added_doses))
@@ -531,8 +554,8 @@ for (comp in varied_comps) {
 
   cat(htmltools::knit_print.shiny.tag(p))
 
-  compounds_all <- highlight_key(drc_meta %>%
-                                   dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+compounds_all <- highlight_key(drc_meta %>%
+                                   dplyr::filter(varied_iname == comp) %>%
                                    dplyr::arrange(auc),
                                  ~cell_id, group = comp)
   
@@ -547,8 +570,8 @@ for (comp in varied_comps) {
             marker=list(colorbar=list(text = 'Mean Syngery Score'))) %>%
     config(doubleClick = "reset") %>%
     layout( legend = list(title = list(text = "Anchor Dose")),
-      xaxis = list(title = "Bliss expected AUC", range = c(0, 1)),
-            yaxis = list(title = "AUC", range = c(0, 1.05)), 
+      xaxis = list(title = "Riemann-Sums Bliss expected AUC", range = c(0, 1)),
+            yaxis = list(title = "Riemann-Sums AUC", range = c(0, 1.05)), 
             hovermode = "closest",
             shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
                            line = list(dash = "dash", layer = "below"))) %>%
@@ -559,11 +582,25 @@ for (comp in varied_comps) {
   
   cat(htmltools::knit_print.shiny.tag(q))
       
-      
+  export_pseudo_auc <- pseudo_auc %>% rename(rs_AUC = FC, rs_Bliss = B) %>% select(ccle_name, culture, varied_iname, added_compound, added_doses, rs_AUC, rs_Bliss, MSS)
+  
+  # save for portal 
+  plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+  dir.create(plot_files_dir, showWarnings = FALSE)
+  auc_path = file.path(plot_files_dir, 'bliss_mss')
+  dir.create(auc_path, showWarnings = FALSE)
+  write.csv(export_pseudo_auc, file.path(auc_path, 'bliss_mss_table.csv'), row.names=FALSE)
 
-  dt <- DT::datatable(compounds_all, style="bootstrap",
-                      options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
-                                     columnDefs = list(list(visible = FALSE, targets = c(11)))),
+  # save for reports landing page 
+  write.csv(export_pseudo_auc, file.path(params$data_dir, 'bliss_mss_table.csv'), row.names=FALSE)
+  
+  
+  
+  
+  dt <- DT::datatable(compounds_all, style="bootstrap", extensions = 'Buttons', 
+                      options = list(lengthChange = FALSE, width = "100%", paging = TRUE,
+                                     columnDefs = list(list(visible = FALSE, targets = c(11))), 
+                                     dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
                       colnames = c("Compound", "Cell Line", "Culture", "Added compounds", "Added doses", "a", "EC50", "s", "b", "AUC", "IC50", "ID", "MSS", "Anchor Dose Viability"),
                       rownames = FALSE,
                       selection = "single", filter = "top") %>%

@@ -10,6 +10,8 @@ parser <- ArgumentParser()
 parser$add_argument("-p", "--project_dir", default="", help="Project directory")
 parser$add_argument("-o", "--out", default="", help="Output directory")
 parser$add_argument("-n", "--name", default="", help = "Build name. Default is none")
+parser$add_argument("-lp", "--lfc_pattern", default="LEVEL5_LFC_COMBAT", help = "LFC search pattern")
+parser$add_argument("-lc", "--lfc_column", default="LFC_cb", help = "LFC column type - LFC or lfc_cb")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
@@ -17,29 +19,35 @@ args <- parser$parse_args()
 proj_dir <- args$project_dir
 out_dir <- args$out
 build_name <- args$name
+lfc_pattern <- args$lfc_pattern
+lfc_column <- args$lfc_column
 
 # get paths to LFC and DRC
-lfc_path <- list.files(proj_dir, pattern = "LEVEL5_LFC_COMBAT", full.names = T)
+lfc_path <- list.files(proj_dir, pattern = lfc_pattern, full.names = T)
 stopifnot(length(lfc_path) == 1)  # need LFC
 drc_path <- list.files(proj_dir, pattern = "DRC_TABLE", full.names = T)
 
+print("line 26")
 # read in LFC
 lfc_tab <- data.table::fread(lfc_path) %>%
   dplyr::filter(!is.na(ccle_name), pool_id != "CTLBC",
                 str_detect(ccle_name, "prism invariant", negate = T))
+print("line 31")
 # pivot
 lfc_mat <- reshape2::acast(lfc_tab, ccle_name ~ pert_iname + pert_idose,
-                           value.var = "LFC_cb",
+                           value.var = lfc_column,
                            fun.aggregate = function(x) mean(x, na.rm = TRUE))
 # write LFC
 write.csv(lfc_mat, paste0(out_dir, "/", build_name, "_LFC_MATRIX.csv"))
 
+print("line 39")
 # do the same for DRC if it exists (make AUC and IC50 matrix)
 if (length(drc_path) == 1) {
   drc_tab <- data.table::fread(drc_path) %>%
     dplyr::filter(!is.na(ccle_name),
                   str_detect(ccle_name, "prism invariant", negate = T)) %>%
     dplyr::mutate(condition = varied_iname)
+  print("line 46")
   if ("added_compounds" %in% colnames(drc_tab)) {
     drc_tab$condition <- paste(drc_tab$condition, drc_tab$added_compounds, drc_tab$added_doses, sep = "_")
   }

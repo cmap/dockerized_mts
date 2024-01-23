@@ -1,18 +1,18 @@
-FROM cmap/base-merino:latest
+FROM prismcmap/base-prism:latest
 MAINTAINER Anup Jonchhe <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
-RUN cd /cmap && \
-conda create -y --name assemble -c bioconda python=3.6 numpy pandas yaml h5py requests setuptools argparse  pathlib  yaml pyyaml jinja2  && \
-git clone https://github.com/cmap/cmapPy.git && \
-cd /
-
-SHELL ["conda", "run", "-n", "assemble", "/bin/bash", "-c"]
-
-RUN  cd /cmap/cmapPy && \
-python setup.py install && \
-cd /
+#RUN cd /cmap && \
+#conda create -y --name assemble -c bioconda python=3.6 numpy pandas yaml h5py requests setuptools argparse  pathlib  yaml pyyaml jinja2  && \
+#git clone https://github.com/cmap/cmapPy.git && \
+#cd /
+#
+#SHELL ["conda", "run", "-n", "assemble", "/bin/bash", "-c"]
+#
+#RUN  cd /cmap/cmapPy && \
+#python setup.py install && \
+#cd /
 
 
 RUN mkdir -p /clue/bin/assemble/utils/

@@ -56,7 +56,9 @@ def build_data_by_cell(cells, davepool_data_obj):
         cell_header_map = {}
         for c in cells:
             if c.ignore == False:
-                cell_header_map[c] = headers.index(str(c.analyte_id).capitalize())
+                analyte_id = str(c.analyte_id).capitalize()
+                
+                cell_header_map[c] = headers.index(analyte_id)
             cell_data_map[c] = []
 
         for d in data.keys():
@@ -234,18 +236,22 @@ def _format_floats(fl, sig=4, max_precision=50):
 
 
 def process_pert_doses(el):
+    logger.debug("el:  {}".format(el))
     if pd.isna(el) or (el == 'nan'):
         return el
     if type(el) == str:
+        el = el.strip()
         return '|'.join(map(_format_floats, map(float, el.split('|'))))
     else:
         return _format_floats(el)
 
 
 def process_pert_idoses(el):
-    if pd.isna(el) or (el=='nan') :
+    logger.debug("el:  {}".format(el))
+    if pd.isna(el) or (el=='nan') or ~(el):
         return el
     if type(el) == str:
+        el = el.strip()
         idoses = el.split('|')
         idoses = [i.split(" ") for i in idoses]
         return "|".join(["{} {}".format(_format_floats(idose[0]), idose[1]) for idose in idoses])
@@ -267,7 +273,11 @@ def stringify_inst_doses(inst):
     return inst
 
 
-def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects, prism_cell_list):
+def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects, prism_cell_list, verbose=False):
+    level = (logging.DEBUG if verbose else logging.INFO)
+    logging.basicConfig(level=level)
+    logger.setLevel(level)
+
     # Build one-to-many mapping between davepool ID and the multiple PRISM cell lines that are within that davepool
     davepool_id_to_cells_map = build_davepool_id_to_cells_map(prism_cell_list)
 
@@ -286,6 +296,9 @@ def main(prism_replicate_name, outfile, all_perturbagens, davepool_data_objects,
     except TypeError as e:
         inst = median_gctoo.col_metadata_df
         logger.warning("Could not stringify doses due to TypeError: {}".format(e))
+    except Exception as e:
+        logger.error("Could not stringify doses due to ValueError: {}".format(e))
+        exit(-1)
     median_gctoo.col_metadata_df = inst
 
     write_gct.write(median_gctoo, median_outfile, data_null=_NaN, filler_null=_null)

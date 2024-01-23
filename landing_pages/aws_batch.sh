@@ -18,6 +18,14 @@ while test $# -gt 0; do
       shift
       project_name=$1
       ;;
+    -c| --combination)
+      shift
+      combination=$1
+      ;;
+    -b| --build_name)
+      shift
+      build_name=$1
+      ;;
     -l| --val_link)
       shift
       val_link=$1
@@ -31,6 +39,10 @@ while test $# -gt 0; do
   shift
 done
 
+combination=${combination:-0}
+echo $combination
+
+
 batch_index=0
 if [[ ! -z $projects ]]
 then
@@ -38,6 +50,7 @@ then
       batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
     fi
     project=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
+    combination=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].combination_project')
     data_dir="${data_dir}"/"${project,,}"/"${project^^}"
     val_link=$(find "${out_dir}" -type d -name "*validation_compounds" -execdir basename '{}' ';')
     val_link=../"${val_link}"/index.html
@@ -56,9 +69,12 @@ args=(
   -d "${data_dir}"
   -o "${out_dir}"
   -p "${project_name}"
+  -b "${build_name}"
   -l "${val_link}"
+  -c "${combination}"
 )
 
+echo Rscript /render_reports.R "${args[@]}"
 Rscript /render_reports.R "${args[@]}"
 
 exit_code=$?

@@ -25,6 +25,10 @@ while test $# -gt 0; do
       ROLE_ID+=("$1")
       APPROVED="true"
       ;;
+    -a| --approved)
+      shift
+      APPROVED="true"
+      ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
       shift
@@ -40,8 +44,8 @@ then
     if [[ ! -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]
     then
         batch_index=${AWS_BATCH_JOB_ARRAY_INDEX}
-        if [ -f "${COMPOUND_KEY_JSON}" ];
-        then
+        if [ -f "${COMPOUND_KEY_JSON}" ]; #Relies on assumption that Pipeline reads file and approve reports reads from
+        then                              # environment variable
             echo "Reading from file"
             project=$(cat "${COMPOUND_KEY_JSON}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
             PROJECT_NAME="${project}"
@@ -53,7 +57,7 @@ then
             PROJECT_NAME="${project}"
             echo $role
             ROLE_ID+=("$role")
-            APPROVED="true"
+            #APPROVED="true"
             INDEX_PAGE="${S3_LOCATION}"/"${PROJECT_NAME,,}"/index.html
          else
             errorMessage="$errorMessage Array jobs must follow the following pattern${NL}"

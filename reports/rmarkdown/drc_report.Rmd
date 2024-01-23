@@ -1,7 +1,7 @@
 ---
 params:
-  data_dir: /Users/anup/work/1_Projects/PRISM_Portal/BRD-A47706533
-  comp: BRD-A47706533
+  data_dir: "/Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY/PMTS056/BRD-U00116474"
+  comp: BRD-U00116474
 output:
   html_document:
     toc: false
@@ -85,14 +85,14 @@ drc_plots <- list()
 for (i in 1:nrow(conditions)) {
   condition <- conditions[i,]
   
-  d <- drc %>% dplyr::inner_join(condition)
+  d <- drc %>% dplyr::inner_join(condition, by = c("varied_iname", "ccle_name", "culture", "pert_time"))
   xx = seq(log2(min(d$min_dose)), log2(max(d$max_dose)), length.out = 40)
   res <- apply(d, 1, function(p) dr_func(p, xx))
   func_tab <- cbind(xx, res)
   func_tab %<>% as_tibble() %>%
     dplyr::rename(x = 1, y = 2) %>%
     dplyr::bind_cols(condition) %>%
-    dplyr::left_join(drc)
+    dplyr::left_join(drc, by = c("varied_iname", "ccle_name", "culture", "pert_time") )
   drc_plots[[i]] <- func_tab
 }
 drc_plots %<>% 
@@ -121,13 +121,15 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 
 ## Curve fitting method
 
-Dose response curves fit for `r params$comp`.Robust 4-parameter dose-response curves (DRCs) are fit for each cell line using the viability metrics (see the Data Processing section). The four parameters are upper limit, lower limit, slope, and EC50. The equation for the curve is defined:
+Dose response curves fit for `r params$comp`. Robust 4-parameter dose-response curves (DRCs) are fit for each cell line using the viability metrics (see the Data Processing section). The four parameters are upper limit ($a$), lower limit ($b$), slope ($s$), and EC50. The equation for the curve is defined:
 
 $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
+The curve fitting procedure is implemented via the dr4pl package. It first minimizes the squared deviation of observed viabilities at each dose. If this procedure does not find a reasonable optimum, a robust fitting method is also tried, as described in the dr4pl package documentation. The fits are constrained such that the upper-limit lies in the range (0.99,1.01) and the lower limit lies in the range (0.0,1.01).  
 
-These data, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. Some cell lines may be missing due to insensitivity and/or inability to fit a standard curve to the data (see a standard PRISM report for more information on curve fitting techniques).
+The fit parameters, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. The AUC is computed via numerical integration of the fitted dose-response curve. An IC50 is only reported if the fitted curve crosses a viability of 0.5 within the dose range of the experiment. Some cell lines may be missing due to insensitivity and/or inability to fit dose-response curve to the data.
 
 The table and plots are interactive. To highlight a cell line either search it using the search box or select it in the table.
+
 
 ## Plots
 
@@ -137,10 +139,10 @@ curves_all <- highlight_key(drc_plots %>%
                               dplyr::arrange(auc),
                             ~cell_id, group = "Dose-response")
 lfc_table <- lfc %>%
-                 dplyr::inner_join(drc_meta) %>%
+                 dplyr::inner_join(drc_meta, by = c("ccle_name", "culture", "pert_plate", "pert_time")) %>%
                  dplyr::rename(dose = pert_dose) %>%
                  dplyr::mutate(Viability = 2^LFC_cb,
-                               Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
+                               Replicate = replicate) %>%
                  dplyr::distinct(ccle_name, culture, cell_id, dose, Viability, Replicate)
 
 lfc_all <- highlight_key(lfc_table, ~cell_id, group = "Dose-response")
@@ -170,10 +172,10 @@ p <- plot_ly() %>%
             opacityDim = 1, defaultValues = "",
             selected = attrs_selected(opacity = 1))
 
-compounds_all <- highlight_key(drc_meta %>% 
-                                 dplyr::filter(is.finite(auc)) %>% 
+compounds_all <- highlight_key(drc_meta %>%
                                  dplyr::arrange(auc),
                                ~cell_id, group = "Dose-response")
+
 dt <- DT::datatable(compounds_all, style="bootstrap",
                     options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
                                    columnDefs = list(list(visible = FALSE, targets = c(11)))),

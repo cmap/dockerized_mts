@@ -56,8 +56,8 @@ if (all(is.na(qc_table$pass))) {
   LFC_TABLE %<>%
     # join with SSMD (to filter bad lines)
     dplyr::inner_join(qc_table %>%
-                        dplyr::distinct(ccle_name, prism_replicate, culture, pass, pert_plate),
-                      by = c("prism_replicate", "ccle_name", "culture", "pert_plate")) %>%
+                        dplyr::distinct(ccle_name, prism_replicate, culture, pass, pert_plate, pert_vehicle),
+                      by = c("prism_replicate", "ccle_name", "culture", "pert_plate", "pert_vehicle")) %>%
     dplyr::filter(pass) %>%
     dplyr::select(-pass)
 }
@@ -73,7 +73,7 @@ LFC_COLLAPSED_TABLE <- LFC_TABLE %>%
   dplyr::summarise(LFC = median(LFC, na.rm = T), .groups = "drop")
 
 LFC_COLLAPSED_TABLE %<>%
-    dplyr::mutate(sig_id = paste(pert_plate, culture, pert_id, pert_idose, pert_time, sep = fixed("_")))
+    dplyr::mutate(sig_id = paste(pert_plate, culture, pert_id, pert_idose, pert_time, pert_vehicle, sep = fixed("_")))
 
 dims_full = paste(dplyr::distinct(LFC_TABLE, profile_id) %>% nrow(),
                   dplyr::distinct(LFC_TABLE, ccle_name) %>% nrow(),
@@ -83,5 +83,5 @@ dims_coll = paste(dplyr::distinct(LFC_COLLAPSED_TABLE, sig_id) %>% nrow(),
                   sep = "x")
 
 #---- Write results ----
-readr::write_csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC_n", dims_full, ".csv"))
-readr::write_csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC_n", dims_coll, ".csv"))
+write.csv(LFC_TABLE, paste0(out_dir, "/", build_name, "_LEVEL4_LFC_n", dims_full, ".csv"), row.names=FALSE)
+write.csv(LFC_COLLAPSED_TABLE, paste0(out_dir, "/", build_name, "_LEVEL5_LFC_n", dims_coll, ".csv"), row.names=FALSE)

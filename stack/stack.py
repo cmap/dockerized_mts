@@ -89,6 +89,10 @@ def main(args):
             'search_pattern': '*_LEVEL3_LMFI*.csv',
             'type': 'csv_data'
         },
+        'LEVEL3_NORMALIZED': {
+                    'search_pattern': '*_LEVEL3_NORMALIZED*.csv',
+                    'type': 'csv_data'
+                },
         'LEVEL4_LFC': {
             'search_pattern': '*_LEVEL4_LFC*.csv',
             'type': 'csv_data'

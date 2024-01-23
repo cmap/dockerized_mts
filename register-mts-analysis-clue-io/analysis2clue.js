@@ -1,3 +1,6 @@
+const _ = require("underscore");
+const fetch = require("node-fetch");
+
 /**
  *
  * Sync to analysis.clue.io and then link roles in clue
@@ -17,6 +20,8 @@ class Analysis2clue {
     constructor(apiKey, apiURL, buildID, projectName, indexFile, roleId='cmap_core', approved=false) {
         this.apiKey = apiKey;
         this.apiURL = apiURL;
+        this.buildID = buildID;
+        this.buildName = null;
         this.indexFile = indexFile;
         this.roleId = roleId;
         this.roles = this.roleId.split(",")
@@ -28,7 +33,9 @@ class Analysis2clue {
             "url": this.indexFile,
             "status": "APPROVED",
             "created_by": "MTS"
-        };
+        }
+        this.projectNameWithBuild = null;
+        ;
 
         console.log("within Analysis2clue, roleID:", this.roleId)
         console.log("within Analysis2clue, approved:", this.approved)
@@ -38,7 +45,7 @@ class Analysis2clue {
             this.postData.status = "NEEDS-REVIEW"
         }
 
-        const whereClause = {where:{"name": this.projectName}, include: ["role"]};
+        const whereClause = {where:{"or": [{"name": this.projectName}, {"url": this.indexFile}]}, include: ["role"]};
         this.resourceExistsURL = this.apiURL + "/api/preliminary-analysis?filter=" + JSON.stringify(whereClause);
         this.postURL = this.apiURL + "/api/data/" + buildID + "/external_analysis";
     }
@@ -50,7 +57,6 @@ class Analysis2clue {
      * @returns {Promise<any>}
      */
     async resourceExists() {
-        const fetch = require("node-fetch");
         const self = this;
         const options = {
             method: 'GET',
@@ -99,6 +105,22 @@ class Analysis2clue {
         a.every((val, index) => val === b[index]);
     }
 
+    async getBuildNameFromID() {
+        const self = this;
+        const buildURL = self.apiURL + "/api/data/" + self.buildID ;
+        const options = {
+            method: 'GET',
+            headers: {
+                'user_key': self.apiKey
+            }
+        };
+        const resp =  await fetch(buildURL, options)
+        if (resp.ok && resp.status < 300) {
+            const data = await resp.json();
+            return data.name
+        }
+    }
+
     /**
      *
      * Register resource in CLUE
@@ -109,23 +131,47 @@ class Analysis2clue {
     async registerInCLUE() {
         const _ = require("underscore")
         const self = this;
-        //check if resource exists in API before you post
+        //check if resource exists in API before you post using url or name
         const response = await self.resourceExists();
 
-        if (response.length > 0) {
-            // if (self.indexFile === response[0].url) {
-            console.log(self.projectName + " already exists");
+        const matchingurlsPAs = _.filter(response,
+            function (prelim_analysis){return prelim_analysis.url == self.indexFile})
 
-            const existingReport_roles = _.pluck(response[0].role, 'role_id');
+        const correctPA = _.filter(matchingurlsPAs,
+            function (prelim_analysis){return prelim_analysis.name == self.projectName})
+
+        if (correctPA.length > 0) {
+            // associate PA
+            await self.confirmBuildAssociation(self.buildID, correctPA[0].id)
+
+            const existingReport_roles = _.pluck(correctPA[0].role, 'role_id');
 
             if (Analysis2clue.arrayEquals(existingReport_roles.sort(), self.roles.sort())) {
                 //x_project_id expects uppercase with underscore
                 return {ignore: true};
             }
-            return {ignore: false, id: response[0].id}
+            return {ignore: false, id: correctPA[0].id}
         }
+        self.buildName = await self.getBuildNameFromID()
+        self.projectNameWithBuild = self.projectName + " (" + self.buildName + ")"
+        console.log("Project Name with Build: ", self.projectNameWithBuild)
+        const correctPAwithbuildname = _.filter(matchingurlsPAs,
+            function (prelim_analysis){return prelim_analysis.name == self.projectNameWithBuild})
 
-        //If does not exist, create
+        if (correctPAwithbuildname.length > 0) {
+            // associate PA
+            await self.confirmBuildAssociation(self.buildID, correctPAwithbuildname[0].id)
+
+            const existingReport_roles = _.pluck(correctPAwithbuildname[0].role, 'role_id');
+
+            if (Analysis2clue.arrayEquals(existingReport_roles.sort(), self.roles.sort())) {
+                //x_project_id expects uppercase with underscore
+                return {ignore: true};
+            }
+            return {ignore: false, id: correctPAwithbuildname[0].id}
+        }
+        // create a PA with a name + build
+        self.postData.name = self.projectNameWithBuild
         const resp = await self.postMethodAPI(self.postData, self.postURL, "POST");
         const data = await resp.json();
         if (resp.ok && resp.status < 300) {
@@ -160,6 +206,35 @@ class Analysis2clue {
         }
     }
 
+    async confirmBuildAssociation(buildID, prelim_analysisID) {
+        // check for relation
+        // if relation does not exist
+            // make relation
+        const self = this;
+        const buildExtAnalysisURL = this.apiURL + "/api/data/" + buildID + "/external_analysis/";
+        console.log("Checking association for build.", buildExtAnalysisURL)
+        const options = {
+            method: 'GET',
+            headers: {
+                'user_key': self.apiKey
+            }
+        };
+
+        const responses = await fetch(buildExtAnalysisURL, options)
+
+        if (responses.ok && responses.status === 200) {
+            const linkedAnalyses = await responses.json()
+            const matchingPrelim = _.filter(linkedAnalyses, prelim => { return prelim.id === prelim_analysisID})
+            if (matchingPrelim.length > 0){
+                return;
+            }else{
+                const creationURL = this.apiURL + "/api/data/" + buildID + "/external_analysis/rel/" + prelim_analysisID;
+                const resp = await self.postMethodAPI({}, creationURL, "PUT");
+                const data = await resp.json();
+            }
+        }
+    }
+
     /**
      *
      * Start the processing
@@ -180,6 +255,8 @@ class Analysis2clue {
         }
         return "done";
     }
+
+
 }
 
 

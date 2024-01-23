@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #setup environment
-source activate merino
+source activate prism
 cd /cmap/merino/
 python setup.py develop
 
@@ -51,6 +51,10 @@ while test $# -gt 0; do
     -v| --verbose)
       shift
       VERBOSE=true
+      ;;
+    --ignore_missing)
+      shift
+      IGNORE_MISSING=true
       ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
@@ -111,6 +115,12 @@ then
   args+=(-v)
 fi
 
+if [[ ! -z $IGNORE_MISSING ]]
+then
+  args+=(--ignore_missing)
+fi
+
+echo python /clue/bin/deal.py "${args[@]}"
 
 python /clue/bin/deal.py "${args[@]}"
 

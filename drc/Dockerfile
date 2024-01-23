@@ -8,6 +8,9 @@ COPY ./drc_compound.R /drc_compound.R
 COPY ./aws_batch.sh /clue/bin/aws_batch
 RUN chmod -R +x /*.R
 
+COPY ./install_packages.R /src/install_packages.R
+RUN mkdir -p /clue/bin && Rscript /src/install_packages.R
+
 WORKDIR /
 ENV PATH /clue/bin:$PATH
 RUN ["chmod","-R", "+x", "/clue/bin"]

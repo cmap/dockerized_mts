@@ -80,7 +80,7 @@ fi
 
 
 #setup environment
-source activate merino
+source activate prism
 cd /cmap/merino/
 python setup.py develop
 
@@ -101,41 +101,42 @@ if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX}" ]]; then
     python /clue/bin/stack.py "${args[@]}"
 else
     batch=${AWS_BATCH_JOB_ARRAY_INDEX}
-    if [[ $batch = "0" ]]; then
-        args+=(-k 'inst_info')
-        python /clue/bin/stack.py "${args[@]}"
-    elif [[ $batch = "1" ]]; then
-        args+=(-k 'cell_info')
-        python /clue/bin/stack.py "${args[@]}"
-    elif [[ $batch = "2" ]]; then
-        args+=(-k 'QC_TABLE')
-        python /clue/bin/stack.py "${args[@]}"
-    elif [[ $batch = "3" ]]; then
-        args+=(-k 'compound_key')
-        python /clue/bin/stack.py "${args[@]}"
-    elif [[ $batch = "4" ]]; then
-        args+=(-k 'LEVEL2_COUNT')
-        python /clue/bin/stack.py "${args[@]}"
-    elif [[ $batch = "5" ]]; then
-        args+=(-k 'LEVEL2_MFI')
-        python /clue/bin/stack.py "${args[@]}"
-    elif [[ $batch = "6" ]]; then
-        args+=(-k 'LEVEL3_LMFI')
-        python /clue/bin/stack.py "${args[@]}"
-    elif [[ $batch = "7" ]]; then
-        args+=(-k 'LEVEL4_LFC')
-        python /clue/bin/stack.py "${args[@]}"
-    elif [[ $batch = "8" ]]; then
-        args+=(-k 'LEVEL5_LFC')
-        if [[ ! -z $SIG_ID_COLS ]]
-        then
-          args+=(-s $SIG_ID_COLS)
-        fi
-        echo python /clue/bin/stack.py "${args[@]}"
-        python /clue/bin/stack.py "${args[@]}"
+    if [[ ! -z $KEYS ]]
+    then
+      # number of child jobs needs to match length of keys
+      IFS=',' read -r -a keys <<< "${KEYS}"
+      batch=${AWS_BATCH_JOB_ARRAY_INDEX}
+      KEY="${keys[${batch}]}"
+      args+=(-k $KEY)
     else
-        echo "Done"
+        if [[ $batch = "0" ]]; then
+            args+=(-k 'inst_info')
+        elif [[ $batch = "1" ]]; then
+            args+=(-k 'cell_info')
+        elif [[ $batch = "2" ]]; then
+            args+=(-k 'QC_TABLE')
+        elif [[ $batch = "3" ]]; then
+            args+=(-k 'compound_key')
+        elif [[ $batch = "4" ]]; then
+            args+=(-k 'LEVEL2_COUNT')
+        elif [[ $batch = "5" ]]; then
+            args+=(-k 'LEVEL2_MFI')
+        elif [[ $batch = "6" ]]; then
+            args+=(-k 'LEVEL3_LMFI')
+        elif [[ $batch = "7" ]]; then
+            args+=(-k 'LEVEL4_LFC')
+        elif [[ $batch = "8" ]]; then
+            args+=(-k 'LEVEL5_LFC')
+            if [[ ! -z $SIG_ID_COLS ]]
+            then
+              args+=(-s $SIG_ID_COLS)
+            fi
+        else
+            echo "Done"
+        fi
     fi
+    echo python /clue/bin/stack.py "${args[@]}"
+    python /clue/bin/stack.py "${args[@]}"
 fi
 exit_code=$?
 conda deactivate

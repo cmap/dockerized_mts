@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 print_help () {
-  source activate assemble
+  source activate prism
 #  cd /cmap/merino/
 #  python setup.py develop
   python /clue/bin/assemble/assemble.py --help
@@ -29,11 +29,18 @@ while test $# -gt 0; do
       shift # past argument
       ASSAY_TYPE="$1"
       ;;
+    -beadset|--beadset)
+      shift # past argument
+      BEADSET="$1"
+      ;;
     --default)
       DEFAULT=YES
       ;;
     --dev)
       DEV=TRUE
+      ;;
+    --verbose|-v)
+      VERBOSE=TRUE
       ;;
     *)
       printf "Unknown parameter: %s \n" "$1"
@@ -43,7 +50,7 @@ while test $# -gt 0; do
   shift # past argument or value
 done
 
-source activate assemble
+source activate prism
 
 python --version
 
@@ -90,6 +97,16 @@ args=(
 if [[ -n $DEV ]]
 then
   args+=(--dev)
+fi
+
+if [[ -n $BEADSET ]]
+then
+  args+=(--beadset $BEADSET)
+fi
+
+if [[ -n $VERBOSE ]]
+then
+  args+=(-verbose)
 fi
 
 echo python /clue/bin/assemble/assemble.py "${args[@]}"

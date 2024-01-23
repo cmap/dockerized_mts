@@ -12,6 +12,8 @@ library(hdf5r)
 library(reshape2)
 library(splitstackshape)
 library(R.utils)
+library(httr)
+library(jsonlite)
 
 #---- Reading ----
 # HDF5 file reader
@@ -38,6 +40,37 @@ read_hdf5 <- function(filename, index = NULL) {
   return(data_matrix)
 }
 
+#---- Extract BASE plate ----
+
+extract_baseplate <- function(instinfo, base_string="BASE",inst_column = "prism_replicate" ){
+  
+  base_plate_inst = instinfo %>%
+  dplyr::filter(str_detect(.data[[inst_column]], base_string))
+  
+  return(base_plate_inst)
+}
+
+
+build_master_logMFI <- function(raw_matrix, inst_info, cell_info, count_table,
+                                data_col = "logMFI"){
+  
+  master_logMFI = log2(raw_matrix + 1) %>%
+    reshape2::melt(varnames = c("rid", "profile_id"), value.name = data_col) %>%
+    dplyr::filter(is.finite(logMFI)) %>%
+    dplyr::inner_join(cell_info) %>%
+    dplyr::inner_join(inst_info) %>%
+    dplyr::inner_join(count_table) %>%
+    dplyr::mutate(instance_id = paste(profile_id, ccle_name, sep=":"))
+  
+  return(master_logMFI)
+}
+
+build_count_table <- function(count_matrix, data_col = "count"){
+  master_count = count_matrix %>%
+    reshape2::melt(varnames = c("rid", "profile_id"), value.name = data_col)
+
+  return(master_count)
+}
 
 #---- Compound tracking ----
 
@@ -45,7 +78,7 @@ read_hdf5 <- function(filename, index = NULL) {
 write_key <- function(df, out_dir, build_name) {
   df %>%
     dplyr::filter(!pert_type %in% c("trt_poscon", "ctl_vehicle")) %>%
-    dplyr::select(pert_iname, pert_id, pert_plate, pert_dose, any_of("x_project_id")) %>%
+    dplyr::select(pert_iname, pert_id, pert_plate, pert_dose, pert_vehicle, any_of("x_project_id")) %>%
     dplyr::distinct() %>%
     splitstackshape::cSplit(splitCols = "pert_dose",
                             sep = "|", fixed = T,
@@ -54,7 +87,7 @@ write_key <- function(df, out_dir, build_name) {
     dplyr::group_by(across(-c(colnames(.)[str_detect(colnames(.), pattern = "pert_dose")]))) %>%
     summarise_all(function(x) n_distinct(x, na.rm = T)) %>%
     dplyr::ungroup() %>%
-    readr::write_csv(., paste0(out_dir, "/", build_name, "_compound_key.csv"))
+    write.csv(., paste0(out_dir, "/", build_name, "_compound_key.csv"), row.names=FALSE)
 }
 
 
@@ -63,9 +96,9 @@ write_key <- function(df, out_dir, build_name) {
 control_medians <- function(df) {
   ref <- df %>%
     dplyr::filter(pert_type == "ctl_vehicle") %>%  # look at controls
-    dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::group_by(prism_replicate, pert_well, pert_vehicle) %>%
     dplyr::mutate(mLMFI = median(logMFI)) %>%  # median of each well on replicate
-    dplyr::group_by(prism_replicate, rid) %>%  # median well on each replicate
+    dplyr::group_by(prism_replicate, pert_vehicle, rid) %>%  # median well on each replicate
     dplyr::mutate(mmLMFI = logMFI - mLMFI + median(mLMFI)) %>%  # normalized value for rep (to median well)
     dplyr::summarise(rLMFI = median(mmLMFI), .groups = "drop") %>%  # median normalized value across reps
     dplyr::left_join(df)
@@ -76,11 +109,10 @@ control_medians <- function(df) {
 # fit scam to control barcode profiles and normalize other data
 normalize <- function(df, barcodes, threshold) {
   normalized <- df %>%
-    dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::group_by(prism_replicate, pert_well, pert_vehicle) %>%
     dplyr::mutate(n = n()) %>%
     dplyr::filter(n >= threshold) %>%
     dplyr::select(-n) %>%
-    # try with k=4 and 5 (to avoid hanging), try again with linear model
     dplyr::mutate(logMFI_norm = tryCatch(
       expr = {tryCatch(
         expr = {
@@ -116,10 +148,11 @@ normalize <- function(df, barcodes, threshold) {
   return(normalized)
 }
 
+
 # fit scam to control barcode profiles and normalize other data
 normalize_base <- function(df, barcodes, threshold) {
   normalized <- df %>%
-    dplyr::group_by(prism_replicate, pert_well) %>%
+    dplyr::group_by(prism_replicate, pert_well, pert_vehicle) %>%
     dplyr::mutate(n = n()) %>%
     dplyr::filter(n >= threshold) %>%
     dplyr::select(-n) %>%
@@ -141,4 +174,85 @@ normalize_base <- function(df, barcodes, threshold) {
     dplyr::select(-logMFI)
   
   return(normalized)
+}
+
+make_request_url_filter <- function(endpoint_url, where=NULL) {
+  full_url <- paste0(endpoint_url, "/api/data/")
+  if (!is.null(where)) {
+    # Manually construct the filter string
+    filter_str <- sprintf('{"where":{"%s":"%s"}}', names(where), where[[1]])
+    
+    # Manually replace characters to match exact URL encoding
+    filter_encoded <- gsub("\\{", "%7B", filter_str)
+    filter_encoded <- gsub("\\}", "%7D", filter_encoded)
+    filter_encoded <- gsub(":", "%3A", filter_encoded)
+    filter_encoded <- gsub("\"", "%22", filter_encoded)
+    
+    # Construct the full URL
+    request_url <- sprintf('%s?filter=%s', gsub("/$", "", full_url), filter_encoded)
+    return(request_url)
+  } else {
+    return(full_url)
+  }
+}
+
+
+get_data_from_db <- function(endpoint_url, user_key, where=NULL) {
+  # Construct the request URL using the make_request_url_filter function
+  request_url <- make_request_url_filter(endpoint_url, where)
+  cat("Request URL:", request_url, "\n")  # Print the request URL for verification
+  
+  # Make the HTTP GET request using the httr package
+  response <- GET(url = request_url, add_headers(user_key = user_key))
+  
+  # Check if the request was successful
+  if (response$status_code == 200) {
+    # Parse and return the JSON content from the response
+    return(fromJSON(content(response, "text")))
+  } else {
+    # Handle errors
+    cat("Error in the request: ", response$status_code, "\n")
+    cat("Response content: ", content(response, "text"), "\n")
+    stop("Request failed")
+  }
+}
+
+
+filter_lowcounts <- function(df, min_count = 10, threshold = 0.25) {
+  # Find instances with count < min_count
+  cat("Finding instances with count < min_count...\n")
+  low_count_instances <- df %>%
+    filter(count < min_count) %>%
+    pull(instance_id)
+
+  # Calculate fraction of instances to remove per combination
+  cat("Calculating fraction of instances to remove per combination...\n")
+  fraction_to_remove <- df %>%
+    group_by(prism_replicate, pert_well) %>%
+    summarise(n_low_count = sum(count < min_count)) %>%
+    mutate(n_total = n()) %>%
+    mutate(fraction_to_remove = n_low_count / n_total)
+
+  # Identify combinations exceeding removal threshold
+  cat("Identifying combinations exceeding removal threshold...\n")
+  combinations_to_remove <- fraction_to_remove %>%
+    filter(fraction_to_remove >= threshold) %>%
+    # Convert to data.frame
+    data.frame() %>%
+    # Add column names
+    mutate(prism_replicate = prism_replicate,
+           pert_well = pert_well)
+
+  # Filter out unwanted instances and combinations
+  cat("Filtering instances and combinations...\n")
+  filtered_df <- df %>%
+    filter(!(instance_id %in% low_count_instances)) %>%
+    filter(!((prism_replicate %in% combinations_to_remove$prism_replicate) &
+               (pert_well %in% combinations_to_remove$pert_well)))
+
+  # Return filtered dataframe and lists
+  well_df <- combinations_to_remove[c('prism_replicate','pert_well')]
+  return(list(filtered_df = filtered_df,
+               removed_instances = low_count_instances,
+               removed_wells = well_df))
 }
