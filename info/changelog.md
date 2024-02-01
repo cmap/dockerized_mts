@@ -1,5 +1,8 @@
 # Release Notes
 
+## MTS025, CPS011, APS003
+* Removed unnamed columns (index) in QC_TABLE download
+
 ## MTS024, CPS010, APS002
 ***
 
