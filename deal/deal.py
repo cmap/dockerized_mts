@@ -226,7 +226,10 @@ def main(args):
             qc = pd.read_csv(glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0],
                              dtype={'pert_dose': 'str', 'pert_idose': 'str'}
                              )
-            qc.loc[qc['prism_replicate'].isin(preps)].to_csv(os.path.join(proj_dir, '{}_{}.csv'.format(project, key)))
+            qc.loc[qc['prism_replicate'].isin(preps)].to_csv(
+                os.path.join(proj_dir, '{}_{}.csv'.format(project, key)),
+                index=False
+            )
         else:
             file_paths = glob.glob(os.path.join(build_path, dl_dict['search_pattern']))
             if args.ignore_missing and len(file_paths) < 1:

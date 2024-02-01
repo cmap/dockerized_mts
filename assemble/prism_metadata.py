@@ -134,17 +134,17 @@ def build_prism_cell_list(config_parser, cell_set_definition_file):
 
     return prism_cell_list
 
-def _read_prism_cell_from_db(cell_set_name, api_url):
+def _read_prism_cell_from_db(cell_set_name, beadset, api_url):
     cell_set_def_url = api_url + 'cell_set_definition_files/'
     data = get_data_from_db(
         cell_set_def_url,
-        where = {'davepool_id':cell_set_name},
+        where={'davepool_id':cell_set_name, 'beadset':beadset},
         fields= CELL_SET_DEFINITION_HEADERS,
         user_key=API_KEY)
 
     return parse_data.parse_json(data, PrismCell)
 
-def build_prism_cell_list_from_db(cell_set_name, api_url):
+def build_prism_cell_list_from_db(cell_set_name, beadset, api_url):
     '''
     read PRISM cell line metadata from file specified in config file, then associate with
     assay_plate based on pool ID, pulling out metadata based on config specifications.  Check for cell pools that are not associated with any assay plate
@@ -155,7 +155,7 @@ def build_prism_cell_list_from_db(cell_set_name, api_url):
     '''
 
     #read headers to pull from config and convert to tuple format expected by data parser
-    prism_cell_list = _read_prism_cell_from_db(cell_set_name, api_url)
+    prism_cell_list = _read_prism_cell_from_db(cell_set_name,beadset, api_url)
 
     if not prism_cell_list:
         raise ValueError("cell set name not found in db (davepool_id): {}".format(cell_set_name))

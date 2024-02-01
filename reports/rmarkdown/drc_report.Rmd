@@ -124,14 +124,15 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 
 ## Curve fitting method
 
-Dose response curves fit for `r params$comp`. Four parameter dose-response curves (DRCs) are fit for each cell line using the viability metrics (see the Data Processing section). The four parameters are upper limit ($a$), lower limit ($b$), slope ($s$), and EC50. The equation for the curve is defined:
+Dose response curves fit for `r params$comp`. Robust 4-parameter dose-response curves (DRCs) are fit for each cell line using the viability metrics (see the Data Processing section). The four parameters are upper limit ($a$), lower limit ($b$), slope ($s$), and EC50. The equation for the curve is defined:
 
 $$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
-The curve fitting procedure minimizes the squared deviation of the observed viabilities at each dose. The fits are constrained such that the upper-limit lies within the range (0.8,1.001) and the lower limit lies within (0,1). Further, we restrict the predicted viability to always decrease with increasing dose by constraining the slope. Since the nonlinear optimization underlying the fitting procedure may return parameters a local optimum, we fit using four different methods implemented in the dr4pl and drc packages and report parameters with the lowest mean squared error. 
+The curve fitting procedure is implemented via the dr4pl package. It first minimizes the squared deviation of observed viabilities at each dose. If this procedure does not find a reasonable optimum, a robust fitting method is also tried, as described in the dr4pl package documentation. The fits are constrained such that the upper-limit lies in the range (0.99,1.01) and the lower limit lies in the range (0.0,1.01).  
 
-These data, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. Fit parameters are only reported if the best fit explains at least 5% of the variance of the fold-change data. Additionally, an IC50 is only reported if the drc fit crosses 0.5 within the dose range of the experiment. 
+The fit parameters, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. The AUC is computed via numerical integration of the fitted dose-response curve. An IC50 is only reported if the fitted curve crosses a viability of 0.5 within the dose range of the experiment. Some cell lines may be missing due to insensitivity and/or inability to fit dose-response curve to the data.
 
 The table and plots are interactive. To highlight a cell line either search it using the search box or select it in the table.
+
 
 ## Plots
 

@@ -53,11 +53,14 @@ def build_parser():
     parser.add_argument("-csv_filepath", "-csv", help="full path to csv", type=str,  required=True)
     parser.add_argument("-assay_type", "-at", help="assay data was profiled in",
                         type=str, required=False)
+    parser.add_argument("-beadset", "-bs", help="Bead set used in detection",
+                        type=str, default=None, required=False)
     parser.add_argument("-plate_map_path", "-pmp",
                         help="path to file containing plate map describing perturbagens used", type=str, required=False)
     parser.add_argument("-map_src_plate", "-map",
                         help="Pert Plate with replicate map name. Searches database, using API KEY environment variable",
                         type=str, required=False)
+
 
     # These arguments are optional. Some may be superfluous now and might be removed.
     parser.add_argument("-verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
@@ -83,6 +86,20 @@ def read_csv(csv_filepath, assay_type):
     pd = davepool_data.read_data(csv_filepath)
     pd.davepool_id = assay_type
     return pd
+
+def check_for_duplicate_analytes(prism_cell_list):
+    seen_analytes = set()
+    duplicated_analytes = set()
+    for i in range(0,len(prism_cell_list)):
+        analyte_id = prism_cell_list[i].analyte_id
+        if analyte_id in seen_analytes:
+            duplicated_analytes.add(analyte_id)
+        else:
+            seen_analytes.add(analyte_id)
+    if duplicated_analytes:
+        msg = f"The following analytes are duplicated: {', '.join(duplicated_analytes)}, check cell set database."
+        logger.error(msg)
+        raise KeyError(msg)
 
 '''
 There are some cases in which we are subsetting plates into different groups, ie. more than one gct per plate.
@@ -117,8 +134,14 @@ def main(args, all_perturbagens=None, assay_plates=None):
     prism_replicate_name = os.path.basename(args.csv_filepath).rsplit(".", 1)[0]
     (_, assay, tp, replicate_number, bead) = prism_replicate_name.rsplit("_")
 
-    if bead is not None and args.assay_type is None:
-        api_call = os.path.join('https://api.clue.io/api', 'beadset', bead)
+    if args.beadset:
+        beadset = args.beadset
+    else:
+        beadset = bead
+
+
+    if beadset is not None and args.assay_type is None:
+        api_call = os.path.join('https://api.clue.io/api', 'beadset', beadset)
         db_entry = requests.get(api_call)
         args.assay_type = json.loads(db_entry.text)['assay_variant']
 
@@ -151,7 +174,10 @@ def main(args, all_perturbagens=None, assay_plates=None):
         pert.validate_properties(pert_column_metadata_fields)
 
     #read actual data from relevant csv files, associate it with davepool ID
-    prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type, api_url=api_url)
+    prism_cell_list = prism_metadata.build_prism_cell_list_from_db(args.assay_type, beadset, api_url=api_url)
+
+    # check if any analytes are duplicated and if so raise an exception
+    check_for_duplicate_analytes(prism_cell_list)
 
     #prism_cell_list = prism_metadata.build_prism_cell_list(cp, cell_set_file)
 
@@ -167,11 +193,13 @@ def main(args, all_perturbagens=None, assay_plates=None):
     # Pass python objects to the core assembly module (this is where command line and automated assembly intersect)
     # here the outfile for automation is defined as project_dir/prism_replicate_set_name
     try:
-        assemble_core.main(prism_replicate_name, args.outfile, all_perturbagens, davepool_data_objects, prism_cell_list)
+        assemble_core.main(prism_replicate_name, args.outfile, all_perturbagens, davepool_data_objects, prism_cell_list, verbose=args.verbose)
 
     except Exception as e:
         failure_path = os.path.join(args.outfile, "assemble", prism_replicate_name,  "failure.txt")
         ex_type, ex, tb = sys.exc_info()
+        print("plate {} failed for reason: {}: {}".format(prism_replicate_name, ex_type, ex))
+        traceback.print_tb(tb)
         with open(failure_path, "w") as file:
             file.write("plate {} failed for reason: {}: {}\n".format(prism_replicate_name, ex_type, ex))
             file.write("\ntraceback:\n")

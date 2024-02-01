@@ -1,0 +1,306 @@
+---
+params:
+  data_dir: "//Users/shiker/Documents/mts_summary/MTS023_PR500"
+  build: "MTS023_PR500"
+  meta_folder: https://s3.amazonaws.com/biomarker.clue.io
+output:
+  html_document:
+    toc: false
+    theme: paper
+    highlight: kate
+---
+
+
+```{r load packages, echo=F, message=F, warning=F, include=F}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.width = 10)
+
+# load libraries
+library(magrittr)
+library(data.table)
+library(tidyverse)
+library(ggforce)
+library(ggthemes)
+library(heatmaply)
+
+# push NAs to bottom in tables
+options(DT.TOJSON_ARGS = list(na = "string"))
+```
+
+
+```{r preprocessing, include=F}
+# file paths for Level 4 and Level 5 data 
+lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+lfc_path_replicate <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
+
+# read in LFC replicate level data
+if (length(lfc_path_replicate) == 1) {
+  LFC_replicate <- data.table::fread(lfc_path_replicate)
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+
+# read in LFC
+if (length(lfc_path) == 1) {
+  LFC <- data.table::fread(lfc_path)
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+
+# Generate viability 
+LFC %<>% dplyr::mutate(viability = pmin(2^LFC_cb, 1))
+
+# counting cell lines where viability below 0.3 per compound (killing)
+killing_df <- LFC %>%
+    dplyr::filter(pert_iname != 'bortezomib') %>%
+    group_by( x_project_id, pert_id, pert_iname, culture, pert_plate, ccle_name) %>%
+    summarize(below_0.3 = any(viability < 0.3)) %>%
+    group_by(x_project_id, pert_id, pert_iname, culture, pert_plate) %>%
+    summarize(killed_cell_lines = sum(below_0.3))
+
+
+# average replicate value per compound 
+replicate_df <- LFC_replicate %>% 
+    dplyr::select(x_project_id, pert_id, pert_iname, pert_dose, ccle_name, culture, pert_plate, replicate, LFC_cb) %>% dplyr::filter(pert_iname != 'bortezomib') %>%
+    pivot_wider(names_from = replicate, values_from = LFC_cb) %>% 
+  group_by(x_project_id, pert_id, pert_iname, culture, pert_plate) %>% 
+  dplyr::select(X1, X2, X3) %>% 
+  summarize(cor_X1_X2 = cor(X1, X2, use = "pairwise.complete.obs"),
+            cor_X2_X3 = cor(X2, X3, use = "pairwise.complete.obs"),
+            cor_X1_X3 = cor(X1, X3, use = "pairwise.complete.obs")) %>%
+  rowwise() %>%
+  dplyr::mutate(mean_correlation = mean(c(cor_X1_X2, cor_X2_X3, cor_X1_X3))) 
+
+# formatting by compound for summary table 
+summary_correlation <- replicate_df%>%
+  dplyr::select(x_project_id, pert_id, pert_iname, culture, pert_plate, mean_correlation)
+
+
+# flagging non-monotonicity by dose 
+monotonicity_df <- LFC %>%
+    dplyr::select(x_project_id, pert_id, pert_iname, pert_dose, ccle_name, culture, pert_plate, viability) %>% dplyr::filter(pert_iname != 'bortezomib') %>%
+    group_by(x_project_id, pert_id, pert_iname, ccle_name, culture, pert_plate) %>%
+    mutate(change_in_viability = c(NA, diff(viability)), flag = ifelse(change_in_viability > 0.25, 1, 0)) %>%
+    mutate(flag = replace_na(flag, 0))
+
+# summarizing non-monotonicity by cell lines 
+monotonicity_by_lines <- monotonicity_df %>% dplyr::filter(flag == 1) %>%
+    distinct(x_project_id, pert_id, pert_iname, ccle_name, culture, pert_plate, .keep_all = TRUE) %>%
+    group_by(ccle_name) %>%
+    summarize(flagged_instances = n())
+
+# summarizing non-monotonicity by compound and dose 
+monotonicity_compound_dose <- monotonicity_df %>% 
+    dplyr::filter(flag == 1) %>%
+    distinct(x_project_id, pert_id, pert_iname, ccle_name, culture, pert_plate, .keep_all = TRUE) %>%
+    group_by(x_project_id, pert_id, pert_iname, pert_dose, culture, pert_plate) %>%
+    summarize(flagged_instances = n())
+
+# summarizing non-monotonicity by compound for summary table 
+summary_monotonicity <- monotonicity_df %>% 
+  group_by(x_project_id, pert_id, pert_iname, ccle_name, culture, pert_plate) %>%
+  summarize(non_monotonic_line = any(flag ==1)) %>%
+  group_by(x_project_id, pert_id, pert_iname, culture, pert_plate) %>%
+  summarize(non_montonic_cell_lines = sum(non_monotonic_line))
+  
+# calculating unique number of conditions, compounds, and cell lines 
+n_conditions <- nrow(summary_monotonicity)
+n_compounds <- length(unique(summary_monotonicity$pert_id))
+n_cell_lines <- LFC %>% dplyr::distinct(ccle_name, culture) %>% nrow()
+
+
+# generating summary table: killing, mean correlation, non-monotonicity 
+summary_table <- dplyr::inner_join(killing_df, summary_correlation, by = c("x_project_id", "pert_id", "pert_iname", "culture", "pert_plate")) %>%
+  dplyr::inner_join(summary_monotonicity, by = c("x_project_id", "pert_id", "pert_iname", "culture", "pert_plate")) %>%
+  dplyr::mutate(uncorrelated_killing_score = (killed_cell_lines/n_cell_lines) * (1-mean_correlation))
+
+# identifying max dose for each compound condition 
+max_doses <- LFC %>%
+  dplyr::filter(pert_iname != 'bortezomib') %>% 
+  group_by(pert_id, pert_iname, culture, pert_plate) %>%
+  summarize(max_dose = max(pert_dose))
+
+# filtering LFC for only max doses for each compound condition 
+filtered_max_dose <- LFC %>%
+  dplyr::filter(pert_iname != 'bortezomib') %>% 
+  inner_join(max_doses, by = c("pert_id", "pert_iname", "culture", "pert_plate")) %>%
+  filter(pert_dose == max_dose)
+
+# summarizing inertness by cell lines 
+inert_by_lines <- filtered_max_dose %>% 
+  dplyr::mutate(inert = ifelse(viability > 0.9, 1, 0)) %>%
+  dplyr::filter(inert == 1) %>% 
+  group_by(ccle_name) %>%
+  summarize(flagged_instances = n())
+
+  
+
+# 
+# 
+# 
+# # top dose viability distribution 
+# lowest_doses <- LFC %>%
+#     group_by(pert_id) %>%
+#     summarize(lowest_dose = min(pert_dose))
+# 
+# 
+# top_doses <- LFC %>%
+#     group_by(pert_id) %>%
+#     summarize(top_dose = max(pert_dose))
+# 
+# filtered_low_dose <- LFC %>%
+#     inner_join(lowest_doses, by = "pert_id") %>%
+#     filter(pert_dose == lowest_dose)
+# 
+# 
+# filtered_top_dose <- LFC %>%
+#     inner_join(top_doses, by = "pert_id") %>%
+#     filter(pert_dose == top_dose)
+# 
+# density_plot <- ggplot() +
+#   geom_density(data = filtered_low_dose, aes(x = viability, fill = "Lowest Dose"), alpha = 0.5) +
+#   geom_density(data = filtered_top_dose, aes(x = viability, fill = "Highest Dose"), alpha = 0.5) +
+#   geom_vline(xintercept = 0.5, linetype = "dashed", color = "black") +  # Add the vertical dashed line
+#   labs(title = "Density Plot for Viability at Lowest and Highest Doses", x = "Viability", y = "Density")
+
+
+
+
+
+
+
+```
+
+
+---
+title: "`r paste(params$build, 'Summary Report')`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+<a href="https://www.broadinstitute.org/"><img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/></a>
+<a href="https://www.theprismlab.org/"><img src="misc/prism_logo_tagline_side.png" width=300px align="right"/></a>
+<br><br><br>
+
+[Back](../../../index.html)
+
+To navigate through the report please click on the blue tabs under each heading.
+
+
+# Data {.tabset .tabset-fade .tabset-pills}
+
+## Overview
+
+The goal of this report is to provide a broad level overview of both compound and cell line behavior across MTS/CPS screens. <br>
+Necessary data includes Level 4, Level 5, and QC data.  <br>
+**Unique Conditions (compound, culture, pert plate) Tested**: `r n_conditions`  <br>
+**Unique Compounds Tested: `r n_compounds`** <br>
+**Total Cell Lines (Which Pass QC):** `r n_cell_lines` <br>
+
+
+
+## Summary Table
+
+1) Cell Lines Killed is defined as a cell line which has < **0.3** viability to any compound dose 
+2) Mean Replicate Correlation is the average Replicate correlations for X1/X2, X2/X3, and X1/X3. <br>
+3) Monotonicity is assessed by looking at the difference in viability between two incremental (lower and higher) doses: Change in Viability = Viability of Higher Dose - Viability of Lower Dose. 
+If change in viability is > **0.25**, the upper dose is flagged. 
+4) Uncorrelated Killing Score is an index from 0-1 designed to flag killing in which there is little correlation across replicates (possible false positivites) and is defined as: \[ \text{Uncorrelated Killing Score} = \left( \frac{\text{Cell Lines Killed}}{\text{Total Cell Lines}} \right) \times \left(1 - \text{Mean Replicate Correlation} \right) \]
+
+```{r viab table, echo=F, message=F, warning=F}
+
+# summary table 
+DT::datatable(summary_table,
+              filter = "top", rownames = F,
+              colnames = c("Project", "Compound ID", "Compound Name", "Culture", "Pert Plate",
+                           "Cell Lines Killed", "Mean Replicate Correlation", "Non-Monotonic Cell Lines", "Uncorrelated Killing Score"),
+              options = list(dom = "tp")) %>%
+              DT::formatSignif(columns = c("mean_correlation", "uncorrelated_killing_score"), digits = 3)
+
+
+
+
+```
+
+# Additional Tables {.tabset .tabset-fade .tabset-pills}
+
+## Replicate Correlation Table 
+
+Replicate correlations for X1/X2, X2/X3, and X1/X3 
+
+```{r corr table, echo=F, message=F, warning=F}
+
+# mean replicate correlation table 
+DT::datatable(replicate_df,
+              filter = "top", rownames = F,
+              colnames = c("Project", "Compound ID", "Compound Name", "Culture", "Pert Plate",
+                           "X1/X2 Correlation", "X2/X3 Correlation", "X1/X3 Correlation", "Mean Replicate Correlation"),
+              options = list(dom = "tp")) %>%
+              DT::formatSignif(columns = c("cor_X1_X2", "cor_X2_X3", "cor_X1_X3", "mean_correlation"), digits = 3)
+
+
+```
+
+
+## Monotonicity Table By Cell Line 
+
+Monotonicity is assessed by looking at the difference in viability between two incremental (lower and higher) doses: Change in Viability = Viability of Higher Dose - Viability of Lower Dose. 
+If change in viability is > **0.25**, the upper dose is flagged. 
+
+
+```{r monotonic cell line table, echo=F, message=F, warning=F}
+
+# Monotonicity table by cell lines 
+DT::datatable(monotonicity_by_lines,
+              filter = "top", rownames = F,
+              colnames = c("Cell Line", "Number of Non-Monotonic Occurrences"),
+              options = list(dom = "tp"))
+
+
+
+```
+
+
+## Monotonicity Table By Compound and Dose 
+
+Monotonicity is assessed by looking at the difference in viability between two incremental (lower and higher) doses: Change in Viability = Viability of Higher Dose - Viability of Lower Dose. 
+If change in viability is > **0.25**, the upper dose is flagged. 
+
+
+```{r monotonic compound dose table, echo=F, message=F, warning=F}
+
+# Monotonicity by compound dose condition 
+DT::datatable(monotonicity_compound_dose,
+              filter = "top", rownames = F,
+              colnames = c("Project", "Compound ID", "Compound Name", "Dose", "Culture", "Pert Plate", "Number of Non-Monotonic Occurrences"),
+              options = list(dom = "tp"))
+
+
+
+```
+
+
+
+
+
+
+
+## Inert Table 
+
+Inert cell lines are cell lines which have a viability > **0.9** to the maximum dose of a compound. 
+
+
+```{r inert table, echo=F, message=F, warning=F}
+
+# Inert table 
+DT::datatable(inert_by_lines,
+              filter = "top", rownames = F,
+              colnames = c("Cell Line", "Compounds Which Were Inert To Cell Line"),
+              options = list(dom = "tp"))
+
+
+
+```
+

@@ -116,7 +116,6 @@ for (i in 1:nrow(dosed_compounds)){
 
     # get LFC data
     d <- df[j, ] %>% dplyr::inner_join(LFC_TABLE.split) %>% suppressMessages()
-
     d %<>% dplyr::filter(is.finite(.[[LFC_column]]),is.finite(.[[dose_var]]) ) # drop any infinite LFC values or undefined doses
 
     d$FC <- 2^d[[LFC_column]] # get fold-change values.
@@ -176,7 +175,6 @@ for (i in 1:nrow(dosed_compounds)){
       }
       sub_DRC[[j]] <- x
     } else { # fit is unsuccessful and so all we can really provide is the riemann auc but we add the other columns as well for completeness
-
       x <- tibble(min_dose = min(d[[dose_var]]),
                   max_dose = max(d[[dose_var]]),
                   upper_limit = as.numeric(NA),
@@ -188,7 +186,7 @@ for (i in 1:nrow(dosed_compounds)){
                       log2.ic50 = as.numeric(NA),
                       auc_riemann=fit_result.df$auc_riemann,
                       mse = as.numeric(NA),
-                      R2 = as.numeric(NA),
+                      R2 = as.numeric(NA),  
                       best_fit_name = NA,
                       varied_iname = comp$pert_iname,
                       varied_id = comp$pert_id,
@@ -198,7 +196,6 @@ for (i in 1:nrow(dosed_compounds)){
                       pert_time = df[j,]$pert_time,
                       pert_plate = df[j,]$pert_plate,
                       fit_type= fit_type)
-
       # if this was a combination track other compounds added
       if (any(str_detect(colnames(df), "pert_id_"))) {
         added_comp_table <- df[j, ] %>%
@@ -209,7 +206,6 @@ for (i in 1:nrow(dosed_compounds)){
         x %<>% dplyr::left_join(added_comp_table)%>% suppressMessages()
       }
       sub_DRC[[j]] <- x
-
       # sub_DRC[[j]] <- tibble(min_dose = min(d[[dose_var]]),######
       #                        max_dose = max(d[[dose_var]]),
       #                        upper_limit = as.numeric(NA),
@@ -231,7 +227,6 @@ for (i in 1:nrow(dosed_compounds)){
       #                   pert_time = df[j,]$pert_time,
       #                   pert_plate = df[j,]$pert_plate)
     }
-
     if (is.na(fit_result.df$successful_fit)){
       x <- tibble(min_dose = min(d[[dose_var]]),######
                              max_dose = max(d[[dose_var]]),
@@ -254,7 +249,6 @@ for (i in 1:nrow(dosed_compounds)){
                         pert_time = df[j,]$pert_time,
                         pert_plate = df[j,]$pert_plate,
                         fit_type= fit_type)
-
       if (any(str_detect(colnames(df), "pert_id_"))) {
         added_comp_table <- df[j, ] %>%
           tidyr::unite(col = added_compounds, starts_with("pert_iname_"), sep = "|") %>%

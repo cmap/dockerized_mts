@@ -20,8 +20,10 @@ if (as.numeric(args$combination) == 0) {
                     output_dir = args$data_dir,
                     params = list(data_dir = args$data_dir,
                                   comp = args$compound,
+                                  is_combination=FALSE,
                                   meta_folder = args$meta_path,
                                   lfc_five_pattern = args$lfc_five_pattern))
+
   rmarkdown::render("rmarkdown/drc_report.Rmd",
                     output_file = paste0(args$compound, "_drc.html"),
                     output_dir = args$data_dir,
@@ -30,11 +32,12 @@ if (as.numeric(args$combination) == 0) {
                                   lfc_four_pattern = args$lfc_four_pattern))
 } else if (as.numeric(args$combination) == 1) {
   # combination report and dose response curves
-  rmarkdown::render("rmarkdown/combination_solo.Rmd",
+  rmarkdown::render("rmarkdown/compound_report.Rmd",
                     output_file = paste0(args$compound, "_report.html"),
                     output_dir = args$data_dir,
                     params = list(data_dir = args$data_dir,
                                   comp = args$compound,
+                                  is_combination=TRUE,
                                   meta_folder = args$meta_path))
   rmarkdown::render("rmarkdown/combination_drc.Rmd",
                     output_file = paste0(args$compound, "_drc.html"),

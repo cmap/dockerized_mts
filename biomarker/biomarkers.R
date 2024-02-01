@@ -10,7 +10,7 @@ parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-b", "--base_dir", default="", help="Input directory.")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output directory. Default is working directory.")
-parser$add_argument("-d", "--biomarker_dir", default="https://s3.amazonaws.com/biomarker.clue.io/.cache", help="Directory containing biomarker files.")
+parser$add_argument("-d", "--biomarker_dir", default="https://s3.amazonaws.com/biomarker.clue.io/2023-Q2", help="Directory containing biomarker files.")
 parser$add_argument("-f", "--biomarker_file", default=NULL, help="Name of biomarker file. Optional")
 parser$add_argument("-q", "--qc", default=NULL, help = "Path to QC file to be used as confounders")
 
@@ -111,7 +111,8 @@ if (is.null(biomarker_file) || biomarker_file == "rep") {
 
 # get lineage principal components to use as confounder
 if (is.null(biomarker_file) || biomarker_file == "ge") {
-  LIN_PCs <- data.table::fread(paste0(biomarker_dir, "/linPCA.csv"))
+  LIN_PCs <- data.table::fread(paste0(biomarker_dir, "/linPCA.csv")) %>%
+    column_to_rownames("V1") %>% as.matrix()
   confounder_overlap <- intersect(rownames(LIN_PCs), rownames(qc_table))
   if (!is.null(qc_table)) LIN_PCs <- cbind(LIN_PCs[confounder_overlap, ], qc_table[confounder_overlap, ])
 }
@@ -185,45 +186,45 @@ for(feat in 1:length(linear_data)) {
     }
   }
 
-  # gene expression with lineage as confounder
-  if (linear_data[feat] == "ge") {
-
-    # for each perturbation get results
-    for(i in 1:nrow(runs)) {
-      # filter down to current dose (run)
-      run <- runs[i,]
-      Y <- all_Y %>%
-        dplyr::inner_join(run)
-      y <- Y$response; names(y) <- Y$ccle_name
-      y <- y[is.finite(y)]
-
-      overlap <- dplyr::intersect(rownames(X), names(y)) %>%
-        dplyr::intersect(., rownames(LIN_PCs))
-      y <- y[overlap]
-
-      if (length(y) < 10 | min(y) == max(y)) {
-        next
-      } else {
-        # check that there are unique confounders
-        if (all(apply(LIN_PCs[overlap,], 2, function(x) length(unique(x)) == 1))) {
-          next
-        } else {
-          res.lin <- cdsrmodels::lin_associations(X[overlap,], y, W = LIN_PCs[overlap,])
-          res.cor <- res.lin$res.table %>%
-            cbind(., rho=res.lin$rho[rownames(.),], q.val=res.lin$q.val[rownames(.),]) %>%
-            tibble::as_tibble() %>%
-            dplyr::rename(feature = ind.var, coef = rho) %>%
-            dplyr::arrange(q.val) %>%
-            dplyr::mutate(rank = 1:n(),
-                          feature_type = "GE_noLIN") %>%
-            dplyr::filter(rank <= 1000 | q.val < 0.1) %>%
-            dplyr::bind_cols(run)
-
-          linear_table[[ix]] <- res.cor; ix <- ix + 1
-        }
-      }
-    }
-  }
+  # gene expression with lineage as confounder - not currently computed in biomarker analysis 
+  # if (linear_data[feat] == "ge") {
+  # 
+  #   # for each perturbation get results
+  #   for(i in 1:nrow(runs)) {
+  #     # filter down to current dose (run)
+  #     run <- runs[i,]
+  #     Y <- all_Y %>%
+  #       dplyr::inner_join(run)
+  #     y <- Y$response; names(y) <- Y$ccle_name
+  #     y <- y[is.finite(y)]
+  # 
+  #     overlap <- dplyr::intersect(rownames(X), names(y)) %>%
+  #       dplyr::intersect(., rownames(LIN_PCs))
+  #     y <- y[overlap]
+  # 
+  #     if (length(y) < 10 | min(y) == max(y)) {
+  #       next
+  #     } else {
+  #       # check that there are unique confounders
+  #       if (all(apply(LIN_PCs[overlap,], 2, function(x) length(unique(x)) == 1))) {
+  #         next
+  #       } else {
+  #         res.lin <- cdsrmodels::lin_associations(X[overlap,], y, W = LIN_PCs[overlap,])
+  #         res.cor <- res.lin$res.table %>%
+  #           cbind(., rho=res.lin$rho[rownames(.),], q.val=res.lin$q.val[rownames(.),]) %>%
+  #           tibble::as_tibble() %>%
+  #           dplyr::rename(feature = ind.var, coef = rho) %>%
+  #           dplyr::arrange(q.val) %>%
+  #           dplyr::mutate(rank = 1:n(),
+  #                         feature_type = "GE_noLIN") %>%
+  #           dplyr::filter(rank <= 1000 | q.val < 0.1) %>%
+  #           dplyr::bind_cols(run)
+  # 
+  #         linear_table[[ix]] <- res.cor; ix <- ix + 1
+  #       }
+  #     }
+  #   }
+  # }
 }
 if (length(linear_table) > 0) {
   linear_table %<>% dplyr::bind_rows()

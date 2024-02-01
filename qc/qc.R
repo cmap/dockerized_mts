@@ -53,7 +53,7 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
 
   # join with SSMD table
   qc_table %<>%
-    dplyr::left_join(error_table, by = c("prism_replicate", "pert_plate", "ccle_name", "rid", "culture")) %>%
+    dplyr::left_join(error_table, by = c("prism_replicate", "pert_plate", "ccle_name", "rid", "culture", "pert_vehicle")) %>%
     dplyr::mutate(dr = ctl_vehicle_md - trt_poscon_md,
                   pass = error_rate <= 0.05 & dr > -log2(0.3)) %>%
     dplyr::group_by(rid, ccle_name, culture, pert_plate) %>%

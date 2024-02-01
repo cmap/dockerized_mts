@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: '/Users/shiker/Documents/trouble_shoot/CPS008/PCPS017/PCPS017/O6-BENZYLGUANINE_TEMOZOLOMIDE'
-  comp: 'O6-BENZYLGUANINE_TEMOZOLOMIDE'
-  qc_path: '/Users/shiker/Documents/trouble_shoot/CPS008/CPS008_VALIDATION_COMPOUNDS_QC_TABLE.csv'
+  data_dir: '/Users/anup/work/1_Projects/CPS_in_Datawarehouse/cps009_kymera/CPS009_KYMERA/PCPS019/PRC-007236969-390-78_PRC-005665489-117-89'
+  comp: 'PRC-007236969-390-78_PRC-005665489-117-89'
+  qc_path: '/Users/anup/work/1_Projects/CPS_in_Datawarehouse/cps009_kymera/CPS009_KYMERA/data/CPS009_KYMERA_QC_TABLE.csv'
 output:
   html_document:
     toc: false
@@ -203,7 +203,7 @@ The same is repeated for compound $b$ if there are more than 4 doses.
 
 Below are synergy plots by dose. Points flagged for potential 'artificial antagonism' (described in the Overview section) are displayed as an x and have a flag value of 1 in the synergy table below. 
 
-```{r synergy scoring, fig.height=synergy_height}
+```{r synergy scoring, fig.height=5}
 # non-combination values
 solo_lfc <- dplyr::anti_join(LFC, combo_lfc, by = c("rid", "ccle_name", "culture", "pool_id", "pert_iname", "pert_id", "pert_dose", "pert_idose", "pert_plate", "pert_vehicle", "pert_time", "pert_type", "sig_id", "x_project_id", "LFC", "LFC_cb"))
 
@@ -317,25 +317,19 @@ spread_lfc_table <- highlight_key(spread_lfc %>% dplyr::select(ccle_name, cultur
 dt <- DT::datatable(spread_lfc_table, style="bootstrap", extensions = 'Buttons', options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))), colnames = c("Cell Line", "Culture", "Varied Compound | Anchor Compound", "Varied Dose | Anchor Dose", "Synergy", "Dynamic Range", "Artificial Antagonism Flag", "q"), selection = "single", filter = "top")%>%
   DT::formatSignif(columns = c("S", "dr", "q"), digits = 3)
 
-  export_spread_lfc <- spread_lfc %>% dplyr::select(ccle_name, culture, pert_iname, pert_dose, S, dr, flag, q)
+  export_spread_lfc <- spread_lfc %>% dplyr::mutate(neg_log10_qval = -log10(q)) %>% dplyr::select(ccle_name, culture, pert_iname, pert_dose, S, dr, flag, q, neg_log10_qval)
 
 
   # save for portal 
   plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
   dir.create(plot_files_dir, showWarnings = FALSE)
-  synergy_path = file.path(plot_files_dir, 'synergy')
-  dir.create(synergy_path, showWarnings = FALSE)
-  write.csv(export_spread_lfc, file.path(synergy_path, 'synergy_table.csv'), row.names=FALSE)
+  sensitivity_comparison_path = file.path(plot_files_dir, 'sensitivity_comparison')
+  dir.create(sensitivity_comparison_path, showWarnings = FALSE)
+  
+  write.csv(export_spread_lfc, file.path(sensitivity_comparison_path, 'synergy_table.csv'), row.names=FALSE)
 
   # save for reports landing page 
   write.csv(export_spread_lfc, file.path(params$data_dir, 'synergy_table.csv'), row.names=FALSE)
-
-
-
-
-
-
-
 
 dt
 ```
@@ -414,9 +408,13 @@ for (i in 1:length(comps)) {
 
   super_plots[[i]] <- subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
 }
+
+# save for portal 
+  write.csv(pseudo_auc, file.path(sensitivity_comparison_path, 'combo_auc_plots.csv'), row.names=FALSE)
+  
 ```
 
-```{r auc plots, results='asis'}
+```{r auc plots, include=FALSE, results='asis'}
 for (i in 1:length(super_plots)) {
   cat(sprintf('\n\n### %s \n\n', comps[[i]], '\n\n'))
   cat(htmltools::knit_print.shiny.tag(super_plots[[i]]))
@@ -432,12 +430,16 @@ for (i in 1:length(super_plots)) {
 Results from correlation with various DepMap data sets. For simplicity only correlations with AUC or a single anchor dose are visualized. To highlight a feature either click on a point or select a row from the table below the plot. Selecting a feature will highlight it in every plot in which it appears. Only features with a $q$ value less than $0.1$ and in the top 500 features will be visualized. If no plot appears for a particular constituent or the combination then there were no features meeting threshold for that case.
 
 ```{r biomarker pre, include=F}
+volcano_plots = list();
+heatmaps = list();
+
 single_dose <- LFC %>%
   dplyr::group_by(pert_iname) %>%
   dplyr::summarise(n_doses = n_distinct(pert_dose), .groups = "drop") %>%
   dplyr::filter(n_doses == 1) %>% .$pert_iname
 
 sub_correlations <- correlations %>%
+  dplyr::mutate(neg_log10_qval=-log10(q.val)) %>%
   dplyr::filter(pert_dose == "log2.auc" | pert_iname %in% single_dose,
                 is.finite(coef), is.finite(q.val),
                 q.val < 0.1, rank <= 250) %>%
@@ -642,6 +644,8 @@ dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%", extensio
                                    scrollX = "300px", paging = FALSE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
                     filter = "top",
                     colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
+
+
 dt
 ```
 
@@ -666,6 +670,60 @@ if (is.null(dim(top_tab))) {
                        key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
 }
 }
+```
+
+
+```{r}
+feature_types_list = c("REP", "GE", "XPR")
+
+combo_continuous_associations <- sub_correlations %>%
+  dplyr::filter(feature_type %in% feature_types_list) %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, rank, feature, feature_type, coef, q.val, neg_log10_qval) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+
+
+final_data_list <- list()
+for (feature_select in feature_types_list){
+  cat("Processing feature:", feature_select, "\n")
+  
+  features_subset <- sub_correlations %>%
+    dplyr::filter(feature_type == feature_select) %>%
+    dplyr::mutate(row_names = paste(pert_iname, added_compounds,added_doses, sep="_"))
+  
+  top_feats <- features_subset %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
+  
+  top_tab <- features_subset %>%
+    dplyr::filter(feature %in% top_feats) %>%
+    dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, rank, feature)
+
+  filled_data <- top_tab %>%
+    group_by(pert_iname, added_compounds, added_doses, pert_dose) %>%
+    complete(feature = unique(top_tab$feature)) %>%
+    replace_na(list(rank = NA)) %>% 
+    dplyr::mutate(row_names = paste(pert_iname,added_compounds,added_doses, sep="_"))
+ 
+  # Add the 'feature_type' based on the original data
+  filled_data <- filled_data %>%
+      left_join(features_subset %>%
+                  select(feature, feature_type) %>%
+                  distinct(), 
+                by = c("feature"))
+   
+  final_data_list[[feature_select]] <- filled_data
+}
+
+combo_continuous_associations_heatmaps <- do.call(rbind, final_data_list)
+
+# save for portal 
+plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+dir.create(plot_files_dir, showWarnings = FALSE)
+continuous_associations_path = file.path(plot_files_dir, 'continuous_associations')
+dir.create(continuous_associations_path, showWarnings = FALSE)
+
+write.csv(combo_continuous_associations, file.path(continuous_associations_path, 'combo_continuous_associations_volcano.csv'), row.names=FALSE)
+
+
+write.csv(combo_continuous_associations_heatmaps, file.path(continuous_associations_path, 'combo_continuous_associations_heatmaps.csv'), row.names=FALSE)
 ```
 
 # Random forest models {.tabset .tabset-pills}
@@ -710,4 +768,17 @@ dt <- DT::datatable(df, style="bootstrap", width="100%", extensions = 'Buttons',
 subplot(style(p1, showlegend = FALSE), p2, widths = c(0.2, 0.8),
         titleX = T, titleY = T, margin = 0.05)
 dt
+```
+
+```{r}
+out_df <- sub_models %>% dplyr::inner_join(sub_rf, by = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose")) %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore,
+                feature, RF.imp.mean, rank) %>%
+  dplyr::mutate(condition = paste(pert_iname, added_compounds, added_doses)) %>%
+  dplyr::mutate_at(vars(R2, PearsonScore, RF.imp.mean),
+                   funs(signif(., 3)))
+
+random_forest_path = file.path(plot_files_dir, 'random_forest_models')
+dir.create(random_forest_path, showWarnings = FALSE)
+write.csv(out_df, file.path(random_forest_path, 'combo_random_forest_models.csv'), row.names=FALSE)
 ```
