@@ -64,7 +64,7 @@ fi
 
 if [[ ! -z $lfc_column ]]
 then
-  args+=(-lc "${$lfc_column}")
+  args+=(-lc "${lfc_column}")
 fi
 
 if [[ "$sanitized_pert_id" == "DMSO" ]]

@@ -25,6 +25,11 @@ build_contents_dict = {
         'type': 'metadata',
         'format': 'tsv'
     },
+    'EPS_QC_TABLE': {
+        'search_pattern': '*QC_TABLE*.csv',
+        'type': 'report',
+        'format': 'csv'
+    },
     'QC_TABLE': {
         'search_pattern': '*QC_TABLE*.csv',
         'type': 'report',
@@ -44,6 +49,12 @@ build_contents_dict = {
     },
     'LEVEL3_LMFI': {
         'search_pattern': '*_LEVEL3_LMFI*.csv',
+        'type': 'data',
+        'annotated': True,
+        'format': 'csv'
+    },
+    'LEVEL3_NORMALIZED_COUNTS': {
+        'search_pattern': '*_LEVEL3_NORMALIZED_COUNTS*.csv',
         'type': 'data',
         'annotated': True,
         'format': 'csv'
@@ -194,6 +205,11 @@ def main(args):
             shutil.copy(
                 glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0],
                 os.path.join(proj_dir, '{}_cell_info.txt'.format(project))
+            )
+        elif key == 'EPS_QC_TABLE':
+            shutil.copy(
+                glob.glob(os.path.join(build_path, dl_dict['search_pattern']))[0],
+                os.path.join(proj_dir, '{}_QC_TABLE.csv'.format(project))
             )
         elif key == 'QC_TABLE':
             file_paths = glob.glob(os.path.join(build_path, dl_dict['search_pattern']))

@@ -10,8 +10,8 @@ parser <- ArgumentParser()
 parser$add_argument("-p", "--project_dir", default="", help="Project directory")
 parser$add_argument("-o", "--out", default="", help="Output directory")
 parser$add_argument("-n", "--name", default="", help = "Build name. Default is none")
-parser$add_argument("-lp", "--lfc_pattern", default="LEVEL5_LFC_COMBAT", help = "LFC search pattern")
-parser$add_argument("-lc", "--lfc_column", default="LFC_cb", help = "LFC column type - LFC or lfc_cb")
+parser$add_argument("-lp", "--lfc_pattern", default="LEVEL5_LFC_COMBAT", help = "LFC file search pattern")
+parser$add_argument("-lc", "--lfc_column", default="LFC_cb", help = "LFC column to use - LFC or lfc_cb")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()

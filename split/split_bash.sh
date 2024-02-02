@@ -108,8 +108,6 @@ then
   )
 fi
 
-
-
 if [[ "$PERT" == "DMSO" ]]
 then
    echo "Skipping DMSO"

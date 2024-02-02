@@ -2,6 +2,7 @@
 params:
   data_dir: "/Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY/PMTS056/BRD-U00116474"
   comp: BRD-U00116474
+  lfc_four_pattern: "LEVEL4_LFC_COMBAT"
 output:
   html_document:
     toc: false
@@ -51,12 +52,14 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 
 ```{r load data, include=FALSE}
 # file paths
-lfc_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
+lfc_path <- list.files(params$data_dir, params$lfc_four_pattern, full.names = T)
 drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
 # read in LFC
 if (length(lfc_path) == 1) {
   lfc <- data.table::fread(lfc_path)
+  lfc$LFC_cb = lfc$LFC
+
 } else {
   message("No LFC file found")
   quit(save = "no")
@@ -142,6 +145,7 @@ lfc_table <- lfc %>%
                  dplyr::inner_join(drc_meta, by = c("ccle_name", "culture", "pert_plate", "pert_time")) %>%
                  dplyr::rename(dose = pert_dose) %>%
                  dplyr::mutate(Viability = 2^LFC_cb,
+                               # Replicate = word(prism_replicate, 4, sep = fixed("_"))) %>%
                                Replicate = replicate) %>%
                  dplyr::distinct(ccle_name, culture, cell_id, dose, Viability, Replicate)
 

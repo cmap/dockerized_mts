@@ -6,6 +6,7 @@ params:
   comp: "PRC-009456043-391-12_PRC-007911117-663-95"
   is_combination: TRUE
   meta_folder: https://s3.amazonaws.com/biomarker.clue.io
+  lfc_five_pattern: "LEVEL5_LFC_COMBAT"
 output:
   html_document:
     toc: false
@@ -32,7 +33,7 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 
 ```{r preprocessing, include=F}
 # file paths
-lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+lfc_path <- list.files(params$data_dir, params$lfc_five_pattern, full.names = T)
 drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
 inst_info <- data.table::fread(list.files(file.path(dirname(dirname(params$data_dir)), "data"), pattern = "inst_info", full.names = T)) 
@@ -46,6 +47,7 @@ pos_control <- ifelse(screen == "APS", "Puromycin", "Bortezomib")
 # read in LFC
 if (length(lfc_path) == 1) {
   LFC <- data.table::fread(lfc_path)
+  LFC$LFC_cb = LFC$LFC
 } else {
   message("No LFC file found")
   quit(save = "no")
