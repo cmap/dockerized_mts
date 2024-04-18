@@ -229,7 +229,7 @@ filter_lowcounts <- function(df, min_count = 10, threshold = 0.25) {
   cat("Calculating fraction of instances to remove per combination...\n")
   fraction_to_remove <- df %>%
     group_by(prism_replicate, pert_well) %>%
-    summarise(n_low_count = sum(count < min_count)) %>%
+    summarise(n_low_count = sum(count < min_count), .groups = 'drop') %>%
     mutate(n_total = n()) %>%
     mutate(fraction_to_remove = n_low_count / n_total)
 
