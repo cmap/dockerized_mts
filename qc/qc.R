@@ -71,6 +71,12 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
                                 pass = NA)
 }
 
+# Calculate floor range metric and merge
+fr_table <- make_fr_table(logMFI_normalized)
+qc_table %>%
+  dplyr::left_join(fr_table, by = c("prism_replicate", "ccle_name"))
+
+
 #---- Write data ----
 # Write QC table
 write.csv(qc_table, paste0(out_dir, "/", build_name, "_QC_TABLE.csv"), row.names=FALSE)

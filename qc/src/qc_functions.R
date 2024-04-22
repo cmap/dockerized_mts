@@ -70,3 +70,32 @@ calc_er <- function(df) {
   
   return(er_table)
 }
+
+# Calculate floor range metric
+make_fr_table <- function(df, threshold = -log2(0.3)) {
+  # Calculate analyte 6 median in vehicle for each plate
+  analyte6_median <- df %>%
+    filter(ccle_name == 'prism invariant 6', pert_type == 'ctl_vehicle') %>%
+    group_by(prism_replicate) %>%
+    summarise(logMFI_6 = median(logMFI, na.rm = TRUE), .groups = 'drop')  # Calculate median and drop groups, removing NA values
+  
+  # Calculate median of each cell line in DMSO, ignoring NA values
+  cell_median <- df %>%
+    filter(pool_id != 'CTLBC', pert_type == 'ctl_vehicle') %>%
+    group_by(prism_replicate, ccle_name) %>%
+    summarise(logMFI = median(logMFI, na.rm = TRUE), .groups = 'drop')  # Calculate median and drop groups, removing NA values
+  
+  # Merge into cell median
+  fr_table <- merge(cell_median, analyte6_median, by = "prism_replicate")
+  
+  # Calculate floor_range
+  fr_table$floor_range <- fr_table$logMFI - fr_table$logMFI_6
+  
+  # Add pass/fail flag
+  fr_table <- fr_table %>%
+    mutate(pass_fr = ifelse(is.na(floor_range) | floor_range < threshold, FALSE, TRUE)) %>%
+    select(prism_replicate, ccle_name, floor_range, logMFI_6)
+  
+  # Return the final table
+  return(fr_table)
+}
