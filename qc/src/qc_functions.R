@@ -94,7 +94,7 @@ make_fr_table <- function(df, threshold = -log2(0.3)) {
   # Add pass/fail flag
   fr_table <- fr_table %>%
     mutate(pass_fr = ifelse(is.na(floor_range) | floor_range < threshold, FALSE, TRUE)) %>%
-    select(prism_replicate, ccle_name, floor_range, logMFI_6)
+    select(prism_replicate, ccle_name, floor_range, logMFI_6, pass_fr)
   
   # Return the final table
   return(fr_table)

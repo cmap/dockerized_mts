@@ -73,7 +73,7 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
 
 # Calculate floor range metric and merge
 fr_table <- make_fr_table(logMFI_normalized)
-qc_table %>%
+qc_table <- qc_table %>%
   dplyr::left_join(fr_table, by = c("prism_replicate", "ccle_name"))
 
 
