@@ -56,10 +56,10 @@ if (all(is.na(qc_table$pass))) {
   LFC_TABLE %<>%
     # join with SSMD (to filter bad lines)
     dplyr::inner_join(qc_table %>%
-                        dplyr::distinct(ccle_name, prism_replicate, culture, pass, pert_plate, pert_vehicle, pass_fr),
-                      by = c("prism_replicate", "ccle_name", "culture", "pert_plate", "pert_vehicle")) %>%
-    dplyr::filter(pass, pass_fr) %>%
-    dplyr::select(-pass, -pass_fr)
+                        dplyr::distinct(ccle_name, prism_replicate, culture, pass, pert_plate, pert_vehicle, pass_fr, barcode_id),
+                      by = c("prism_replicate", "ccle_name", "culture", "pert_plate", "pert_vehicle", "barcode_id")) %>%
+    dplyr::filter(pass) %>%
+    dplyr::select(-pass)
 }
 LFC_TABLE <- calculate_lfc(LFC_TABLE)
 

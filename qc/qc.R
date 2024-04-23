@@ -53,7 +53,7 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
 
   # join with SSMD table
   qc_table %<>%
-    dplyr::left_join(error_table, by = c("prism_replicate", "pert_plate", "ccle_name", "rid", "culture", "pert_vehicle")) %>%
+    dplyr::left_join(error_table, by = c("prism_replicate", "pert_plate", "ccle_name", "rid", "culture", "pert_vehicle", "barcode_id")) %>%
     dplyr::mutate(dr = ctl_vehicle_md - trt_poscon_md,
                   pass = error_rate <= 0.05 & dr > -log2(0.3)) %>%
     dplyr::group_by(rid, ccle_name, culture, pert_plate) %>%
@@ -68,13 +68,18 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
                                 pert_plate = stringr::word(prism_replicate, 1,
                                                                sep = stringr::fixed("_")),
                                 dr = NA,
-                                pass = NA)
+                              pass = NA)
 }
 
 # Calculate floor range metric and merge
 fr_table <- make_fr_table(logMFI_normalized)
 qc_table <- qc_table %>%
-  dplyr::left_join(fr_table, by = c("prism_replicate", "ccle_name"))
+  dplyr::left_join(fr_table, by = c("prism_replicate", "ccle_name", "barcode_id"))
+
+# Update flags
+qc_table <- qc_table %>%
+  dplyr::rename(pass_dr_er = pass) %>%
+  dplyr::mutate(pass = pass_dr_er & pass_fr)
 
 
 #---- Write data ----
