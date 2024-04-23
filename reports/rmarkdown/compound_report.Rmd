@@ -1,12 +1,12 @@
 ---
 params:
-  #data_dir: "/Users/anup/work/1_Projects/CPS_in_Datawarehouse/CPS009_VALIDATION_COMPOUNDS_INTERNAL/PCPS019/BRD-K50731585/"
-  data_dir: "/Users/anup/work/1_Projects/CPS_in_Datawarehouse/CPS009_DMC_ABBVIE/PCPS019/PRC-009456043-391-12_PRC-007911117-663-95"
-  #comp: "BRD-K50731585"
-  comp: "PRC-009456043-391-12_PRC-007911117-663-95"
-  is_combination: TRUE
-  meta_folder: https://s3.amazonaws.com/biomarker.clue.io
-  lfc_five_pattern: "LEVEL5_LFC_COMBAT"
+  data_dir: "/Users/shiker/Documents/trouble_shoot/PSELL/BRD-K00003416"
+  #data_dir: "/Users/shiker/Documents/trouble_shoot/ULA/MRTX-1133_shiker"
+  comp: "BRD-K00003416"
+  #comp: "MRTX-1133"
+  is_combination: FALSE
+  meta_folder: "/Users/shiker/Documents/trouble_shoot/ULA/data"
+  lfc_five_pattern: "LEVEL5_LFC"
 output:
   html_document:
     toc: false
@@ -36,12 +36,15 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 lfc_path <- list.files(params$data_dir, params$lfc_five_pattern, full.names = T)
 drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
-inst_info <- data.table::fread(list.files(file.path(dirname(dirname(params$data_dir)), "data"), pattern = "inst_info", full.names = T)) 
-inst <- inst_info %>%  dplyr::distinct(pert_iname, pert_id)
-neg_control <- inst_info$pert_vehicle %>% unique()
-screen <- substr(inst_info$screen %>% unique(), start = 1, stop = 3)
-pos_control <- ifelse(screen == "APS", "Puromycin", "Bortezomib")
+# inst_info <- data.table::fread(list.files(file.path(dirname(dirname(params$data_dir)), "data"), pattern = "inst_info", full.names = T)) 
+# inst <- inst_info %>%  dplyr::distinct(pert_iname, pert_id)
+# neg_control <- inst_info$pert_vehicle %>% unique()
+# screen <- substr(inst_info$screen %>% unique(), start = 1, stop = 3)
+# pos_control <- ifelse(screen == "APS", "Puromycin", "Bortezomib")
 
+neg_control <- 'test'
+screen <- 'test'
+pos_control <- 'test'
 
 
 # read in LFC
@@ -597,14 +600,19 @@ if (!is.null(DRC)) {
     dplyr::mutate(gene = word(feature, 2, sep = fixed("_")), # creating gene column 
                   mut.type = word(feature,1,-2, sep = fixed("_"))) # creating mutation type column 
   
-  
   top.genes = top_muts %>% 
     dplyr::group_by(gene) %>% # grouping by gene 
     dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
     dplyr::top_n(20, -minq) %>% # returning list of top 20 smallest q values 
-    dplyr::arrange(minq)  
+    dplyr::arrange(minq) %>% 
+    dplyr::filter(minq < 0.1) %>%
+    slice_head(n = 20)
   
-  top.genes = top.genes[1:20,]
+    if (nrow(top.genes) == 0) {
+    plot_data <- NULL 
+    write.csv(plot_data, file.path(mutations_path, 'mutation_effect_boxplot_data.csv'), row.names=FALSE)
+    
+  } else {
   
   top_muts <- mutations %>% 
     dplyr::distinct(mutation)  %>% # determining unique mutations 
@@ -640,6 +648,7 @@ if (!is.null(DRC)) {
   
   write.csv(plot_data, file.path(mutations_path, 'mutation_effect_boxplot_data.csv'), row.names=FALSE)
   p
+  }
 } else if (n_doses == 1) {
 
   m <- mean(LFC$LFC_cb)
@@ -663,9 +672,15 @@ if (!is.null(DRC)) {
     dplyr::group_by(gene) %>% # grouping by gene 
     dplyr::summarise(minq = min(q.value, na.rm = T)) %>% # finding minimum q value 
     dplyr::top_n(20, -minq) %>% # returning list of top 20 smallest q values 
-    dplyr::arrange(minq) # returning list of top 20 smallest q values 
+    dplyr::arrange(minq) %>%  # returning list of top 20 smallest q values 
+    dplyr::filter(minq < 0.1) %>%
+    slice_head(n = 20)
   
-  top.genes = top.genes[1:20,]
+    if (nrow(top.genes) == 0) {
+    plot_data <- NULL 
+    write.csv(plot_data, file.path(mutations_path, 'mutation_effect_boxplot_data.csv'), row.names=FALSE)
+    
+  } else {
   
   top_muts <- mutations %>% 
     dplyr::distinct(mutation)  %>% # determining unique mutations 
@@ -703,6 +718,7 @@ if (!is.null(DRC)) {
   
   write.csv(plot_data, file.path(mutations_path, 'mutation_effect_boxplot_data.csv'), row.names=FALSE)
   p
+  }
 } else {
   print("Unable to show plots by mutation for AUC or a single dose.")
 }
