@@ -36,15 +36,12 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 lfc_path <- list.files(params$data_dir, params$lfc_five_pattern, full.names = T)
 drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
-# inst_info <- data.table::fread(list.files(file.path(dirname(dirname(params$data_dir)), "data"), pattern = "inst_info", full.names = T)) 
-# inst <- inst_info %>%  dplyr::distinct(pert_iname, pert_id)
-# neg_control <- inst_info$pert_vehicle %>% unique()
-# screen <- substr(inst_info$screen %>% unique(), start = 1, stop = 3)
-# pos_control <- ifelse(screen == "APS", "Puromycin", "Bortezomib")
+inst_info <- data.table::fread(list.files(file.path(dirname(dirname(params$data_dir)), "data"), pattern = "inst_info", full.names = T))
+inst <- inst_info %>%  dplyr::distinct(pert_iname, pert_id)
+neg_control <- inst_info$pert_vehicle %>% unique()
+screen <- substr(inst_info$screen %>% unique(), start = 1, stop = 3)
+pos_control <- ifelse(screen == "APS", "Puromycin", "Bortezomib")
 
-neg_control <- 'test'
-screen <- 'test'
-pos_control <- 'test'
 
 
 # read in LFC
