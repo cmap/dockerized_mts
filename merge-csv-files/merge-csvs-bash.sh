@@ -149,6 +149,7 @@ then
   fi
   for pattern in "${array[@]}"
   do
+    echo python /clue/bin/merge_csvs.py "${args[@]}" -s "$pattern"
     python /clue/bin/merge_csvs.py "${args[@]}" -s "$pattern"
   done
 
