@@ -202,6 +202,36 @@ if(nrow(logMFI_base) > 0) {
 logMFI_normalized %<>%
   dplyr::left_join(master_logMFI)
 
+#---- ID and filter low correlation pools ----
+
+# Calculate the delta between logMFI and median logMFI for each condition
+LMFI_delta <- calculate_deltas(logMFI_normalized)
+
+# Calculate pool-wise replicate correlations
+LMFI_corr <- calculate_replicate_correlations(LMFI_delta)
+
+# Get the median values
+LMFI_corr_median <- LMFI_corr %>%
+  dplyr::filter(pool_id != 'CTLBC', pert_type == 'trt_cp') %>%
+  dplyr::group_by(pert_id, pert_iname, pert_dose, pert_plate, pool_id, prism_replicate,
+                  replicate, pert_well) %>%
+  dplyr::summarise(delta_LMFI_norm_median = median(delta_LMFI_norm),
+                   LMFI_norm_corr = median(LMFI_norm_corr)) %>%
+  dplyr::ungroup()
+
+# Annotate pass/fail with replicate correlation metrics and select failures
+LMFI_corr_remove <- annotate_rep_corr_pass(LMFI_corr_median) %>%
+  dplyr::filter(pass_rc == FALSE)
+# Write failures to file for recordkeeping
+write.csv(LMFI_corr_remove, paste0(out_dir, "/", build_name, "_POOL_WELLS_REMOVED.csv"), row.names = FALSE)
+
+# Remove matching data from master logMFI_normalized table
+logMFI_normalized <- anti_join(logMFI_normalized, LMFI_corr_remove, 
+                                  by = c("pert_id", "pert_iname", "pert_dose", 
+                                         "pert_plate", "prism_replicate", 
+                                         "pool_id", "replicate", "pert_well"))
+  
+
 #---- Write data ----
 logMFI_normalized %>%
   dplyr::bind_rows(base_normalized) %>%

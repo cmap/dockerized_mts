@@ -256,3 +256,49 @@ filter_lowcounts <- function(df, min_count = 10, threshold = 0.25) {
                removed_instances = low_count_instances,
                removed_wells = well_df))
 }
+
+#---- Remove poorly performing pool/pert/dose instances ----
+
+calculate_deltas <- function(df) {
+  # Filter and calculate median values for each treatment on each plate
+  median_df <- df %>%
+    dplyr::filter(pert_type == "trt_cp", pool_id != "CTLBC") %>%
+    dplyr::group_by(rid, ccle_name, culture, pert_plate, pert_type, pert_iname, pert_dose) %>%
+    dplyr::summarise(
+      LMFI_median = median(logMFI, na.rm = TRUE),
+      LMFI_norm_median = median(logMFI_norm, na.rm = TRUE),
+      .groups = 'drop'  # Automatically ungroup after summarisation
+    )
+  
+  # Merge the original dataframe with the medians and calculate deltas
+  delta_df <- dplyr::left_join(df, median_df, by = c("rid", "ccle_name", "culture",
+                                                     "pert_type", "pert_iname", "pert_dose",
+                                                     "pert_plate")) %>%
+    dplyr::mutate(
+      delta_LMFI = logMFI - LMFI_median,
+      delta_LMFI_norm = logMFI_norm - LMFI_norm_median
+    )
+
+  return(delta_df)
+}
+
+
+calculate_replicate_correlations <- function(df) {
+  # Calculate correlation between replicates
+  replicate_correlations <- df %>%
+    dplyr::filter(pert_type == "trt_cp", pool_id != "CTLBC") %>%
+    dplyr::group_by(pool_id, pert_well, pert_iname, pert_dose, pert_type, pert_id) %>%
+    dplyr::summarise(LMFI_norm_corr = cor(LMFI_norm_median, logMFI_norm), na.rm = TRUE) %>%
+    dplyr::ungroup() %>%
+    dplyr::right_join(df, by = c("pert_id","pert_well","pert_iname","pert_dose",
+                                 "pert_type","pool_id"))
+  
+  return(replicate_correlations)
+}
+
+annotate_rep_corr_pass <- function(df, corr_threshold = 0.6, delta_threshold = 3) {
+  df <- df %>%
+    mutate(pass_rc = delta_LMFI_norm_median < delta_threshold & LMFI_norm_corr >= corr_threshold)
+  
+  return(df)
+}
