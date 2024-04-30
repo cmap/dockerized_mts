@@ -1,4 +1,4 @@
-FROM rocker/verse
+FROM rocker/verse:4.0.4
 
 MAINTAINER Andrew Boghossian <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
