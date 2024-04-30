@@ -296,9 +296,14 @@ calculate_replicate_correlations <- function(df) {
   return(replicate_correlations)
 }
 
+
 annotate_rep_corr_pass <- function(df, corr_threshold = 0.6, delta_threshold = 3) {
+  # Annotate the dataframe with pass/fail based on the correlation and delta logMFI values
+  # If both correlations are not met, the pool+well fails, otherwise, it passes.
   df <- df %>%
-    mutate(pass_rc = delta_LMFI_norm_median < delta_threshold & LMFI_norm_corr >= corr_threshold)
+    mutate(pass_rc = !((LMFI_norm_corr < corr_threshold) & 
+                      (abs(delta_LMFI_norm_median) > delta_threshold)))
   
   return(df)
 }
+
