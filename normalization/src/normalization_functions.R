@@ -262,7 +262,7 @@ filter_lowcounts <- function(df, min_count = 10, threshold = 0.25) {
 calculate_deltas <- function(df) {
   # Filter and calculate median values for each treatment on each plate
   median_df <- df %>%
-    dplyr::filter(pert_type == "trt_cp", pool_id != "CTLBC") %>%
+    dplyr::filter(pool_id != "CTLBC") %>%
     dplyr::group_by(rid, ccle_name, culture, pert_plate, pert_type, pert_iname, pert_dose) %>%
     dplyr::summarise(
       LMFI_median = median(logMFI, na.rm = TRUE),
@@ -286,7 +286,7 @@ calculate_deltas <- function(df) {
 calculate_replicate_correlations <- function(df) {
   # Calculate correlation between replicates
   replicate_correlations <- df %>%
-    dplyr::filter(pert_type == "trt_cp", pool_id != "CTLBC") %>%
+    dplyr::filter(pool_id != "CTLBC") %>%
     dplyr::group_by(pool_id, pert_well, pert_iname, pert_dose, pert_type, pert_id) %>%
     dplyr::summarise(LMFI_norm_corr = cor(LMFI_norm_median, logMFI_norm), na.rm = TRUE) %>%
     dplyr::ungroup() %>%

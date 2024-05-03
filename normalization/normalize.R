@@ -215,7 +215,7 @@ if (rep_corr) {
   
   # Get the median values
   LMFI_corr_median <- LMFI_corr %>%
-    dplyr::filter(pool_id != 'CTLBC', pert_type == 'trt_cp') %>%
+    dplyr::filter(pool_id != 'CTLBC') %>%
     dplyr::group_by(pert_id, pert_iname, pert_dose, pert_plate, pool_id, prism_replicate,
                     replicate, pert_well) %>%
     dplyr::summarise(delta_LMFI_norm_median = median(delta_LMFI_norm),
