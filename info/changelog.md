@@ -1,5 +1,17 @@
 # Release Notes
 
+## MTS024, CPS011, APS003
+***
+
+**Replicate correlation**
+
+Added functions to normalize that calculate 2 new metrics:
+  1. The median value by detection plate+pool+well of the median difference in logMFI values for a given condition compared to the median of its replicates. If the absolute value of this difference is greater than 3, the plate/pool/well is flagged.
+  2. The median value by detection plate/pool of the replicate correlations between each treatment condition and the median value across the replicates. If this correlation is <0.3, the plate/pool/well is flagged.
+
+If both conditions are met (ie, the correlation is <0.3 and the absolute value of the difference in median logMFI is > 3) then this data is removed. A file is also generated ending in *_POOL_WELLS_REMOVED.csv that indicates which values have been removed.
+
+
 ## MTS024, CPS010, APS002
 ***
 
