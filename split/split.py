@@ -22,7 +22,7 @@ def build_parser():
         )
     parser.add_argument('--search_patterns', '-sp',
                         help='Comma separated list of search patterns',
-                        default='LEVEL4_LFC_COMBAT,LEVEL5_LFC_COMBAT',
+                        default='LEVEL3_LMFI,LEVEL4_LFC_COMBAT,LEVEL5_LFC_COMBAT',
                         )
     parser.add_argument('--out', '-o', help='Output for project level folders', required=True)
     parser.add_argument("--verbose", '-v', help="Whether to print a bunch of output", action="store_true", default=False)
