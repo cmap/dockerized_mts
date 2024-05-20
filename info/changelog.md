@@ -11,6 +11,8 @@ Added functions to normalize that calculate 2 new metrics:
 
 If both conditions are met (ie, the correlation is <0.3 and the absolute value of the difference in median logMFI is > 3) then this data is removed. A file is also generated ending in *_POOL_WELLS_REMOVED.csv that indicates which values have been removed.
 
+* Removed unnamed columns (index) in QC_TABLE download
+
 
 ## MTS024, CPS010, APS002
 ***

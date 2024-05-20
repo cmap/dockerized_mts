@@ -30,7 +30,15 @@ while test $# -gt 0; do
       shift
       FAILED_INDICES=$1
       ;;
-    *)
+    -lfr| --lfc_four_pattern)
+      shift
+      lfc_four_pattern=$1
+      ;;
+    -lfv| --lfc_five_pattern)
+      shift
+      lfc_five_pattern=$1
+      ;;
+*)
       printf "Unknown parameter: %s \n" "$1"
       shift
       exit 1
@@ -97,6 +105,15 @@ if [[ -f "$qc_path" ]]; then
     args+=(-q $qc_path)
 fi
 
+if [[ ! -z lfc_four_pattern ]]
+then
+  args+=(-lfr "${lfc_four_pattern}")
+fi
+
+if [[ ! -z lfc_five_pattern ]]
+then
+  args+=(-lfv "${lfc_five_pattern}")
+fi
 
 if [[ "$sanitized_pert_id" == "DMSO" ]]
 then

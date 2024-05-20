@@ -11,7 +11,7 @@ parser$add_argument("-o", "--out", default="", help="Output directory")
 
 ## For single agent screens, like MTS, the UpperLimit (UL) of fit is close to 1
 ## and fit is constrained to be always decreasing as we assume the compound is always toxic
-## For combination screens, like CPS, the UpperLimit (UL) is b/w 0 and 1 and fit can be both increasing or decreasing. 
+## For combination screens, like CPS, the UpperLimit (UL) is b/w 0 and 1 and fit can be both increasing or decreasing.
 ## Increasing models antagonistic effects of the second compound.
 
 # get command line options, if help option encountered print help and exit
@@ -23,12 +23,20 @@ fit_type <- "single_agent" ## default screen type is MTS
 
 
 # find level 4 file and return error if none or more than one
-lfc_files <- list.files(lfc_dir,pattern=("LEVEL4_LFC_.*\\.csv$"), full.names=T)
-if (length(lfc_files) != 1) {
+lfc_files <- list.files(lfc_dir, pattern=("*LEVEL4_LFC_.*\\.csv$"), full.names=T)
+if (length(lfc_files) == 1) {
+    lfc_file <- lfc_files[[1]]
+} else if (length(lfc_files) == 2) {
+    combat_file <- grep("COMBAT", lfc_files, value=TRUE)
+    if (length(combat_file) == 1) {
+        lfc_file <- combat_file[[1]]
+    } else {
+        stop("There are 2 LFC files, but no COMBAT file. Please try again with 1 LFC file.",
+        call. = FALSE)
+    }
+} else {
     stop(paste("There are", length(lfc_files), "LFC files in the supplied directory. Please try again with 1."),
     call. = FALSE)
-} else {
-  lfc_file <- lfc_files[[1]]
 }
 
 #---- Load the data ----
@@ -59,8 +67,8 @@ compound_table <- LFC_TABLE %>%
 dosed_compounds <- compound_table %>%
   tidyr::pivot_longer(cols = contains("pert_iname"), names_to = c("foo", "bar", "index"), names_sep = "_", values_to = "pert_iname")
 dosed_compounds$n_doses <- dosed_compounds[1, paste0("pert_dose_", dosed_compounds$index)] %>% t() %>% as.numeric()
-dosed_compounds$pert_id <- dosed_compounds[1, paste0("pert_id_", dosed_compounds$index)] %>% t() %>% as.character() 
-dosed_compounds %<>% 
+dosed_compounds$pert_id <- dosed_compounds[1, paste0("pert_id_", dosed_compounds$index)] %>% t() %>% as.character()
+dosed_compounds %<>%
   dplyr::select(pert_iname, pert_id, n_doses, index) %>%
   dplyr::filter(n_doses >= 4)
 
@@ -82,7 +90,7 @@ LFC_TABLE.split <- LFC_TABLE %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_id", "pert_dose"),
                           sep = "|", fixed = T,
                           direction = "wide", drop = F, type.convert = T)
-# if this was a combination study, we need to change fit limits accordingly 
+# if this was a combination study, we need to change fit limits accordingly
 if (any(str_detect(colnames(LFC_TABLE.split), "pert_id_2"))) { ## a second pert existed.
   fit_type <- "combination"
   print("Screen type was=CPS, fit type was combination")
@@ -94,6 +102,7 @@ DRC <- list()  # stores dose response results
 
 # for each compound run at 4+ doses
 for (i in 1:nrow(dosed_compounds)){
+  print (paste("compound:", dosed_compounds[i,]))
   comp <- dosed_compounds[i, ]
   dose_var <- paste0("pert_dose_", comp$index)  # index of compound
 
@@ -102,40 +111,39 @@ for (i in 1:nrow(dosed_compounds)){
     dplyr::group_by(across(!contains(comp$index))) %>%
     dplyr::summarise(n = n(), .groups = "drop") %>%
     dplyr::filter(n >= 4)
-  
+
   # skip if no cell lines with 4+ doses
   if (nrow(df) < 1) {
     DRC[[i]] <- tibble()
     next
   }
-  
+
   sub_DRC <- list()  # stores dose response results
-  
+
   # for each cell line
   for (j in 1:nrow(df)) {
-    
+
     # get LFC data
     d <- df[j, ] %>% dplyr::inner_join(LFC_TABLE.split) %>% suppressMessages()
-  
     d %<>% dplyr::filter(is.finite(.[[LFC_column]]),is.finite(.[[dose_var]]) ) # drop any infinite LFC values or undefined doses
-    
+
     d$FC <- 2^d[[LFC_column]] # get fold-change values.
 
-    # fit curve. if MTS UL is close to 1 and slope is always decreasing. 
+    # fit curve. if MTS UL is close to 1 and slope is always decreasing.
     # if CPS, UL can be further from 1 since anchor dose can be toxic and slope can increase
     if (fit_type=="single_agent"){
-        fit_result.df <- get_best_fit(d, dose_var,  
+        fit_result.df <- get_best_fit(d, dose_var,
                                 UL_low=0.8, UL_up=1.01, slope_decreasing=TRUE)
     }else if(fit_type=="combination"){
-        fit_result.df <- get_best_fit(d, dose_var,  
+        fit_result.df <- get_best_fit(d, dose_var,
                                       UL_low=0.0, UL_up=1.01, slope_decreasing=FALSE)
     }else{ ## if screen type has not been defined before, then stop, we need to add it here.
         print("undefined fit type")
         stop("Error: undefined fit type")
     }
-    
 
-    
+
+
     # get results if fit
     if (fit_result.df$successful_fit) {
 
@@ -164,7 +172,7 @@ for (i in 1:nrow(dosed_compounds)){
                       pert_time = df[j,]$pert_time,
                       pert_plate = df[j,]$pert_plate,
                       fit_type= fit_type)
-      
+
       # if this was a combination track other compounds added
       if (any(str_detect(colnames(df), "pert_id_"))) {
         added_comp_table <- df[j, ] %>%
@@ -176,12 +184,11 @@ for (i in 1:nrow(dosed_compounds)){
       }
       sub_DRC[[j]] <- x
     } else { # fit is unsuccessful and so all we can really provide is the riemann auc but we add the other columns as well for completeness
-      
       x <- tibble(min_dose = min(d[[dose_var]]),
                   max_dose = max(d[[dose_var]]),
                   upper_limit = as.numeric(NA),
                   ec50 = as.numeric(NA),
-                  slope = as.numeric(NA),  
+                  slope = as.numeric(NA),
                   lower_limit =as.numeric(NA),
                   convergence = fit_result.df$successful_fit) %>%
         dplyr::mutate(auc = as.numeric(NA),
@@ -198,7 +205,6 @@ for (i in 1:nrow(dosed_compounds)){
                       pert_time = df[j,]$pert_time,
                       pert_plate = df[j,]$pert_plate,
                       fit_type= fit_type)
-      
       # if this was a combination track other compounds added
       if (any(str_detect(colnames(df), "pert_id_"))) {
         added_comp_table <- df[j, ] %>%
@@ -209,7 +215,6 @@ for (i in 1:nrow(dosed_compounds)){
         x %<>% dplyr::left_join(added_comp_table)%>% suppressMessages()
       }
       sub_DRC[[j]] <- x
-      
       # sub_DRC[[j]] <- tibble(min_dose = min(d[[dose_var]]),######
       #                        max_dose = max(d[[dose_var]]),
       #                        upper_limit = as.numeric(NA),
@@ -231,7 +236,6 @@ for (i in 1:nrow(dosed_compounds)){
       #                   pert_time = df[j,]$pert_time,
       #                   pert_plate = df[j,]$pert_plate)
     }
-    
     if (is.na(fit_result.df$successful_fit)){
       x <- tibble(min_dose = min(d[[dose_var]]),######
                              max_dose = max(d[[dose_var]]),
@@ -254,7 +258,6 @@ for (i in 1:nrow(dosed_compounds)){
                         pert_time = df[j,]$pert_time,
                         pert_plate = df[j,]$pert_plate,
                         fit_type= fit_type)
-      
       if (any(str_detect(colnames(df), "pert_id_"))) {
         added_comp_table <- df[j, ] %>%
           tidyr::unite(col = added_compounds, starts_with("pert_iname_"), sep = "|") %>%
@@ -267,7 +270,7 @@ for (i in 1:nrow(dosed_compounds)){
     }
 
   }
-  
+
   sub_DRC %<>% dplyr::bind_rows()  # combine results
   DRC[[i]] <- sub_DRC
 }
@@ -276,5 +279,5 @@ DRC %<>% dplyr::bind_rows()  # combine results
 
 # #---- Write to .csv ----
 if(nrow(DRC) > 0)  {
-  write.csv(DRC, paste0(out_dir, "/DRC_TABLE.csv"), row.names=FALSE) 
+  write.csv(DRC, paste0(out_dir, "/DRC_TABLE.csv"), row.names=FALSE)
 }

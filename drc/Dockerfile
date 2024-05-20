@@ -3,13 +3,13 @@ MAINTAINER Andrew Boghossian <cmap-soft@broadinstitute.org>
 LABEL clue.mts.pipeline.clue.io.version="0.0.1"
 LABEL clue.mts.pipeline.clue.io.vendor="PRISM"
 
+COPY ./install_packages.R /src/install_packages.R
+RUN mkdir -p /clue/bin && Rscript /src/install_packages.R
+
 COPY ./src/drc_functions.R /src/drc_functions.R
 COPY ./drc_compound.R /drc_compound.R
 COPY ./aws_batch.sh /clue/bin/aws_batch
 RUN chmod -R +x /*.R
-
-COPY ./install_packages.R /src/install_packages.R
-RUN mkdir -p /clue/bin && Rscript /src/install_packages.R
 
 WORKDIR /
 ENV PATH /clue/bin:$PATH
