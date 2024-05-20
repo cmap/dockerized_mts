@@ -95,8 +95,12 @@ echo "${base_dir}" "${out_dir}" "${biomarker_dir}" "${biomarker_file}" "${qc_fil
 args=(
   -b "${base_dir}"
   -o "${out_dir}"
-  -d "${biomarker_dir}"
 )
+
+if [[ ! -z $biomarker_dir ]]
+then
+  args+=(-d "${biomarker_dir}")
+fi
 
 if [[ ! -z $biomarker_file ]]
 then

@@ -23,12 +23,20 @@ fit_type <- "single_agent" ## default screen type is MTS
 
 
 # find level 4 file and return error if none or more than one
-lfc_files <- list.files(lfc_dir,pattern=("LEVEL4_LFC_.*\\.csv$"), full.names=T)
-if (length(lfc_files) != 1) {
+lfc_files <- list.files(lfc_dir, pattern=("*LEVEL4_LFC_.*\\.csv$"), full.names=T)
+if (length(lfc_files) == 1) {
+    lfc_file <- lfc_files[[1]]
+} else if (length(lfc_files) == 2) {
+    combat_file <- grep("COMBAT", lfc_files, value=TRUE)
+    if (length(combat_file) == 1) {
+        lfc_file <- combat_file[[1]]
+    } else {
+        stop("There are 2 LFC files, but no COMBAT file. Please try again with 1 LFC file.",
+        call. = FALSE)
+    }
+} else {
     stop(paste("There are", length(lfc_files), "LFC files in the supplied directory. Please try again with 1."),
     call. = FALSE)
-} else {
-  lfc_file <- lfc_files[[1]]
 }
 
 #---- Load the data ----
@@ -94,6 +102,7 @@ DRC <- list()  # stores dose response results
 
 # for each compound run at 4+ doses
 for (i in 1:nrow(dosed_compounds)){
+  print (paste("compound:", dosed_compounds[i,]))
   comp <- dosed_compounds[i, ]
   dose_var <- paste0("pert_dose_", comp$index)  # index of compound
 

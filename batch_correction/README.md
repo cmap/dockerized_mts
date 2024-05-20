@@ -37,7 +37,7 @@ optional arguments:
 R execution requires installing the correct R packages which are outlined in the `docker_base` module.
 
 ```
-Rscript calc_lfc.R -b ~/Desktop/clue_data -o ~/Desktop/mts_results -n PMTS001
+Rscript batch_correct.R -b ~/Desktop/clue_data -o ~/Desktop/mts_results -n PMTS001
 ```
 
 ### Example usage with Docker
