@@ -1,5 +1,9 @@
 # Release Notes
 
+## MTS026
+* Biomarker module pointing to consistent location for feature files (no changes to data)
+
+
 ## MTS025, CPS011, APS003
 * Removed unnamed columns (index) in QC_TABLE download
 
