@@ -55,10 +55,7 @@ if ("trt_poscon_md" %in% colnames(qc_table)) {
   qc_table %<>%
     dplyr::left_join(error_table, by = c("prism_replicate", "pert_plate", "ccle_name", "rid", "culture", "pert_vehicle", "barcode_id")) %>%
     dplyr::mutate(dr = ctl_vehicle_md - trt_poscon_md,
-                  pass = error_rate <= 0.05 & dr > -log2(0.3)) %>%
-    dplyr::group_by(rid, ccle_name, culture, pert_plate) %>%
-    dplyr::mutate(pass = pass & sum(pass, na.rm = T) / n_distinct(prism_replicate) > 0.5) %>%
-    dplyr::ungroup()
+                  pass = error_rate <= 0.05 & dr > -log2(0.3)) 
 
 } else {
   # add empty columns (so reports don't break)
@@ -80,6 +77,11 @@ qc_table <- qc_table %>%
 qc_table <- qc_table %>%
   dplyr::rename(pass_dr_er = pass) %>%
   dplyr::mutate(pass = pass_dr_er & pass_fr)
+
+qc_table <- qc_table %>%
+  dplyr::group_by(rid, ccle_name, culture, pert_plate) %>%
+  dplyr::mutate(pass = pass & sum(pass, na.rm = T) / n_distinct(prism_replicate) > 0.5) %>%
+  dplyr::ungroup()
 
 
 #---- Write data ----
