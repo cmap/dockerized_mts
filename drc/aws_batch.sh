@@ -52,6 +52,7 @@ if [[ "$pert_id" == "DMSO" ]]
 then
   echo "Skipping DMSO"
 else
+  echo Rscript /drc_compound.R "${args[@]}"
   Rscript /drc_compound.R "${args[@]}"
 fi
 
