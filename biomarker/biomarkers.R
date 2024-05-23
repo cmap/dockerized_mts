@@ -10,16 +10,16 @@ parser <- ArgumentParser()
 # specify our desired options
 parser$add_argument("-b", "--base_dir", default="", help="Input directory.")
 parser$add_argument("-o", "--out", default=getwd(), help = "Output directory. Default is working directory.")
-parser$add_argument("-d", "--biomarker_dir", default="https://s3.amazonaws.com/biomarker.clue.io/2023-Q2",
-     help="Directory containing biomarker files.")
+parser$add_argument("-d", "--biomarker_dir", default="/Users/shiker/Documents/archive/2024-Q2_formatted",
+     help="Directory containing biomarker files.") # directory changed to local directory 
 parser$add_argument("-f", "--biomarker_file", default=NULL, help="Name of biomarker file. Optional")
 parser$add_argument("-q", "--qc", default=NULL, help = "Path to QC file to be used as confounders")
 
 # get command line options, if help option encountered print help and exit
 args <- parser$parse_args()
 
-base_dir <- args$base_dir
-out_dir <- args$out
+base_dir <- '/Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY/PMTS056/BRD-U00116474'
+out_dir <- '/Users/shiker/Documents/archive/2024-Q2_report_test/PMTS056/BRD-U00116474'
 biomarker_dir <- args$biomarker_dir
 biomarker_file <- args$biomarker_file
 qc_path <- args$qc
@@ -27,8 +27,9 @@ qc_path <- args$qc
 # data names/types for loading from taiga
 rf_data <- c("x-all", "x-ccle")
 discrete_data <- c("lin", "mut")
-linear_data <- c("ge", "xpr", "cna", "met", "mirna", "rep", "prot", "shrna")
-linear_names <- c("GE", "XPR", "CNA", "MET", "miRNA", "REP", "PROT", "shRNA")
+# removing MET and miRNA and adding gdsc_prot and gse 
+linear_data <- c("ge", "xpr", "cna", "rep", "prot", "shrna", "gdsc_prot", "gse")
+linear_names <- c("GE", "XPR", "CNA",  "REP", "PROT", "shRNA", "GDSC", "GSE")
 
 if (!is.null(biomarker_file) && !biomarker_file %in% c(rf_data, discrete_data, linear_data)) {
   stop("Unknown biomarker file. Please try again.")
@@ -104,19 +105,22 @@ if (!is.null(qc_path) && file_test("-f", qc_path)) {
 # combine into large table
 all_Y <- dplyr::bind_rows(DRC, LFC)
 
-if (is.null(biomarker_file) || biomarker_file == "rep") {
-  rep_meta <- data.table::fread(paste0(biomarker_dir, "/rep_info.csv")) %>%
-    dplyr::select(column_name, name) %>%
-    dplyr::mutate(column_name = paste0("REP_", column_name))
-}
+# SKIP BECAUSE REP HAS COMPOUND NAMES NOT BRDS 
+# if (is.null(biomarker_file) || biomarker_file == "rep") {
+#   rep_meta <- data.table::fread(paste0(biomarker_dir, "/rep_info.csv")) %>%
+#     dplyr::select(column_name, name) %>%
+#     dplyr::mutate(column_name = paste0("REP_", column_name))
+# }
 
+
+# SKIP BECAUSE WE DON'T USE LIN_PCA 
 # get lineage principal components to use as confounder
-if (is.null(biomarker_file) || biomarker_file == "ge") {
-  LIN_PCs <- data.table::fread(paste0(biomarker_dir, "/linPCA.csv")) %>%
-    column_to_rownames("V1") %>% as.matrix()
-  confounder_overlap <- intersect(rownames(LIN_PCs), rownames(qc_table))
-  if (!is.null(qc_table)) LIN_PCs <- cbind(LIN_PCs[confounder_overlap, ], qc_table[confounder_overlap, ])
-}
+# if (is.null(biomarker_file) || biomarker_file == "ge") {
+#   LIN_PCs <- data.table::fread(paste0(biomarker_dir, "/linPCA.csv")) %>%
+#     column_to_rownames("V1") %>% as.matrix()
+#   confounder_overlap <- intersect(rownames(LIN_PCs), rownames(qc_table))
+#   if (!is.null(qc_table)) LIN_PCs <- cbind(LIN_PCs[confounder_overlap, ], qc_table[confounder_overlap, ])
+# }
 
 runs <- all_Y %>%
   dplyr::distinct(across(any_of(c("pert_iname", "pert_id", "pert_time", "pert_dose", "pert_plate",
@@ -176,9 +180,9 @@ for(feat in 1:length(linear_data)) {
       # for repurposing replace metadata
       if (linear_data[feat] == "rep") {
         res.cor %<>%
-          dplyr::left_join(rep_meta, by = c("feature" = "column_name")) %>%
-          dplyr::select(-feature) %>%
-          dplyr::rename(feature = name) %>%
+          # dplyr::left_join(rep_meta, by = c("feature" = "column_name")) %>%
+          # dplyr::select(-feature) %>%
+          # dplyr::rename(feature = name) %>%
           dplyr::mutate(feature = paste("REP", feature, sep = "_"))
       }
 

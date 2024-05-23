@@ -1,11 +1,11 @@
 ---
 params:
-  data_dir: "/Users/shiker/Documents/trouble_shoot/PSELL/BRD-K00003416"
+  data_dir: "/Users/shiker/Documents/archive/2024-Q2_report_test/PMTS056/BRD-U00116474"
   #data_dir: "/Users/shiker/Documents/trouble_shoot/ULA/MRTX-1133_shiker"
-  comp: "BRD-K00003416"
+  comp: "/Users/shiker/Documents/archive/2024-Q2_report_test/PMTS056/BRD-U00116474"
   #comp: "MRTX-1133"
   is_combination: FALSE
-  meta_folder: "/Users/shiker/Documents/trouble_shoot/ULA/data"
+  meta_folder: "https://s3.amazonaws.com/biomarker.clue.io"
   lfc_five_pattern: "LEVEL5_LFC"
 output:
   html_document:
@@ -176,7 +176,9 @@ feature_full <- c("GE" = "Gene expression",
                   "CNA" = "Copy number",
                   "MET" = "Metabolomics",
                   "shRNA" = "shRNA knockdown",
-                  "REP" = "Repurposing compounds")
+                  "REP" = "Repurposing compounds",
+                  "GSE" = "Gene Set Enrichment", # ADDING NEW FEATURE SET 
+                  "GDSC" = "Genomics of Drug Sensitivity in Cancer") # ADDING NEW FEATURE SET 
 corr_feats <- corr_table$feature_type %>%
   unique() %>%
   dplyr::intersect(names(feature_full)) %>%
@@ -189,9 +191,9 @@ compounds <- LFC %>%
   dplyr::arrange(pert_dose)
 
 # lineage and mutation table
-lineages <- data.table::fread(file.path(params$meta_folder, "lineages.csv")) %>%
+lineages <- data.table::fread(file.path(params$meta_folder, "annotations", "lineages.csv")) %>%
   dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
-mutations <- data.table::fread(file.path(params$meta_folder, "mutations.csv")) %>%
+mutations <- data.table::fread(file.path(params$meta_folder, "annotations", "mutations.csv")) %>%
   dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
 
 # aesthetics
