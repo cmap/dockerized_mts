@@ -172,13 +172,15 @@ feature_full <- c("GE" = "Gene expression",
                   "GE_noLIN" = "Gene expression (lineage corrected)",
                   "XPR" = "CRISPR knock-out",
                   "miRNA" = "Micro RNA",
-                  "PROT" = "Proteomics",
+                  "PROT_BROAD" = "Proteomics (Broad)",
                   "CNA" = "Copy number",
                   "MET" = "Metabolomics",
                   "shRNA" = "shRNA knockdown",
                   "REP" = "Repurposing compounds",
                   "GSE" = "Gene Set Enrichment", # ADDING NEW FEATURE SET 
-                  "GDSC" = "Genomics of Drug Sensitivity in Cancer") # ADDING NEW FEATURE SET 
+                  "PROT_GDSC" = "Proteomics (Sanger)", # ADDING NEW FEATURE SET 
+                  "RPPA" = "Proteomics (RPPA)") # ADDING NEW FEATURE SET 
+
 corr_feats <- corr_table$feature_type %>%
   unique() %>%
   dplyr::intersect(names(feature_full)) %>%

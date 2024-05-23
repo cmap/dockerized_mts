@@ -28,8 +28,8 @@ qc_path <- args$qc
 rf_data <- c("x-all", "x-ccle")
 discrete_data <- c("lin", "mut")
 # removing MET and miRNA and adding gdsc_prot and gse 
-linear_data <- c("ge", "xpr", "cna", "rep", "prot", "shrna", "gdsc_prot", "gse")
-linear_names <- c("GE", "XPR", "CNA",  "REP", "PROT", "shRNA", "GDSC", "GSE")
+linear_data <- c("ge", "xpr", "cna", "rep", "prot", "shrna", "rppa", "gdsc_prot", "gse")
+linear_names <- c("GE", "XPR", "CNA",  "REP", "PROT_BROAD", "RPPA", "shRNA", "PROT_GDSC", "GSE")
 
 if (!is.null(biomarker_file) && !biomarker_file %in% c(rf_data, discrete_data, linear_data)) {
   stop("Unknown biomarker file. Please try again.")
