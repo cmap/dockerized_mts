@@ -1,8 +1,8 @@
 ---
 params:
-  data_dir: '/Users/anup/work/1_Projects/CPS_in_Datawarehouse/cps009_kymera/CPS009_KYMERA/PCPS019/PRC-007236969-390-78_PRC-005665489-117-89'
-  comp: 'PRC-007236969-390-78_PRC-005665489-117-89'
-  qc_path: '/Users/anup/work/1_Projects/CPS_in_Datawarehouse/cps009_kymera/CPS009_KYMERA/data/CPS009_KYMERA_QC_TABLE.csv'
+  data_dir: '/Users/shiker/Documents/trouble_shoot/CPS011/PRC-006274738-494-59_PRC-005261328-256-71'
+  comp: 'PRC-006274738-494-59_PRC-005261328-256-71'
+  qc_path: '/Users/shiker/Documents/trouble_shoot/CPS011/CPS011_DMC_GENENTECH_QC_TABLE.csv'
 output:
   html_document:
     toc: false
@@ -213,7 +213,7 @@ spread_lfc <- combo_lfc %>%
                       dplyr::group_by(ccle_name, culture, pert_plate) %>%
                       dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad), dr = median(dr), 
                                        .groups = "drop"), by = c("ccle_name", "culture", "pert_plate")) %>%  # QC info
-  dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad, dr) %>%
+  dplyr::distinct(pert_iname, pert_plate, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad, dr) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
                           sep = "|", fixed = T,
                           direction = "wide", drop = F, type.convert = T)
@@ -317,7 +317,7 @@ spread_lfc_table <- highlight_key(spread_lfc %>% dplyr::select(ccle_name, cultur
 dt <- DT::datatable(spread_lfc_table, style="bootstrap", extensions = 'Buttons', options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))), colnames = c("Cell Line", "Culture", "Varied Compound | Anchor Compound", "Varied Dose | Anchor Dose", "Synergy", "Dynamic Range", "Artificial Antagonism Flag", "q"), selection = "single", filter = "top")%>%
   DT::formatSignif(columns = c("S", "dr", "q"), digits = 3)
 
-  export_spread_lfc <- spread_lfc %>% dplyr::mutate(neg_log10_qval = -log10(q)) %>% dplyr::select(ccle_name, culture, pert_iname, pert_dose, S, dr, flag, q, neg_log10_qval)
+  export_spread_lfc <- spread_lfc %>% dplyr::mutate(neg_log10_qval = -log10(q)) %>% dplyr::select(ccle_name, culture, pert_plate, pert_iname,  pert_dose, S, dr, flag, q, neg_log10_qval)
 
 
   # save for portal 
