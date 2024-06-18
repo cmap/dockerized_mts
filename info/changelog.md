@@ -1,5 +1,9 @@
 # Release Notes
 
+## MTS026
+***
+* Biomarker module pointing to consistent location for feature files (no changes to data)
+
 ## CPS011
 ***
 
@@ -15,6 +19,7 @@ If both conditions are met (ie, the correlation is <0.3 and the absolute value o
 
 
 ## MTS025, CPS011, APS003
+***
 
 Added the floor range QC metric that looks at the separation between cell line signal (LMFI) in negative control and LMFI signal from a bead  without its complementary target barcode present. Like with dynamic range, data from cell lines with separation < log2(0.3) are removed from the detection plate.
 
@@ -38,6 +43,7 @@ The dose response curve fitting module was revised substantially, motivated by e
 * A value of 1 is now added to all mfi values in the raw_data matrix to prevent log(0)
 
 ## EPS001
+***
 * Removed IC50 values from Extended Day Data Processing
 
 ## MTS023, CPS009
