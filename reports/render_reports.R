@@ -5,7 +5,7 @@ parser <- ArgumentParser()
 parser$add_argument("-d", "--data_dir", default="", help="Input directory")
 parser$add_argument("-c", "--compound", help="Compound")
 parser$add_argument("-m", "--meta_path", help="Path to folder with lineage and mutation files",
-    default="https://s3.amazonaws.com/biomarker.clue.io/annotations")
+    default="https://s3.amazonaws.com/biomarker.clue.io")
 parser$add_argument("-q", "--qc_path", help="Path to QC file for project")
 parser$add_argument("-b", "--combination", help="Boolean indicating whether compound is a combination")
 parser$add_argument("-lfr", "--lfc_four_pattern", default="LEVEL4_LFC_COMBAT", help = "Level 4 LFC file search pattern")
