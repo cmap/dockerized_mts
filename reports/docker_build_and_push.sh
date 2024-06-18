@@ -9,4 +9,4 @@ TAG="testing"
 docker build --platform linux/amd64 -t $REPO/$NAME:$TAG --rm=true .
 
 #docker push $REPO/$NAME:$VERSION
-docker push $REPO/$NAME:$TAG
+#docker push $REPO/$NAME:$TAG

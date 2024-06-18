@@ -98,19 +98,24 @@ echo "${data_dir}" "${compound}" "${meta_path}" "${combination}"
 args=(
   -d "${data_dir}"
   -c "${compound}"
-  -m "${meta_path}"
   -b "${combination}"
 )
+
+if [[ ! -z ${meta_path} ]]
+then
+  args+=(-m "${meta_path}")
+fi
+
 if [[ -f "$qc_path" ]]; then
     args+=(-q $qc_path)
 fi
 
-if [[ ! -z lfc_four_pattern ]]
+if [[ ! -z $lfc_four_pattern ]]
 then
   args+=(-lfr "${lfc_four_pattern}")
 fi
 
-if [[ ! -z lfc_five_pattern ]]
+if [[ ! -z $lfc_five_pattern ]]
 then
   args+=(-lfv "${lfc_five_pattern}")
 fi

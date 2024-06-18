@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-docker push prismcmap/biomarker:testing
+docker push prismcmap/biomarker:production
 
 # trigger
