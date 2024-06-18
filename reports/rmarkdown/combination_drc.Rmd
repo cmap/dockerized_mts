@@ -258,7 +258,7 @@ spread_lfc <- combo_lfc %>%
                       dplyr::group_by(ccle_name, culture) %>%
                       dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad),
                                        .groups = "drop"), by = c("ccle_name", "culture")) %>%  # QC info
-  dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
+  dplyr::distinct(pert_iname, pert_plate, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
   splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
                           sep = "|", fixed = T,
                           direction = "wide", drop = F, type.convert = T)
@@ -320,10 +320,10 @@ spread_lfc %<>% dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
 
 # group by dose 2 to calculate AUC and expected for comp 1
 pseudo_auc_1 <- spread_lfc %>%
-  dplyr::select(ccle_name, culture,
+  dplyr::select(ccle_name, culture, pert_plate, 
                 pert_iname_1, pert_dose_1, pert_dose_2, FC, B) %>%
   dplyr::rename(pert_iname = pert_iname_1) %>%
-  dplyr::group_by(ccle_name, culture, pert_iname, pert_dose_2) %>%
+  dplyr::group_by(ccle_name, culture, pert_plate, pert_iname, pert_dose_2) %>%
   dplyr::mutate(n = n()) %>%
   dplyr::summarise_all(mean) %>%
   dplyr::ungroup() %>%
@@ -334,11 +334,11 @@ pseudo_auc_1 <- spread_lfc %>%
 
 # group by dose 1 to calculate AUC and expected for comp 2
 pseudo_auc_2 <- spread_lfc %>%
-  dplyr::select(ccle_name, culture,
+  dplyr::select(ccle_name, culture, pert_plate, 
                 pert_iname_2, pert_dose_1, pert_dose_2,
                 FC, B) %>%
   dplyr::rename(pert_iname = pert_iname_2) %>%
-  dplyr::group_by(ccle_name, culture, pert_iname, pert_dose_1) %>%
+  dplyr::group_by(ccle_name, culture, pert_plate, pert_iname, pert_dose_1) %>%
   dplyr::mutate(n = n()) %>%
   dplyr::summarise_all(mean) %>%
   dplyr::ungroup() %>%
@@ -582,7 +582,7 @@ compounds_all <- highlight_key(drc_meta %>%
   
   cat(htmltools::knit_print.shiny.tag(q))
       
-  export_pseudo_auc <- pseudo_auc %>% rename(rs_AUC = FC, rs_Bliss = B) %>% select(ccle_name, culture, varied_iname, added_compound, added_doses, rs_AUC, rs_Bliss, MSS)
+  export_pseudo_auc <- pseudo_auc %>% rename(rs_AUC = FC, rs_Bliss = B) %>% select(ccle_name, culture, pert_plate, varied_iname, added_compound, added_doses, rs_AUC, rs_Bliss, MSS)
   
   # save for portal 
   plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
