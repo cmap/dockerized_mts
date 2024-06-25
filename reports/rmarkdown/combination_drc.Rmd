@@ -54,10 +54,18 @@ options(DT.TOJSON_ARGS = list(na = "string"))
 
 ```{r load data, include=FALSE}
 # file paths
-lfc_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
+l4_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
 drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 
 lfc_path <- list.files(params$data_dir, "LEVEL5", full.names = T)
+
+# read in LFC
+if (length(l4_path) == 1) {
+  l4_lfc <- data.table::fread(l4_path)
+} else {
+  message("No Level 4 LFC file found")
+  quit(save = "no")
+}
 
 # read in LFC
 if (length(lfc_path) == 1) {
@@ -66,6 +74,21 @@ if (length(lfc_path) == 1) {
   message("No LFC file found")
   quit(save = "no")
 }
+
+dose_response_viability_points <- l4_lfc %>%
+                 dplyr::rename(dose = pert_dose) %>%
+                 dplyr::mutate(
+                   Viability = 2^LFC_cb,
+                   Replicate = replicate,
+                   cell_id=paste(ccle_name, culture, sep='_')
+                   ) %>%
+                 dplyr::distinct(ccle_name, culture, dose, cell_id, Viability, Replicate)
+
+plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+dir.create(plot_files_dir)
+dr_path = file.path(plot_files_dir, 'dose-response')
+dir.create(dr_path)
+write.csv(dose_response_viability_points, file.path(dr_path, 'dose_response_viability_data.csv'), row.names=FALSE)
 
 # read in DRC if available
 if (length(drc_path) == 1) {
