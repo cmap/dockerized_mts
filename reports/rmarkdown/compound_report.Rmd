@@ -186,6 +186,7 @@ compounds <- LFC %>%
   dplyr::arrange(pert_dose)
 
 # lineage and mutation table
+params$meta_folder <- gsub("/$", "", params$meta_folder)
 lineages <- data.table::fread(file.path(params$meta_folder, "annotations", "lineages.csv")) %>%
   dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
 mutations <- data.table::fread(file.path(params$meta_folder, "annotations", "mutations.csv")) %>%
