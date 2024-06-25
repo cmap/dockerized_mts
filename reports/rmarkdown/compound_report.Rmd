@@ -5,7 +5,7 @@ params:
   comp: "BRD-K00003416"
   #comp: "MRTX-1133"
   is_combination: FALSE
-  meta_folder: "https://s3.amazonaws.com/biomarker.clue.io"
+  meta_folder: "https://s3.amazonaws.com/biomarker.clue.io/annotations/"
   lfc_five_pattern: "LEVEL5_LFC"
 output:
   html_document:
@@ -187,9 +187,9 @@ compounds <- LFC %>%
 
 # lineage and mutation table
 meta_folder <- gsub("/$", "", params$meta_folder)
-lineages <- data.table::fread(file.path(meta_folder, "annotations", "lineages.csv")) %>%
+lineages <- data.table::fread(file.path(meta_folder, "lineages.csv")) %>%
   dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
-mutations <- data.table::fread(file.path(meta_folder, "annotations", "mutations.csv")) %>%
+mutations <- data.table::fread(file.path(meta_folder, "mutations.csv")) %>%
   dplyr::inner_join(LFC %>% dplyr::distinct(ccle_name), by = "ccle_name")
 
 # aesthetics
