@@ -28,7 +28,7 @@ def main(args):
     if args.addProjectName:
         search_str = os.path.join(args.data_dir,"*/*",args.search_pattern)
         project_name = os.path.basename(args.data_dir)
-        output_file = os.path.join(args.out,project_name + "_" + args.search_pattern)
+        output_file = os.path.join(args.out, project_name + "_" + args.search_pattern)
     else:
         if args.outfile:
             output_file = os.path.join(args.out, args.outfile)  # filename override
@@ -43,17 +43,25 @@ def main(args):
     print("Found {} files".format(len(matches)))
     print("Files: {}".format(matches))
     dfs = []
+
+    # create df with columns
+    sample = pd.read_csv(matches[0], index_col=None, header=0, sep=args.separator, nrows=0)
+    buffer_df = pd.DataFrame(columns=sample.columns)
+    write_header = True
+    buffer_df.to_csv(output_file, mode='w', index=False, header=write_header, sep=args.separator)
+    write_header = False  # write header only once
+
     for filename in matches:
         print("Reading file: {}".format(filename))
-        df = pd.read_csv(filename, index_col=None, header=0,sep=args.separator)
-        dfs.append(df)
+        df_chunks = pd.read_csv(filename, index_col=None, header=0, sep=args.separator, chunksize=10**6)
+        for chunks in df_chunks:
+            buffer_df = pd.concat([buffer_df, chunks], ignore_index=True)
+            buffer_df.to_csv(output_file, mode='a', index=False, header=write_header, sep=args.separator)
+            buffer_df = pd.DataFrame(columns=sample.columns)  # clear buffer
+        print(f"Wrote input {filename} to file : {output_file}")
 
-
-    if len(dfs) > 0:
-        result = pd.concat(dfs, axis=0, ignore_index=True)
-        result.to_csv(output_file, index=False,sep=args.separator)
-        print("Wrote file: {}".format(output_file))
     return
+
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])
