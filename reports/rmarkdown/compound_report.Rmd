@@ -40,7 +40,11 @@ drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
 # read in LFC
 if (length(lfc_path) == 1) {
   LFC <- data.table::fread(lfc_path)
-  LFC$LFC_cb = LFC$LFC
+  # Used for situations where combat is not run
+    if (!"LFC_cb" %in% colnames(LFC)) {
+        message("No LFC_cb column found, using LFC column")
+        LFC$LFC_cb <- LFC$LFC
+    }
 } else {
   message("No LFC file found")
   quit(save = "no")
