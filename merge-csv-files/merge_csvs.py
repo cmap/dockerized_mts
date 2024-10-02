@@ -44,9 +44,15 @@ def main(args):
     print("Files: {}".format(matches))
     dfs = []
 
+    output_cols = []
     # create df with columns
-    sample = pd.read_csv(matches[0], index_col=None, header=0, sep=args.separator, nrows=0)
-    buffer_df = pd.DataFrame(columns=sample.columns)
+    for filename in matches:
+        sample = pd.read_csv(filename, index_col=None, header=0, sep=args.separator, nrows=0)
+        for col in sample.columns:
+            if col not in output_cols:
+                output_cols.append(col)
+
+    buffer_df = pd.DataFrame(columns=output_cols)
     write_header = True
     buffer_df.to_csv(output_file, mode='w', index=False, header=write_header, sep=args.separator)
     write_header = False  # write header only once
@@ -55,9 +61,9 @@ def main(args):
         print("Reading file: {}".format(filename))
         df_chunks = pd.read_csv(filename, index_col=None, header=0, sep=args.separator, chunksize=10**6)
         for chunks in df_chunks:
-            buffer_df = pd.concat([buffer_df, chunks], ignore_index=True)
-            buffer_df.to_csv(output_file, mode='a', index=False, header=write_header, sep=args.separator)
-            buffer_df = pd.DataFrame(columns=sample.columns)  # clear buffer
+            chunks = chunks.reindex(columns=output_cols)
+            chunks.to_csv(output_file, mode='a', index=False, header=write_header, sep=args.separator)
+
         print(f"Wrote input {filename} to file : {output_file}")
 
     return
