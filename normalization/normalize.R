@@ -36,6 +36,10 @@ path_data <- list.files(base_dir, pattern =  "*_LEVEL2_MFI*", full.names = T)
 path_cell_info <- list.files(base_dir, pattern = "*_cell_info*", full.names = T)
 path_inst_info <- list.files(base_dir, pattern = "*_inst_info*", full.names = T)
 
+# Reorganization files
+path_reorg_mapping <- list.files(base_dir, pattern = "*reorg_map*", full.names = T)
+path_reorg_subset <- list.files(base_dir, pattern = "*reorg_subset*", full.names = T)
+
 #---- Load the data ----
 
 # read in logMFI data
@@ -77,7 +81,7 @@ master_logMFI <- filter_results$filtered_df
 # write record of removed instances and wells
 removed_instances_cnt <- filter_results$removed_instances
 if (length(removed_instances_cnt) > 0) {
-  cat(paste("Removing instance", removed_instances_cnt, "\n"))
+  #cat(paste("Removing instance", removed_instances_cnt, "\n"))
   # Write file of removed ccle_names
   writeLines(removed_instances_cnt, paste0(out_dir, "/", build_name, "_removed_instances_count.txt"))
 }
@@ -203,6 +207,31 @@ if(nrow(logMFI_base) > 0) {
 # join with other info (LMFI is normalized, logMFI is not)
 logMFI_normalized %<>%
   dplyr::left_join(master_logMFI)
+
+#---- Reorganization ----
+cat("Reorganizing data based on mappings...\n")
+
+# Save original dimensions of logMFI_normalized before reorganization
+original_dim <- dim(logMFI_normalized)
+
+# Read data and reorganize if reorganization files exist
+if (length(path_reorg_mapping) > 0 && length(path_reorg_subset) > 0) {
+  reorg_mapping <- data.table::fread(path_reorg_mapping)
+  reorg_subset <- data.table::fread(path_reorg_subset)
+
+  # Reorganize data
+  logMFI_normalized <- reorg_mfi(mfi = logMFI_normalized,
+                                 reorg_mapping = reorg_mapping,
+                                 reorg_subset = reorg_subset)
+
+  # Ensure new dimensions are the same as original dimensions
+    if (dim(logMFI_normalized)[1] != original_dim[1] || dim(logMFI_normalized)[2] != original_dim[2]) {
+        stop("Reorganization failed. Dimensions of reorganized data do not match original dimensions.")
+    }
+} else {
+  # Fail if reorg files do not exist
+  stop("No reorganization files found. Halting execution.")
+}
 
 #---- ID and filter low correlation pools if required ----
 

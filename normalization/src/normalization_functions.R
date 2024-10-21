@@ -298,3 +298,60 @@ annotate_rep_corr_pass <- function(df, corr_threshold = 0.6, delta_threshold = 3
   return(df)
 }
 
+reorg_mfi <- function(mfi, reorg_subset, reorg_mapping) {
+  # Annotate mfi with 'reorg' column
+  mfi_merged <- mfi %>%
+    left_join(reorg_subset, by = c("pool_id", "replicate"))
+
+  # Check row count consistency
+  stopifnot(nrow(mfi) == nrow(mfi_merged))
+
+  # Subset data needing reorganization and those that don't
+  df_to_reorg <- mfi_merged %>% filter(reorg == TRUE)
+  df_dont_reorg <- mfi_merged %>% filter(reorg == FALSE)
+
+  # Ensure the sum of the rows equals the original dataframe row count
+  stopifnot(nrow(mfi) == nrow(df_to_reorg) + nrow(df_dont_reorg))
+
+  # Merge reorganized dataframe with reorganization mapping
+  df_to_reorg_with_wells <- df_to_reorg %>%
+    left_join(reorg_mapping, by = c("replicate", "pert_well"))
+
+  # Check row count consistency
+  stopifnot(nrow(df_to_reorg) == nrow(df_to_reorg_with_wells))
+
+  # Drop pert_well and rename fixed_well to pert_well
+  df_to_reorg_with_wells <- df_to_reorg_with_wells %>%
+    select(-pert_well) %>%
+    rename(pert_well = fixed_well)
+
+  # Define the columns to match on
+  matching_cols <- c(
+    "ccle_name", "rid", "culture", "replicate", "pool_id",
+    "barcode_id", "prism_replicate", "pert_plate", "pert_mfc_plate",
+    "cell_set", "pert_well"
+  )
+
+  # Define value columns
+  value_cols = c("logMFI_norm","logMFI", "count")
+
+  # Subset the reorganized dataframe to the required columns
+  subset_cols <- c(matching_cols, value_cols)
+  df_to_reorg_with_wells <- df_to_reorg_with_wells %>%
+    select(all_of(subset_cols))
+
+  # Merge back into the original dataframe
+  mfi_reorged <- df_to_reorg %>%
+    select(-all_of(value_cols)) %>%
+    left_join(df_to_reorg_with_wells,
+              by = matching_cols)
+
+  # Concatenate reorged df with non-reorged
+  reorg_merged <- rbind(df_dont_reorg, mfi_reorged)
+
+  # Drop reorg column
+    reorg_merged <- reorg_merged %>%
+        select(-reorg)
+
+  return(reorg_merged)
+}
