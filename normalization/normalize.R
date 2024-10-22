@@ -37,8 +37,8 @@ path_cell_info <- list.files(base_dir, pattern = "*_cell_info*", full.names = T)
 path_inst_info <- list.files(base_dir, pattern = "*_inst_info*", full.names = T)
 
 # Reorganization files
-path_reorg_mapping <- list.files("/cmap/macchiato/reorg", pattern = "*reorg_map*", full.names = T)
-path_reorg_subset <- list.files("/cmap/macchiato/reorg", pattern = "*reorg_subset*", full.names = T)
+path_reorg_mapping <- list.files("/data/reorg", pattern = "*reorg_map*", full.names = T)
+path_reorg_subset <- list.files("/data/reorg", pattern = "*reorg_subset*", full.names = T)
 
 #---- Load the data ----
 
