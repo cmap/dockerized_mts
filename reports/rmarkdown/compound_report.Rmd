@@ -626,8 +626,10 @@ if (!is.null(DRC)) {
     dplyr::mutate(gene = word(Var2, 1, sep = fixed("_")), # creating gene column 
                   mut.type = word(Var2,2,-1, sep = fixed("_"))) %>% # creating mutation type column
     dplyr::group_by(gene, Var1) %>%
-    dplyr::mutate(mut.type = ifelse(all(value == 0), "wild_type", mut.type)) %>%  # cell lines that doesn't have particular mutation
-    dplyr::ungroup() %>%
+    dplyr::mutate(flag = all(value == 0)) %>%  
+    dplyr::ungroup() %>% 
+    dplyr::mutate(mut.type = ifelse(flag, "wild_type",  mut.type)) %>%  # cell lines that doesn't have particular mutation
+    dplyr::select(-flag) %>% 
     dplyr::distinct() %>%
     dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) %>% # renaming columns
     dplyr::left_join(top.genes, by = "gene") # adding minimum q values for top genes 
@@ -697,8 +699,10 @@ if (!is.null(DRC)) {
     dplyr::mutate(gene = word(Var2, 1, sep = fixed("_")), # creating gene column 
                   mut.type = word(Var2,2,-1, sep = fixed("_"))) %>% # creating mutation type column
     dplyr::group_by(gene, Var1) %>%
-    dplyr::mutate(mut.type = ifelse(all(value == 0), "wild_type", mut.type)) %>%  # cell lines that doesn't have particular mutation
-    dplyr::ungroup() %>%
+    dplyr::mutate(flag = all(value == 0)) %>%  
+    dplyr::ungroup() %>% 
+    dplyr::mutate(mut.type = ifelse(flag, "wild_type",  mut.type)) %>%  # cell lines that doesn't have particular mutation
+    dplyr::select(-flag) %>%     
     dplyr::distinct() %>%
     dplyr::rename(ccle_name = Var1) %>% dplyr::select(-value, -Var2) %>% # renaming columns
     dplyr::left_join(top.genes) # adding minimum q values for top genes 
