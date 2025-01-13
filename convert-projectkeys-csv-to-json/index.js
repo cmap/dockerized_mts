@@ -42,9 +42,10 @@ const getProjectsWithCombinations = function(projectKeys){
 const uniqueProjects= function(projectKeys){
     const projectsWithCombinations =  getProjectsWithCombinations(projectKeys);
 
+    //etl needs screen, processing pipeline does not use or need screen
     const out = _.uniq(projectKeys, function (projectKey) {
-        return projectKey.x_project_id;
-    })
+        return projectKey.screen ? `${projectKey.screen}_${projectKey.x_project_id}` : projectKey.x_project_id;
+    });
 
     out.forEach((project) => {
         if (projectsWithCombinations.includes(project.x_project_id)) {
