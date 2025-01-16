@@ -1,0 +1,126 @@
+
+
+
+```{r preprocessing, include=F}
+# file paths
+lfc_path <- list.files(params$data_dir, params$lfc_five_pattern, full.names = T)
+drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
+
+
+# read in LFC
+if (length(lfc_path) == 1) {
+  LFC <- data.table::fread(lfc_path)
+  LFC$LFC_cb = LFC$LFC 
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+inst <- LFC %>%  dplyr::distinct(pert_iname, pert_id)
+neg_control <- LFC$pert_vehicle %>% unique()
+pos_control <- ifelse(neg_control != "DMSO", "Puromycin", "Bortezomib")
+
+# read in DRC if available
+if (length(drc_path) == 1) {
+  DRC <- data.table::fread(drc_path)
+  DRC %<>% tidyr::drop_na(auc) ## drop cell lines without a fit, these will have auc=na
+} else {
+  DRC <- NULL
+}
+
+
+if (params$is_combination){
+  model_join_columns = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose")
+} else{
+  model_join_columns = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "pert_dose")
+}
+
+# read in biomarker tables
+corr_table <- data.table::fread(file.path(params$data_dir, "continuous_associations.csv")) %>%
+  dplyr::mutate(feature = word(feature, 2, -1, sep = "_"))
+disc_table <- data.table::fread(file.path(params$data_dir, "discrete_associations.csv")) %>%
+  dplyr::mutate(feature = word(feature, 2, -1, sep = "_"))
+model_table <- data.table::fread(file.path(params$data_dir, "model_table.csv"))
+rf_table <- data.table::fread(file.path(params$data_dir, "RF_table.csv")) %>%
+  dplyr::left_join(model_table, by = model_join_columns)
+
+if (all(is.na(corr_table$pert_time)) || all(corr_table$pert_time == "")) {
+  corr_table %<>% dplyr::mutate(pert_time = "120H")
+  disc_table %<>% dplyr::mutate(pert_time = "120H")
+  model_table %<>% dplyr::mutate(pert_time = "120H")
+  rf_table %<>% dplyr::mutate(pert_time = "120H")
+}
+
+# some general metadata
+n_doses <- nrow(dplyr::distinct(LFC, pert_dose))
+timepoints <- LFC$pert_time %>% unique()
+plot_height <- 12 * length(timepoints)  # some plots larger if more timepoints
+pert_iname <- toupper(dplyr::distinct(LFC, pert_iname)$pert_iname)
+n_lines <- LFC %>% dplyr::distinct(ccle_name, culture) %>% nrow()
+n_days <- LFC$pert_time %>%
+  unique() %>%
+  gsub("[^0-9.-]", "", .) %>%
+  as.numeric() / 24
+
+
+corr_table %<>%
+  dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                   signif(as.numeric(pert_dose), 5),
+                                   pert_dose))
+
+disc_table %<>%
+  dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                   signif(as.numeric(pert_dose), 5),
+                                   pert_dose)) %>%
+  dplyr::arrange(q.value, effect_size) %>%
+  dplyr::group_by(pert_iname, pert_dose, pert_plate, pert_time, pert_id, feature_type) %>%
+  dplyr::mutate(rank = 1:n()) %>%
+  dplyr::ungroup()
+
+model_table %<>%
+  dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                   signif(as.numeric(pert_dose), 5),
+                                   pert_dose))
+rf_table %<>%
+  dplyr::mutate(pert_dose = ifelse(!is.na(as.numeric(pert_dose)),
+                                   signif(as.numeric(pert_dose), 5),
+                                   pert_dose))
+
+if (params$is_combination){
+  corr_table %<>%
+    dplyr::mutate(
+      pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                         paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
+                         pert_dose),
+      pert_iname = unique(LFC$pert_iname))
+  
+  disc_table %<>%
+    dplyr::mutate(
+      pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                         paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
+                         pert_dose),
+      pert_iname = unique(LFC$pert_iname))
+    
+  rf_table %<>%
+    dplyr::mutate(
+      pert_dose = ifelse(pert_dose %in% c("log2.auc", "log2.ic50"),
+                         paste0(pert_iname, " ", pert_dose, "\n", added_compounds, " ", added_doses),
+                         pert_dose),
+      pert_iname = unique(LFC$pert_iname))
+  
+  dose_factors <- dplyr::union(dose_factors, corr_table$pert_dose %>% unique())
+  LFC$pert_dose <- factor(LFC$pert_dose, levels = dose_factors)
+}
+
+
+
+```
+
+
+
+
+
+
+
+
+

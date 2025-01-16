@@ -1,0 +1,191 @@
+---
+params:
+  data_dir: "/Users/shiker/Documents/trouble_shoot/mts021/MTS021_NATHANAEL_GRAY/PMTS056/BRD-U00116474"
+  comp: BRD-U00116474
+  lfc_four_pattern: "LEVEL4_LFC_COMBAT"
+output:
+  html_document:
+    toc: false
+    theme: paper
+    highlight: kate
+---
+
+<img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/>
+<img src="misc/prism_logo_tagline_side.png" width=300px align="right"/>
+<br><br><br>
+
+Return to [compound report](`r paste0("./", params$comp, "_report.html")`)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, fig.width = 10)
+
+# packages
+library(tidyverse)
+library(magrittr)
+library(ggthemes)
+library(plotly)
+library(crosstalk)
+library(htmltools)
+library(DT)
+
+# theme
+theme_set(theme_bw())
+```
+
+```{r define functions, include=FALSE}
+# DRC curve function
+dr_func <- function(d, x) {
+  as.numeric(d["lower_limit"]) + (as.numeric(d["upper_limit"]) - as.numeric(d["lower_limit"]))/
+    (1 + (2^x/as.numeric(d["ec50"]))^as.numeric(d["slope"]))
+}
+
+# DRC curve maker
+dr_wrapper <- function(d, xx) {
+  out_df <- tibble(x = xx, y = dr_func(xx))
+  colnames(out_df) <- c(x, d["pert_name"])
+  return(out_df$y)
+}
+
+# push NAs to bottom in tables
+options(DT.TOJSON_ARGS = list(na = "string"))
+```
+
+```{r load data, include=FALSE}
+# file paths
+lfc_path <- list.files(params$data_dir, params$lfc_four_pattern, full.names = T)
+drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
+
+# read in LFC
+if (length(lfc_path) == 1) {
+  lfc <- data.table::fread(lfc_path)
+  lfc$LFC_cb = lfc$LFC
+
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+# read in DRC if available
+if (length(drc_path) == 1) {
+  DRC <- data.table::fread(drc_path)
+} else {
+  message("No DRC file found")
+  quit(save = "no")
+}
+
+pert_iname <- lfc$pert_iname %>% unique()
+
+# dose response
+drc <- data.table::fread(file.path(params$data_dir, "DRC_TABLE.csv"))
+
+# distinct conditions (cell lines)
+conditions <- drc %>%
+  dplyr::arrange(auc) %>%
+  dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "varied_iname", "added_compounds", "added_doses"))))
+
+# generate plots for each cell line
+drc_plots <- list()
+for (i in 1:nrow(conditions)) {
+  condition <- conditions[i,]
+  
+  d <- drc %>% dplyr::inner_join(condition, by = c("varied_iname", "ccle_name", "culture", "pert_time"))
+  xx = seq(log2(min(d$min_dose)), log2(max(d$max_dose)), length.out = 40)
+  res <- apply(d, 1, function(p) dr_func(p, xx))
+  func_tab <- cbind(xx, res)
+  func_tab %<>% as_tibble() %>%
+    dplyr::rename(x = 1, y = 2) %>%
+    dplyr::bind_cols(condition) %>%
+    dplyr::left_join(drc, by = c("varied_iname", "ccle_name", "culture", "pert_time") )
+  drc_plots[[i]] <- func_tab
+}
+drc_plots %<>% 
+  dplyr::bind_rows() %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"),
+                x = 2^x)
+
+# metadata for each row
+drc_meta <- drc_plots %>%
+  dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "pert_plate", "varied_iname", "added_compounds",
+                                  "added_doses", "ec50", "slope", "upper_limit", "lower_limit", "auc", "log2.ic50")))) %>%
+  dplyr::mutate(ic50 = 2^log2.ic50) %>%
+  dplyr::select(-log2.ic50) %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
+
+# indivual plots
+plot_meta <- drc_meta$varied_iname %>% unique()
+```
+
+---
+title: "`r paste(pert_iname, 'compound report')`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+# Overview {.tabset .tabset-pills}
+
+## Curve fitting method
+
+Dose response curves fit for `r params$comp`. Robust 4-parameter dose-response curves (DRCs) are fit for each cell line using the viability metrics (see the Data Processing section). The four parameters are upper limit ($a$), lower limit ($b$), slope ($s$), and EC50. The equation for the curve is defined:
+
+$$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
+The curve fitting procedure is implemented via the dr4pl package. It first minimizes the squared deviation of observed viabilities at each dose. If this procedure does not find a reasonable optimum, a robust fitting method is also tried, as described in the dr4pl package documentation. The fits are constrained such that the upper-limit lies in the range (0.99,1.01) and the lower limit lies in the range (0.0,1.01).  
+
+The fit parameters, in addition to the area under the dose-response curves (AUC) and the concentration at which the curve reaches 0.5 viability (IC50), are presented in the table below the plots. The AUC is computed via numerical integration of the fitted dose-response curve. An IC50 is only reported if the fitted curve crosses a viability of 0.5 within the dose range of the experiment. Some cell lines may be missing due to insensitivity and/or inability to fit dose-response curve to the data.
+
+The table and plots are interactive. To highlight a cell line either search it using the search box or select it in the table.
+
+
+## Plots
+
+```{r dose response, fig.height=4}
+curves_all <- highlight_key(drc_plots %>%
+                              dplyr::filter(is.finite(auc)) %>%
+                              dplyr::arrange(auc),
+                            ~cell_id, group = "Dose-response")
+lfc_table <- lfc %>%
+                 dplyr::inner_join(drc_meta, by = c("ccle_name", "culture", "pert_plate", "pert_time")) %>%
+                 dplyr::rename(dose = pert_dose) %>%
+                 dplyr::mutate(Viability = 2^LFC_cb,
+                               Replicate = replicate) %>%
+                 dplyr::distinct(ccle_name, culture, cell_id, dose, Viability, Replicate)
+
+lfc_all <- highlight_key(lfc_table, ~cell_id, group = "Dose-response")
+
+# Write Viability Data for Data Warehouse
+plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+dir.create(plot_files_dir)
+dr_path = file.path(plot_files_dir, 'dose-response')
+dir.create(dr_path)
+write.csv(lfc_table, file.path(dr_path, 'dose_response_viability_data.csv'), row.names=FALSE)
+
+p <- plot_ly() %>% 
+  add_trace(data = curves_all,
+            x = ~x, y = ~y, color = ~culture,
+            type = "scatter", mode = "lines", line = list(shape = "line"),
+            hoverinfo = "text", text = ~ccle_name, opacity = 0.1) %>%
+  add_trace(data = lfc_all,
+            x = ~dose, y = ~Viability, type = "scatter", mode = "markers",
+            hoverinfo = "text", text = ~ccle_name,
+            hovertemplate = "%{text} <br> %{xaxis.title.text}: %{x} <br> %{yaxis.title.text}: %{y} <extra></extra>",
+            opacity = 0.1, color = ~Replicate) %>%
+  layout(xaxis = list(title = "Dose", type = "log"),
+         yaxis = list(title = "Viability", range = c(0, 1.5)),
+         hovermode = "closest") %>%
+  highlight(on = "plotly_selected", off = "plotly_deselect",
+            dynamic = FALSE, selectize = TRUE, persistent = FALSE,
+            opacityDim = 1, defaultValues = "",
+            selected = attrs_selected(opacity = 1))
+
+compounds_all <- highlight_key(drc_meta %>%
+                                 dplyr::arrange(auc),
+                               ~cell_id, group = "Dose-response")
+
+dt <- DT::datatable(compounds_all, style="bootstrap",
+                    options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = "tp",
+                                   columnDefs = list(list(visible = FALSE, targets = c(11)))),
+                    colnames = c("Compound", "Cell Line", "Culture", "Time", "a", "EC50", "s", "b", "AUC", "Plate", "IC50", "ID"),
+                    rownames = FALSE,
+                    selection = "single", filter = "top") %>%
+  DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50"), digits = 3)
+
+p; dt
+```

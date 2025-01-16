@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
-#
-##change the version number for each new build
-#docker build --platform linux/amd64 -t prismcmap/collate-project-files:testing --rm=true .
-#
-#docker push prismcmap/collate-project-files:testing
-
 REPO="prismcmap"
-NAME="collate-project-files"
+NAME="format-for-portal"
 
 #VERSION="v0.2.11" #change the version number for each new build
 TAG="testing"

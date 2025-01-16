@@ -1,0 +1,784 @@
+---
+params:
+  data_dir: '/Users/shiker/Documents/trouble_shoot/CPS011/PRC-006274738-494-59_PRC-005261328-256-71'
+  comp: 'PRC-006274738-494-59_PRC-005261328-256-71'
+  qc_path: '/Users/shiker/Documents/trouble_shoot/CPS011/CPS011_DMC_GENENTECH_QC_TABLE.csv'
+output:
+  html_document:
+    toc: false
+    theme: paper
+    highlight: kate
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10)
+
+# packages
+library(tidyverse)
+library(magrittr)
+library(ggthemes)
+library(plotly)
+library(crosstalk)
+library(htmltools)
+library(DT)
+library(heatmaply)
+library(viridis)
+library(splitstackshape)
+
+# theme
+theme_set(theme_bw())
+
+# push NAs to bottom in tables
+options(DT.TOJSON_ARGS = list(na = "string"))
+```
+
+```{r load data, include=FALSE}
+# file paths
+lfc_path <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
+
+# read in LFC
+if (length(lfc_path) == 1) {
+  LFC <- data.table::fread(lfc_path)
+  combo_lfc <- LFC
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+n_combos = length(LFC$pert_dose %>% unique())
+synergy_height = ceiling(n_combos / 8) * 5
+
+# read in DRC if available
+if (length(drc_path) == 1) {
+  DRC <- data.table::fread(drc_path) %>%
+    dplyr::mutate(ec50 = as.numeric(ec50))
+  DRC %<>% tidyr::drop_na(auc) ## drop cell lines without a fit, these will have auc=na
+  combo_drc <- DRC
+} else {
+  DRC <- NULL
+}
+ 
+
+# read in QC table
+plates <- LFC$pert_plate %>% unique()
+qc_table <- data.table::fread(params$qc_path) %>%
+  dplyr::filter(pert_plate %in% plates)
+
+pert_iname <- toupper(dplyr::distinct(LFC, pert_iname)$pert_iname)
+
+# biomarkers
+corr_path <- list.files(params$data_dir, "continuous_associations", full.names = T)
+if (length(corr_path) == 1) {
+  correlations <- data.table::fread(corr_path) %>%
+    dplyr::filter(q.val <= 0.1, feature_type %in% c("GE", "XPR", "REP")) %>%
+    dplyr::mutate(feature = word(feature, 2, -1, sep = fixed("_")))
+}
+model_path <- list.files(params$data_dir, "model_table", full.names = T)
+if (length(model_path) == 1) model_table <- data.table::fread(model_path)
+rf_path <- list.files(params$data_dir, "RF_table", full.names = T)
+if (length(rf_path) == 1) rf_table <- data.table::fread(rf_path)
+
+# constituent compound info
+constituents <- stringr::str_split(params$comp, pattern = fixed("_"))[[1]]
+plate_dir <- dirname(params$data_dir)
+
+# read in constitutent compound data
+for (const in constituents) {
+  const_path <- file.path(plate_dir, const)
+  if (!dir.exists(const_path)) {
+    warning("No data directory for anchor or test compounds. Unable to generate combination report.")
+    quit(save = "no")
+  }
+
+  # DRC and LFC
+  const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
+  const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
+  if (length(const_lfc_path) == 1) {
+    LFC %<>% dplyr::bind_rows(
+      data.table::fread(const_lfc_path) %>%
+        dplyr::mutate(pert_dose = as.character(pert_dose))
+    )
+  }
+  if (length(const_drc_path) == 1) {
+    DRC %<>% dplyr::bind_rows(
+      data.table::fread(const_drc_path) %>%
+        dplyr::mutate(ec50 = as.numeric(ec50))
+    )
+  }
+
+  # correlations and random forest
+  const_corr_path <- list.files(const_path, "continuous_associations", full.names = T)
+  const_model_path <- list.files(const_path, "model_table", full.names = T)
+  const_rf_path <- list.files(const_path, "RF_table", full.names = T)
+
+  if (length(const_corr_path) == 1) {
+    correlations %<>% dplyr::bind_rows(
+      data.table::fread(const_corr_path) %>%
+        dplyr::mutate(pert_dose = as.character(pert_dose)) %>%
+        dplyr::mutate(feature = word(feature, 2, -1, sep = fixed("_")))
+    )
+  }
+  if (length(const_model_path) == 1) {
+    model_table %<>% dplyr::bind_rows(
+      data.table::fread(const_model_path) %>%
+        dplyr::mutate(pert_dose = as.character(pert_dose))
+    )
+  }
+  if (length(const_rf_path) == 1) {
+    rf_table %<>% dplyr::bind_rows(
+      data.table::fread(const_rf_path) %>%
+        dplyr::mutate(pert_dose = as.character(pert_dose)) %>%
+        dplyr::mutate(feature = word(feature, 2, -1, sep = fixed("_")))
+    )
+  }
+}
+```
+
+---
+title:  "`r paste(pert_iname, 'combination report')`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+# Overview
+
+This is the combination report for the combination `r pert_iname`. The doses at which this combination was run, as well as the doses of each single agent, are outlined in the table below
+
+```{r overview}
+# split to show components of compounds
+summary_tab <- LFC %>%
+  dplyr::distinct(pert_iname, pert_dose, pert_idose) %>%
+  dplyr::rename(Compound = pert_iname, Dose = pert_dose, "Dose with units" = pert_idose) %>%
+  splitstackshape::cSplit(splitCols = c("Compound", "Dose", "Dose with units"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = T) %>%
+  dplyr::arrange(Compound_2, Compound_1, Dose_1)
+
+colnames(summary_tab) <- stringr::str_replace_all(colnames(summary_tab), "_", " ")
+
+DT::datatable(summary_tab, style = "bootstrap",
+              options = list(dom = "t", ordering = TRUE,
+                             lengthChange = FALSE, scrollY = "300px", paging = FALSE))
+
+```
+
+# Sensitivity comparison {.tabset .tabset-pills}
+
+## Overview
+
+This section compares the activity of combination with constituents based on log-fold change and AUC.
+
+**Synergy by Dose**
+
+<center>
+![](misc/synergy_template.png){width=50%}
+</center>
+
+
+
+The first tab (Synergy by Dose) shows synergy score (x-axis) and the significance of that score (y-axis) across all cell lines. Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound (varied compound and anchor compound respectively) and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model, where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). The synergy score is the difference of the expected value ($LFC_a + LFC_b$) and the observed ($LFC_c$) value. Large positive values indicate synergy ($LFC_a + LFC_b$ > $LFC_c$) while large negative values ($LFC_a + LFC_b$ < $LFC_c$) indicate antagonism. 
+
+The y-axis represents the significance values of the synergy scores, where each score is normalized to its estimated standard error and the resulting calculated z-score is used to compute a q value (under the assumption of a standard normal null and corrected for multiple hypothesis testing using Benjamini-Hochberg method). The standard error of the measured LMFI values for each cell line and plate pair are assumed to be roughly the same across different perturbations and therefore can be estimated using the DMSO replicates. In particular, the standard errors are calculated for each cell line by multiplying the standard deviation across negative control samples (~32 replicates) by an appropriate constant (C) . In interpreting the synergy scores, we recommend focusing more on effect size after providing a generous threshold on the q-values (i.e. 0.05 or 0.01).
+
+Cases where the observed combination LFC is below the dynamic range of the assay can result in a misleading antagonistic interaction between the two compounds (artificial antagonism). These points are flagged as an 'x' on the synergy by dose plot and labeled as 1 in the synergy table. 
+
+
+**AUC plots**
+
+The second tab (AUC plots) shows the AUC of the combination versus the Bliss expected AUC. The Bliss expected AUC assumes that independent effects are additive in log-scale or multiplicative in fold-change. Each value is calculated by taking the mean fold-change across doses with a given anchor dose as a proxy for AUC. This area can be approximated through Riemann-Sums, where the area of each dose response is estimated as a rectangle with an area of $\approx \frac{1}{d_2-d_1}FC_{d_1}$ where $d_2$ is the higher dose (upper bound) and $d_1$ is the lower dose (lower bound) and $FC_{d_1}$ is the fold change for $d_1$. Because upper dose is always three times higher than the lower dose, $d_2$ - $d_1$ = $d_{n+1}$ - $d_n$ = log(3), where n is the dose number. When the summation of these rectangles (across n doses) is taken, the approximate area under the DRC is:
+
+$$AUC \approx \frac{1}{n*(d_2 - d_1)}\sum_{i=1}^nFC_{d_i}(d_{i+1} - d_i) \approx \frac{1}{n}\sum_{i=1}^nFC_{d_i}$$
+
+Therefore, the AUC of the combination DRC is:
+
+$$AUC_{combo} \approx \frac{1}{n}\sum_{i=1}^nFC_{c_i}$$
+
+
+
+And the Bliss AUC is :
+$$AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$$
+The same is repeated for compound $b$ if there are more than 4 doses.
+
+## Synergy by dose
+
+Below are synergy plots by dose. Points flagged for potential 'artificial antagonism' (described in the Overview section) are displayed as an x and have a flag value of 1 in the synergy table below. 
+
+```{r synergy scoring, fig.height=5}
+# non-combination values
+solo_lfc <- dplyr::anti_join(LFC, combo_lfc, by = c("rid", "ccle_name", "culture", "pool_id", "pert_iname", "pert_id", "pert_dose", "pert_idose", "pert_plate", "pert_vehicle", "pert_time", "pert_type", "sig_id", "x_project_id", "LFC", "LFC_cb"))
+
+# split combination perts
+spread_lfc <- combo_lfc %>%
+  dplyr::inner_join(qc_table %>%
+                      dplyr::group_by(ccle_name, culture, pert_plate) %>%
+                      dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad), dr = median(dr), 
+                                       .groups = "drop"), by = c("ccle_name", "culture", "pert_plate")) %>%  # QC info
+  dplyr::distinct(pert_iname, pert_plate, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad, dr) %>%
+  splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = F, type.convert = T)
+
+# add columns for constituents to spread table
+for (i in 1:length(constituents)) {
+  comp <- constituents[[i]]
+  df <- solo_lfc %>%
+    dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
+    dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
+    dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
+  
+  new_cols <- colnames(df)
+  new_cols <- case_when(
+      "pert_iname" == new_cols  ~ paste("pert_iname", i, sep = "_"),
+      "pert_dose" == new_cols  ~ paste("pert_dose", i, sep = "_"),
+      "LFC_cb" == new_cols  ~ paste("LFC_cb", i, sep = "_"),
+       TRUE ~ as.character(new_cols)
+    )
+  colnames(df) <- new_cols
+  
+  
+  spread_lfc %<>% dplyr::left_join(df)
+}
+
+
+# flagging artificial antagonism 
+spread_lfc %<>% dplyr::mutate(S = LFC_cb_1 + LFC_cb_2 - LFC_cb, flag = (LFC_cb + dr < 1) * (S < 0) ) 
+
+
+
+# bliss expected fold change (capped FCs at 1)
+B <- apply(2^spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')], 1, function(x) prod(pmin(x, 1))) # converting back to FC and multiplying cap at 1 
+spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
+spread_lfc$B <- B
+
+
+
+spread_lfc %<>%
+  dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
+  dplyr::mutate(p = 2*pnorm(abs(Z), lower.tail = F)) %>%
+  dplyr::mutate(q = p.adjust(p, method = "BH")) %>%
+  dplyr::arrange(pert_dose_1)
+
+if (all(is.na(spread_lfc$S))) {
+  warning("No matching data from combination constituents alone, unable to generate combination report.")
+  quit(save = "no")
+}
+
+max_s <- ceiling(max(spread_lfc$S))
+min_s <- floor(min(spread_lfc$S))
+max_q <- ceiling(max(-log10(spread_lfc$q)))
+
+combos <- spread_lfc %>%
+  dplyr::arrange(pert_dose_1, pert_dose_2) %>%
+  dplyr::distinct(pert_dose)
+
+plots <- list()
+for (i in 1:nrow(combos)) {
+  synergy_plot <- highlight_key(spread_lfc # filter for visualization only - not analysis 
+                                %>% dplyr::inner_join(combos[i,], by = "pert_dose"),
+                                ~ccle_name, group = "Synergy scores")
+  p <- plot_ly(synergy_plot) %>%
+    add_trace(x = ~S, y = ~-log10(q), type = "scatter", mode = "markers",
+              marker = list(symbol = ~flag*-66+100,
+                            line = list(width = 1)),
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.9) %>%
+    layout(xaxis = list(range = c(min_s, max_s)),
+           yaxis = list(range = c(0, max_q)),
+           annotations = list(x = 0.5, y = 1,
+                              text = combos$pert_dose[[i]],
+                              align = "center", showarrow = F, xref="paper", yref="paper",
+                              xanchor = "center", yanchor = "top"),
+           hovermode = "closest",
+           showlegend = F) %>%
+    highlight(on = "plotly_click", off = "plotly_doubleclick",
+              dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+              defaultValues = "", selected = attrs_selected(opacity = 1))
+  plots[[i]] <- p
+}
+
+subplot(plots, nrows = max(1, ceiling(length(plots)/4)), shareX = F, shareY = F) %>%
+  layout(title = pert_iname,
+         annotations = list(
+           list(x = 0, xshift = -50, y = 0.5,
+                textangle = 270, text = "-log10(q)",
+                font = list(size = 14),
+                showarrow = F, xref='paper', yref='paper',
+                size = 48),
+           list(x = 0.5, y = 0, yshift = -40,
+                text = "Synergy score",
+                font = list(size = 14),
+                showarrow = F, xref='paper', yref='paper',
+                size = 48)
+         ))
+
+
+spread_lfc_table <- highlight_key(spread_lfc %>% dplyr::select(ccle_name, culture, pert_iname, pert_dose, S, dr, flag, q), ~ccle_name, group = "Synergy scores")
+
+
+dt <- DT::datatable(spread_lfc_table, style="bootstrap", extensions = 'Buttons', options = list(lengthChange = FALSE, width = "100%", paging = TRUE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))), colnames = c("Cell Line", "Culture", "Varied Compound | Anchor Compound", "Varied Dose | Anchor Dose", "Synergy", "Dynamic Range", "Artificial Antagonism Flag", "q"), selection = "single", filter = "top")%>%
+  DT::formatSignif(columns = c("S", "dr", "q"), digits = 3)
+
+  export_spread_lfc <- spread_lfc %>% dplyr::mutate(neg_log10_qval = -log10(q)) %>% dplyr::select(ccle_name, culture, pert_plate, pert_iname,  pert_dose, S, dr, flag, q, neg_log10_qval)
+
+
+  # save for portal 
+  plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+  dir.create(plot_files_dir, showWarnings = FALSE)
+  sensitivity_comparison_path = file.path(plot_files_dir, 'sensitivity_comparison')
+  dir.create(sensitivity_comparison_path, showWarnings = FALSE)
+  
+  write.csv(export_spread_lfc, file.path(sensitivity_comparison_path, 'synergy_table.csv'), row.names=FALSE)
+
+  # save for reports landing page 
+  write.csv(export_spread_lfc, file.path(params$data_dir, 'synergy_table.csv'), row.names=FALSE)
+
+dt
+```
+
+## AUC plots {.tabset .tabset-fade}
+
+The tab(s) below indicate which compound is treated as the test compound for calculating AUC, the dose(s) of anchor are indicated at the top of each plot.
+
+```{r auc, include=F, fig.height=10}
+
+# group by dose 2 to calculate AUC and expected for comp 1
+pseudo_auc_1 <- spread_lfc %>%
+  dplyr::select(ccle_name, culture,
+                pert_iname_1, pert_dose_1, pert_dose_2, FC, B) %>%
+  dplyr::rename(pert_iname = pert_iname_1) %>%
+  dplyr::group_by(ccle_name, culture, pert_iname, pert_dose_2) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::summarise_all(mean) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(-pert_dose_1) %>%
+  dplyr::rename(pert_dose = pert_dose_2) %>%
+  dplyr::filter(n >= 4)
+
+# group by dose 1 to calculate AUC and expected for comp 2
+pseudo_auc_2 <- spread_lfc %>%
+  dplyr::select(ccle_name, culture,
+                pert_iname_2, pert_dose_1, pert_dose_2,
+                FC, B) %>%
+  dplyr::rename(pert_iname = pert_iname_2) %>%
+  dplyr::group_by(ccle_name, culture, pert_iname, pert_dose_1) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::summarise_all(mean) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(-pert_dose_2) %>%
+  dplyr::rename(pert_dose = pert_dose_1) %>%
+  dplyr::filter(n >= 4)
+
+pseudo_auc <- dplyr::bind_rows(pseudo_auc_1, pseudo_auc_2) %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture))
+comps <- pseudo_auc$pert_iname %>% unique()
+
+super_plots <- list()
+for (i in 1:length(comps)) {
+  comp = comps[[i]]
+  df <- pseudo_auc %>% dplyr::filter(pert_iname == comp)
+  doses <- df$pert_dose %>% unique()
+
+  plots = list()
+  for (j in 1:length(doses)) {
+    df <- highlight_key(pseudo_auc %>% dplyr::filter(pert_dose == doses[[j]]),
+                        ~ccle_name, group = comp)
+
+    p <- plot_ly(height = 200 * length(doses)) %>%
+      add_trace(data = df,
+                x = ~B, y = ~FC,
+                type = "scatter", mode = "markers", opacity = 0.5,
+                marker = list(color = "rgba(0, 0, 0, 0)",
+                            line = list(width = 1)),
+                hoverinfo = "text", text = ~cell_id) %>%
+      layout(xaxis = list(title = "Bliss expected AUC", range = c(0, 1)),
+             yaxis = list(title = "AUC", range = c(0, 1)),
+             hovermode = "closest",
+             shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
+                           line = list(dash = "dash", layer = "below")),
+             annotations = list(x = 0.5, y = 1,
+                              text = doses[[j]],
+                              align = "center", showarrow = F, xref="paper", yref="paper",
+                              xanchor = "center", yanchor = "top"),
+             showlegend = F) %>%
+      highlight(on = "plotly_selected", off = "plotly_deselect",
+                dynamic = FALSE, selectize = TRUE, persistent = FALSE, defaultValues = "",
+                selected = attrs_selected(opacity = 1))
+
+    plots[[j]] <- p
+  }
+
+  super_plots[[i]] <- subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
+}
+
+# save for portal 
+  write.csv(pseudo_auc, file.path(sensitivity_comparison_path, 'combo_auc_plots.csv'), row.names=FALSE)
+  
+```
+
+```{r auc plots, include=FALSE, results='asis'}
+for (i in 1:length(super_plots)) {
+  cat(sprintf('\n\n### %s \n\n', comps[[i]], '\n\n'))
+  cat(htmltools::knit_print.shiny.tag(super_plots[[i]]))
+  cat("\n\n")
+}
+```
+
+
+# Continuous associations {.tabset .tabset-pills}
+
+## Overview
+
+Results from correlation with various DepMap data sets. For simplicity only correlations with AUC or a single anchor dose are visualized. To highlight a feature either click on a point or select a row from the table below the plot. Selecting a feature will highlight it in every plot in which it appears. Only features with a $q$ value less than $0.1$ and in the top 500 features will be visualized. If no plot appears for a particular constituent or the combination then there were no features meeting threshold for that case.
+
+```{r biomarker pre, include=F}
+volcano_plots = list();
+heatmaps = list();
+
+single_dose <- LFC %>%
+  dplyr::group_by(pert_iname) %>%
+  dplyr::summarise(n_doses = n_distinct(pert_dose), .groups = "drop") %>%
+  dplyr::filter(n_doses == 1) %>% .$pert_iname
+
+sub_correlations <- correlations %>%
+  dplyr::mutate(neg_log10_qval=-log10(q.val)) %>%
+  dplyr::filter(pert_dose == "log2.auc" | pert_iname %in% single_dose,
+                is.finite(coef), is.finite(q.val),
+                q.val < 0.1, rank <= 250) %>%
+  dplyr::mutate(added_doses = ifelse(is.na(added_doses), "None", added_doses),
+                added_compounds = ifelse(is.na(added_compounds), "None", added_compounds))
+sub_models <- model_table %>%
+  dplyr::filter(pert_dose == "log2.auc" | pert_iname %in% single_dose) %>%
+  dplyr::mutate(added_doses = ifelse(is.na(added_doses), "None", added_doses),
+                added_compounds = ifelse(is.na(added_compounds), "None", added_compounds))
+sub_rf <- rf_table %>%
+  dplyr::filter(pert_dose == "log2.auc" | pert_iname %in% single_dose) %>%
+  dplyr::filter(rank <= 100) %>%
+  dplyr::mutate(added_doses = ifelse(is.na(added_doses), "None", added_doses),
+                added_compounds = ifelse(is.na(added_compounds), "None", added_compounds))
+```
+
+## Gene expression {.tabset .tabset-fade}
+
+### Plots
+
+```{r gene expression}
+features_ge <- sub_correlations %>%
+  dplyr::filter(feature_type == "GE")
+
+combos <- features_ge %>% dplyr::distinct(pert_iname, added_compounds)
+
+plots <- list()
+if (nrow(combos) < 1) {
+  print("No significant correlations to plot")
+} else {
+  for (i in 1:nrow(combos)) {
+    volcano_combo <- highlight_key(features_ge %>% dplyr::inner_join(combos[i,], by = c("added_compounds", "pert_iname")),
+                                   ~feature, group = "GE correlations")
+    p <- plot_ly(volcano_combo) %>%
+      add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
+                hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
+                showlegend = T) %>%
+      layout(xaxis = list(title = "Correlation coefficient"),
+             yaxis = list(title = "-log10(q-value)"), hovermode = "closest",
+             annotations = list(x = 0.5, y = 1,
+                                text = paste(combos[i, "pert_iname"], "+", combos[i, "added_compounds"]),
+                                align = "center", showarrow = F, xref="paper", yref="paper",
+                                xanchor = "center", yanchor = "top")) %>%
+      highlight(on = "plotly_click", off = "plotly_doubleclick",
+                dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+                opacityDim = 1, defaultValues = "",
+                selected = attrs_selected(opacity = 1))
+    plots[[i]] <- p
+  }
+  subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
+}
+features_combo <- features_ge %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+features_combo_dt <- highlight_key(features_combo, ~feature, group = "GE correlations")
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%", extensions = 'Buttons',  
+                    options = list(lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
+dt
+```
+
+### Heatmap
+
+Rank of gene expression features that appear in the top 10 of one of the conditions. `NA` value indicates a rank below 100 for that feature in that condition.
+
+```{r expression heatmap, fig.height=5}
+if (nrow(features_ge) == 0) {
+  print('No significant features (q < 0.1) for GE data across conditions. No heatmap to display.')
+} else {
+top_feats <- features_ge %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
+top_tab <- features_ge %>%
+  dplyr::filter(feature %in% top_feats) %>%
+  reshape2::acast(pert_iname + added_compounds + added_doses ~ feature, value.var = "rank", fun.aggregate = min)
+top_tab[top_tab > 100] <- NA
+top_tab <- top_tab[, order(apply(top_tab, 2, function(x) mean(x, na.rm = T)))]
+if (is.null(dim(top_tab))) {
+  print("Only one condition with relevant features, no heatmap to display")
+} else {
+  heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
+                       key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
+}
+}
+```
+
+## CRISPR dependency {.tabset .tabset-fade}
+
+### Plots
+
+To highlight a gene either click on a point or select a row from the table below. Selecting a gene will highlight it in every plot in which it appears.
+
+```{r crispr}
+features_xpr <- sub_correlations %>%
+  dplyr::filter(feature_type == "XPR")
+
+combos <- features_xpr %>% dplyr::distinct(pert_iname, added_compounds)
+
+plots <- list()
+if (nrow(combos) < 1) {
+  print("No significant correlations to plot")
+} else {
+  for (i in 1:nrow(combos)) {
+    volcano_combo <- highlight_key(features_xpr %>% dplyr::inner_join(combos[i,]),
+                                   ~feature, group = "XPR correlations")
+    p <- plot_ly(volcano_combo) %>%
+      add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
+                hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
+                showlegend = T) %>%
+      layout(xaxis = list(title = "Correlation coefficient"),
+             yaxis = list(title = "-log10(q-value)"), hovermode = "closest",
+             annotations = list(x = 0.5, y = 1,
+                                text = paste(combos[i, "pert_iname"], "+", combos[i, "added_compounds"]),
+                                align = "center", showarrow = F, xref="paper", yref="paper",
+                                xanchor = "center", yanchor = "top")) %>%
+      highlight(on = "plotly_click", off = "plotly_doubleclick",
+                dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+                opacityDim = 1, defaultValues = "",
+                selected = attrs_selected(opacity = 1))
+    plots[[i]] <- p
+  }
+  subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
+}
+features_combo <- features_xpr %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+features_combo_dt <- highlight_key(features_combo, ~feature, group = "XPR correlations")
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%", extensions = 'Buttons', 
+                    options = list(lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
+dt
+```
+
+### Heatmap
+
+Rank of CRISPR dependency features that appear in the top 10 of one of the conditions. `NA` value indicates a rank below 100 for that feature in that condition.
+
+```{r crispr heatmap, fig.height=5}
+if (nrow(features_xpr) == 0) {
+  print('No significant features (q < 0.1) for CRISPR data across conditions. No heatmap to display.')
+} else {
+top_feats <- features_xpr %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
+top_tab <- features_xpr %>%
+  dplyr::filter(feature %in% top_feats) %>%
+  reshape2::acast(pert_iname + added_compounds + added_doses ~ feature, value.var = "rank", fun.aggregate = min)
+top_tab[top_tab > 100] <- NA
+top_tab <- top_tab[, order(apply(top_tab, 2, function(x) mean(x, na.rm = T)))]
+if (is.null(dim(top_tab))) {
+  print("Only one condition with relevant features, no heatmap to display")
+} else {
+  heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
+                       key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
+}
+
+}
+```
+
+## Repurposing compounds {.tabset .tabset-fade}
+
+### Plots
+
+To highlight a compound either click on a point or select a row from the table below. Selecting a compound will highlight it in every plot in which it appears.
+
+```{r rep}
+features_rep <- sub_correlations %>%
+  dplyr::filter(feature_type == "REP")
+
+combos <- features_rep %>% dplyr::distinct(pert_iname, added_compounds)
+plots <- list()
+if (nrow(combos) < 1) {
+  print("No significant correlations to plot")
+} else {
+  for (i in 1:nrow(combos)) {
+    volcano_combo <- highlight_key(features_rep %>% dplyr::inner_join(combos[i,], by = c("added_compounds", "pert_iname")),
+                                   ~feature, group = "REP correlations")
+    p <- plot_ly(volcano_combo) %>%
+      add_trace(x = ~coef, y = ~-log10(q.val), type = "scatter", mode = "markers",
+                hoverinfo = "text", text = ~feature, opacity = 0.3, color = ~added_doses,
+                showlegend = T) %>%
+      layout(xaxis = list(title = "Correlation coefficient"),
+             yaxis = list(title = "-log10(q-value)"), hovermode = "closest",
+             annotations = list(x = 0.5, y = 1,
+                                text = paste(combos[i, "pert_iname"], "+", combos[i, "added_compounds"]),
+                                align = "center", showarrow = F, xref="paper", yref="paper",
+                                xanchor = "center", yanchor = "top")) %>%
+      highlight(on = "plotly_click", off = "plotly_doubleclick",
+                dynamic = FALSE, selectize = FALSE, persistent = FALSE,
+                opacityDim = 1, defaultValues = "",
+                selected = attrs_selected(opacity = 1))
+    plots[[i]] <- p
+  }
+  subplot(plots, nrows = max(1, ceiling(length(plots)/2)), shareX = T, shareY = T)
+}
+features_combo <- features_rep %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, feature, coef, q.val) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+features_combo_dt <- highlight_key(features_combo, ~feature, group = "REP correlations")
+dt <- DT::datatable(features_combo_dt, style="bootstrap", width="100%", extensions='Buttons',
+                    options = list(lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE, dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Feature", "Correlation Coefficient", "q-value"))
+
+
+dt
+```
+
+### Heatmap
+
+Rank of repurposing features that appear in the top 10 of one of the conditions. `NA` value indicates a rank below 100 for that feature in that condition.
+
+```{r rep heatmap, fig.height=5}
+if (nrow(features_rep) == 0) {
+  print('No significant features (q < 0.1) for REP data across conditions. No heatmap to display.')
+} else {
+top_feats <- features_rep %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
+top_tab <- features_rep %>%
+  dplyr::filter(feature %in% top_feats) %>%
+  reshape2::acast(pert_iname + added_compounds + added_doses ~ feature, value.var = "rank", fun.aggregate = min)
+top_tab[top_tab > 100] <- NA
+top_tab <- top_tab[, order(apply(top_tab, 2, function(x) mean(x, na.rm = T)))]
+if (is.null(dim(top_tab))) {
+  print("Only one condition with relevant features, no heatmap to display")
+} else {
+  heatmaply::heatmaply(top_tab, Rowv = F, Colv = F, colors = viridis(n = 256, direction = -1),
+                       key.title = "Rank", label_names = c("Compound", "Gene", "Rank"))
+}
+}
+```
+
+
+```{r}
+feature_types_list = c("REP", "GE", "XPR")
+
+combo_continuous_associations <- sub_correlations %>%
+  dplyr::filter(feature_type %in% feature_types_list) %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, rank, feature, feature_type, coef, q.val, neg_log10_qval) %>%
+  dplyr::mutate(coef = signif(coef, digits = 3), q.val = signif(q.val, digits = 3))
+
+
+final_data_list <- list()
+for (feature_select in feature_types_list){
+  cat("Processing feature:", feature_select, "\n")
+  
+  features_subset <- sub_correlations %>%
+    dplyr::filter(feature_type == feature_select) %>%
+    dplyr::mutate(row_names = paste(pert_iname, added_compounds,added_doses, sep="_"))
+  
+  top_feats <- features_subset %>% dplyr::filter(rank <= 10) %>% .$feature %>% unique()
+  
+  top_tab <- features_subset %>%
+    dplyr::filter(feature %in% top_feats) %>%
+    dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, rank, feature)
+
+  filled_data <- top_tab %>%
+    group_by(pert_iname, added_compounds, added_doses, pert_dose) %>%
+    complete(feature = unique(top_tab$feature)) %>%
+    replace_na(list(rank = NA)) %>% 
+    dplyr::mutate(row_names = paste(pert_iname,added_compounds,added_doses, sep="_"))
+ 
+  # Add the 'feature_type' based on the original data
+  filled_data <- filled_data %>%
+      left_join(features_subset %>%
+                  select(feature, feature_type) %>%
+                  distinct(), 
+                by = c("feature"))
+   
+  final_data_list[[feature_select]] <- filled_data
+}
+
+combo_continuous_associations_heatmaps <- do.call(rbind, final_data_list)
+
+# save for portal 
+plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+dir.create(plot_files_dir, showWarnings = FALSE)
+continuous_associations_path = file.path(plot_files_dir, 'continuous_associations')
+dir.create(continuous_associations_path, showWarnings = FALSE)
+
+write.csv(combo_continuous_associations, file.path(continuous_associations_path, 'combo_continuous_associations_volcano.csv'), row.names=FALSE)
+
+
+write.csv(combo_continuous_associations_heatmaps, file.path(continuous_associations_path, 'combo_continuous_associations_heatmaps.csv'), row.names=FALSE)
+```
+
+# Random forest models {.tabset .tabset-pills}
+
+## Overview
+
+Results from random forests fit to predict response based on multi-omics datasets. For simplicity only models predicting AUC or a single anchor dose are visualized.. For more information on how random forests are fit see a standard PRISM report.
+
+## Results
+
+These plots show the accuracy of predictive models (left) and the top 100 features used ranked by importance in each model (right)
+
+``` {r multi ccle, fig.height=8}
+p1 <- sub_models %>%
+  dplyr::mutate(condition = paste(pert_iname, added_compounds, added_doses)) %>%
+  plot_ly() %>%
+  add_trace(x = ~model, y = ~R2, color = ~condition,
+            type = "bar", hoverinfo = "text", text = ~R2) %>%
+  layout(showlegend = FALSE, xaxis = list(title = "Model"))
+p2 <- sub_rf %>%
+  dplyr::mutate(condition = paste(pert_iname, added_compounds, added_doses)) %>%
+  plot_ly() %>%
+  add_trace(x = ~rank, y = ~RF.imp.mean, color = ~condition, symbol = ~model,
+            type = "scatter", mode = "markers",
+            hoverinfo = "text", text = ~feature) %>%
+  layout(xaxis = list(type = "log", title = "Rank"),
+         yaxis = list(title = "Feature importance"))
+
+df <- sub_models %>% dplyr::inner_join(sub_rf, by = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose")) %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore,
+                feature, RF.imp.mean) %>%
+  dplyr::mutate_at(vars(R2, PearsonScore, RF.imp.mean),
+                   funs(signif(., 3)))
+
+dt <- DT::datatable(df, style="bootstrap", width="100%", extensions = 'Buttons', 
+                    options = list(lengthChange = FALSE, scrollY = "300px",
+                                   scrollX = "300px", paging = FALSE,
+                                   columnDefs = list(list(className = 'dt-center', targets = "_all")), dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
+                    filter = "top",
+                    colnames = c("Test Compound", "Dose", "Anchor Compound(s)", "Anchor Dose(s)", "Model", "R2", "Pearson Score", "Feature", "Feature Importance"),)
+
+subplot(style(p1, showlegend = FALSE), p2, widths = c(0.2, 0.8),
+        titleX = T, titleY = T, margin = 0.05)
+dt
+```
+
+```{r}
+out_df <- sub_models %>% dplyr::inner_join(sub_rf, by = c("model", "pert_iname", "pert_id", "pert_time", "pert_plate", "added_compounds", "added_ids", "added_doses", "pert_dose")) %>%
+  dplyr::select(pert_iname, pert_dose, added_compounds, added_doses, model, R2, PearsonScore,
+                feature, RF.imp.mean, rank) %>%
+  dplyr::mutate(condition = paste(pert_iname, added_compounds, added_doses)) %>%
+  dplyr::mutate_at(vars(R2, PearsonScore, RF.imp.mean),
+                   funs(signif(., 3)))
+
+random_forest_path = file.path(plot_files_dir, 'random_forest_models')
+dir.create(random_forest_path, showWarnings = FALSE)
+write.csv(out_df, file.path(random_forest_path, 'combo_random_forest_models.csv'), row.names=FALSE)
+```

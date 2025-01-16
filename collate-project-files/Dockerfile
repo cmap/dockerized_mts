@@ -12,10 +12,8 @@ COPY ./collate-project-files.py /clue/bin/collate-project-files.py
 
 RUN ["chmod","-R", "+x", "/clue/bin"]
 
-RUN cd /cmap && git clone https://github.com/cmap/merino.git
-
 WORKDIR /
 
-ENV PATH /clue/bin:$PATH
+ENV PATH=/clue/bin:$PATH
 RUN ["chmod","-R", "+x", "/clue/bin"]
 ENTRYPOINT ["collate-project-files"]

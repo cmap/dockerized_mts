@@ -45,10 +45,6 @@ while test $# -gt 0; do
       shift
       FILE_PREFIX=$1
       ;;
-    -spl|--search_pattern_list)
-      shift
-      SEARCH_PATTERN_LIST=$1
-      ;;
     -sp|--separator)
       shift
       SEPARATOR=$1
@@ -79,7 +75,7 @@ if [[ ! -z $projects ]]
 then
     PROJECT=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].x_project_id')
     SCREEN=$(cat "${projects}" | jq -r --argjson index ${batch_index} '.[$index].screen')
-    DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/"${PROJECT^^}/*/*/"
+    DATA_DIR="${DATA_DIR}"/"${PROJECT,,}"/"${PROJECT^^}/"
     OUT_DIR="${OUT_DIR}"/"${PROJECT,,}"/"${PROJECT^^}"/data
     ADD_PROJECT_NAME=true
 fi
@@ -114,24 +110,8 @@ then
   )
 fi
 
-if [[ ! -z $SEARCH_PATTERN_LIST ]]
-then
-  IFS=',' read -r -a array <<< "$SEARCH_PATTERN_LIST"
-  if [[ ! -z $FILE_PREFIX ]]
-  then
-    args+=(
-      -p "$FILE_PREFIX"
-    )
-  fi
-  for pattern in "${array[@]}"
-  do
-    echo python /clue/bin/collate-project-files.py "${args[@]}" -s "$pattern"
-    python /clue/bin/collate-project-files.py "${args[@]}" -s "$pattern"
-  done
-else
-  echo "Need to provide search pattern list"
-  exit 1
-fi
+echo python /clue/bin/collate-project-files.py "${args[@]}"
+python /clue/bin/collate-project-files.py "${args[@]}"
 
 exit_code=$?
 conda deactivate

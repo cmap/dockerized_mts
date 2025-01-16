@@ -1,0 +1,650 @@
+---
+params:
+  data_dir: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_bms2/cps007_dmc_bms/CPS007_DMC_BMS/CPS011/BMS-I1_DOCETAXEL'
+  comp: 'BMS-I1_DOCETAXEL'
+  qc_path: '/Users/shiker/Documents/trouble_shoot/cps007_dmc_bms2/cps007_dmc_bms/CPS007_DMC_BMS/data/CPS007_DMC_BMS_QC_TABLE.csv'
+
+  
+output:
+  html_document:
+    toc: false
+    theme: paper
+    highlight: kate
+---
+
+<img src="misc/BroadInstLogoforDigitalRGB.png" width=250px align="left"/>
+<img src="misc/prism_logo_tagline_side.png" width=250px align="right"/>
+<br><br><br>
+
+Return to [compound report](`r paste0("./", params$comp, "_report.html")`)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, fig.width = 10)
+
+# packages
+library(tidyverse)
+library(magrittr)
+library(ggthemes)
+library(plotly)
+library(crosstalk)
+library(htmltools)
+library(DT)
+
+# theme
+theme_set(theme_bw())
+```
+
+```{r define functions, include=FALSE}
+# DRC curve function
+dr_func <- function(d, x) {
+  as.numeric(d["lower_limit"]) + (as.numeric(d["upper_limit"]) - as.numeric(d["lower_limit"]))/
+    (1 + (2^x/as.numeric(d["ec50"]))^as.numeric(d["slope"]))
+}
+
+# DRC curve maker
+dr_wrapper <- function(d, xx) {
+  out_df <- tibble(x = xx, y = dr_func(xx))
+  colnames(out_df) <- c(x, d["pert_name"])
+  return(out_df$y)
+}
+
+# push NAs to bottom in tables
+options(DT.TOJSON_ARGS = list(na = "string"))
+```
+
+```{r load data, include=FALSE}
+# file paths
+l4_path <- list.files(params$data_dir, "LEVEL4_LFC_COMBAT", full.names = T)
+drc_path <- list.files(params$data_dir, "DRC_TABLE", full.names = T)
+
+lfc_path <- list.files(params$data_dir, "LEVEL5", full.names = T)
+
+# read in LFC
+if (length(l4_path) == 1) {
+  l4_lfc <- data.table::fread(l4_path)
+} else {
+  message("No Level 4 LFC file found")
+  quit(save = "no")
+}
+
+# read in LFC
+if (length(lfc_path) == 1) {
+  lfc <- data.table::fread(lfc_path)
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+dose_response_viability_points <- l4_lfc %>%
+                 dplyr::rename(dose = pert_dose) %>%
+                 dplyr::mutate(
+                   Viability = 2^LFC_cb,
+                   Replicate = replicate,
+                   cell_id=paste(ccle_name, culture, sep='_')
+                   ) %>%
+                 dplyr::distinct(ccle_name, culture, dose, cell_id, Viability, Replicate)
+
+plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+dir.create(plot_files_dir)
+dr_path = file.path(plot_files_dir, 'dose-response')
+dir.create(dr_path)
+write.csv(dose_response_viability_points, file.path(dr_path, 'dose_response_viability_data.csv'), row.names=FALSE)
+
+# read in DRC if available
+if (length(drc_path) == 1) {
+  DRC <- data.table::fread(drc_path)
+} else {
+  message("No DRC file found")
+  quit(save = "no")
+}
+
+pert_iname <- lfc$pert_iname %>% unique()
+varied_comps <- DRC$varied_iname %>% unique()
+
+# dose response
+drc <- data.table::fread(file.path(params$data_dir, "DRC_TABLE.csv"))
+
+# distinct conditions (cell lines)
+conditions <- drc %>%
+  dplyr::arrange(auc) %>%
+  dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "varied_iname", "added_compounds", "added_doses"))))
+
+# generate plots for each cell line
+drc_plots <- list()
+for (i in 1:nrow(conditions)) {
+  condition <- conditions[i,]
+
+  d <- drc %>% dplyr::inner_join(condition, by = c("varied_iname", "ccle_name", "culture", "pert_time", "added_compounds", "added_doses"))
+  xx = seq(log2(min(d$min_dose)), log2(max(d$max_dose)), length.out = 40)
+  res <- apply(d, 1, function(p) dr_func(p, xx))
+  func_tab <- cbind(xx, res)
+  func_tab %<>% as_tibble() %>%
+    dplyr::rename(x = 1, y = 2) %>%
+    dplyr::bind_cols(condition) %>%
+    dplyr::left_join(drc,  by = c("varied_iname", "ccle_name", "culture", "pert_time", "added_compounds",
+"added_doses"))
+  drc_plots[[i]] <- func_tab
+}
+drc_plots %<>%
+  dplyr::bind_rows() %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"),
+                x = 2^x)
+
+# metadata for each row
+drc_meta <- drc_plots %>%
+  dplyr::distinct(across(any_of(c("ccle_name", "culture", "varied_iname", "added_compounds",
+                                  "added_doses", "ec50", "slope", "upper_limit", "lower_limit", "auc", "log2.ic50")))) %>%
+  dplyr::mutate(ic50 = 2^log2.ic50) %>%
+  dplyr::select(-log2.ic50) %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
+
+# indivual plots
+plot_meta <- drc_meta$varied_iname %>% unique()
+
+# anchor doses 
+anchor_doses <- drc_plots %>% dplyr::select(added_compounds, added_doses) %>% dplyr::distinct()
+
+
+### Single Treatment 
+
+
+constituents <- stringr::str_split(params$comp, pattern = fixed("_"))[[1]]
+plate_dir <- dirname(params$data_dir)
+
+
+drc_const <- list()
+for (const in constituents) {
+  const_path <- file.path(plate_dir, const)
+  const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
+  # read in DRC if available
+  if (length(const_drc_path) == 1) {
+    drc_const %<>% dplyr::bind_rows(
+      data.table::fread(const_drc_path) %>% dplyr::mutate(ec50 = as.double(ec50)))
+  } else {
+  message("No DRC file found")
+  #quit(save = "no")
+}
+}
+
+# distinct conditions (cell lines)
+conditions_const <- drc_const %>%
+  dplyr::arrange(auc) %>%
+  dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "varied_iname", "added_compounds", "added_doses"))))
+
+
+# generate plots for each cell line
+drc_plots_const <- list()
+for (i in 1:nrow(conditions_const)) {
+  condition_const <- conditions_const[i,]
+  
+  d_const <- drc_const %>% dplyr::inner_join(condition_const, by= c("varied_iname", "ccle_name", "culture", "pert_time"))
+  xx_const = seq(log2(min(d_const$min_dose)), log2(max(d_const$max_dose)), length.out = 40)
+  res_const <- apply(d_const, 1, function(p) dr_func(p, xx_const))
+  func_tab_const <- cbind(xx_const, res_const)
+  func_tab_const %<>% as_tibble() %>%
+    dplyr::rename(x = 1, y = 2) %>%
+    dplyr::bind_cols(condition_const) %>%
+    dplyr::left_join(drc_const, by = c("varied_iname", "ccle_name", "culture", "pert_time"))
+  drc_plots_const[[i]] <- func_tab_const
+}
+drc_plots_const %<>% 
+  dplyr::bind_rows() %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"),
+                x = 2^x)
+
+
+# metadata for each row
+drc_meta_const <- drc_plots_const %>%
+  dplyr::distinct(across(any_of(c("ccle_name", "culture", "pert_time", "pert_plate", "varied_iname", "added_compounds",
+                                  "added_doses", "ec50", "slope", "upper_limit", "lower_limit", "auc", "log2.ic50")))) %>%
+  dplyr::mutate(ic50 = 2^log2.ic50) %>%
+  dplyr::select(-log2.ic50) %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
+
+# indivual plots
+plot_meta_const <- drc_meta_const$varied_iname %>% unique()
+
+# reading LFC for constituents (varied/anchor dose)
+lfc_const <- list()
+for (const in constituents) {
+  const_path <- file.path(plate_dir, const)
+  const_lfc_path <- list.files(const_path, "LEVEL5", full.names = T)
+  # read in DRC if available
+  if (length(const_lfc_path) == 1) {
+    lfc_const %<>% dplyr::bind_rows(
+      data.table::fread(const_lfc_path))
+  } else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+}
+
+
+bliss_data_const <- lfc_const %>% select(ccle_name, culture, LFC_cb) %>% dplyr::inner_join(drc_plots_const, by = c("ccle_name", "culture")) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+
+
+
+
+
+#### Synergy Scores
+
+lfc_path_combo <- list.files(params$data_dir, "LEVEL5_LFC_COMBAT", full.names = T)
+
+# read in LFC
+if (length(lfc_path_combo) == 1) {
+  LFC_table <- data.table::fread(lfc_path_combo)
+  combo_lfc <- LFC_table
+} else {
+  message("No LFC file found")
+  quit(save = "no")
+}
+
+
+n_combos = length(LFC_table$pert_dose %>% unique())
+synergy_height = ceiling(n_combos / 8) * 5
+
+# read in QC table
+plates <- LFC_table$pert_plate %>% unique()
+qc_table <- data.table::fread(params$qc_path) %>%
+  dplyr::filter(pert_plate %in% plates)
+
+# constituent compound info
+constituents <- stringr::str_split(params$comp, pattern = fixed("_"))[[1]]
+plate_dir <- dirname(params$data_dir)
+
+# read in constitutent compound data
+for (const in constituents) {
+  const_path <- file.path(plate_dir, const)
+  if (!dir.exists(const_path)) {
+    warning("No data directory for anchor or test compounds. Unable to generate combination report.")
+    quit(save = "no")
+  }
+  # DRC and LFC
+  const_lfc_path <- list.files(const_path, "LEVEL5_LFC_COMBAT", full.names = T)
+  const_drc_path <- list.files(const_path, "DRC_TABLE", full.names = T)
+  if (length(const_lfc_path) == 1) {
+    LFC_table %<>% dplyr::bind_rows(
+      data.table::fread(const_lfc_path) %>%
+        dplyr::mutate(pert_dose = as.character(pert_dose))
+    )
+  }
+}
+
+
+
+# non-combination values
+solo_lfc <- dplyr::anti_join(LFC_table, combo_lfc, by = c("rid", "ccle_name", "culture", "pool_id", "pert_iname", "pert_id", "pert_dose", "pert_idose", "pert_plate", "pert_vehicle","pert_time", "pert_type", "sig_id", "x_project_id", "LFC", "LFC_cb"))
+
+# split combination perts
+spread_lfc <- combo_lfc %>%
+  dplyr::inner_join(qc_table %>%
+                      dplyr::group_by(ccle_name, culture) %>%
+                      dplyr::summarise(ctl_vehicle_mad = median(ctl_vehicle_mad),
+                                       .groups = "drop"), by = c("ccle_name", "culture")) %>%  # QC info
+  dplyr::distinct(pert_iname, pert_plate, pert_dose, ccle_name, culture, LFC_cb, ctl_vehicle_mad) %>%
+  splitstackshape::cSplit(splitCols = c("pert_iname", "pert_dose"),
+                          sep = "|", fixed = T,
+                          direction = "wide", drop = F, type.convert = T)
+
+# add columns for constituents to spread table
+for (i in 1:length(constituents)) {
+  comp <- constituents[[i]]
+  df <- solo_lfc %>%
+    dplyr::filter(toupper(pert_id) == toupper(comp)) %>%
+    dplyr::mutate(pert_dose = as.numeric(pert_dose)) %>%
+    dplyr::distinct(pert_iname, pert_dose, ccle_name, culture, LFC_cb)
+  
+  new_cols <- colnames(df)
+  new_cols <- case_when(
+      "pert_iname" == new_cols  ~ paste("pert_iname", i, sep = "_"),
+      "pert_dose" == new_cols  ~ paste("pert_dose", i, sep = "_"),
+      "LFC_cb" == new_cols  ~ paste("LFC_cb", i, sep = "_"),
+      TRUE ~ as.character(new_cols)
+    )
+  colnames(df) <- new_cols
+
+  # new_cols <- paste(colnames(df), i, sep = "_")
+  # colnames(df) <- c(colnames(df)[1:2], new_cols[3:length(new_cols)])
+
+  spread_lfc %<>% dplyr::left_join(df)
+}
+
+# bliss expected fold change (capped FCs at 1)
+B <- apply(2^spread_lfc[, c('LFC_cb_1', 'LFC_cb_2')], 1, function(x) prod(pmin(x, 1)))
+spread_lfc %<>% dplyr::mutate(S = LFC_cb_1 + LFC_cb_2 - LFC_cb)
+# B <- apply(2^spread_lfc[,11:ncol(spread_lfc)], 1, function(x) prod(pmin(x, 1))) ## remove hardcoded indexing.
+# spread_lfc$S <- rowSums(spread_lfc[,11:ncol(spread_lfc)]) - spread_lfc$LFC_cb
+
+spread_lfc$FC <- pmin(2^spread_lfc$LFC_cb, 1)
+spread_lfc$B <- B
+spread_lfc %<>%
+  dplyr::mutate(Z  = S / ctl_vehicle_mad / sqrt(pi / 2 )) %>%
+  dplyr::mutate(p = 2*pnorm(abs(Z), lower.tail = F)) %>%
+  dplyr::mutate(q = p.adjust(p, method = "BH")) %>%
+  dplyr::arrange(pert_dose_1)
+
+if (all(is.na(spread_lfc$S))) {
+  warning("No matching data from combination constituents alone, unable to generate combination report.")
+  quit(save = "no")
+}
+
+max_s <- ceiling(max(spread_lfc$S))
+min_s <- floor(min(spread_lfc$S))
+max_q <- ceiling(max(-log10(spread_lfc$q)))
+
+combos <- spread_lfc %>%
+  dplyr::arrange(pert_dose_1, pert_dose_2) %>%
+  dplyr::distinct(pert_dose)
+
+#spread_lfc %<>% dplyr::group_by(ccle_name) %>% dplyr::mutate(mean_S = round(log2(mean(2^S)), 3))
+
+spread_lfc %<>% dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
+
+
+# group by dose 2 to calculate AUC and expected for comp 1
+pseudo_auc_1 <- spread_lfc %>%
+  dplyr::select(ccle_name, culture, pert_plate, 
+                pert_iname_1, pert_dose_1, pert_dose_2, FC, B) %>%
+  dplyr::rename(pert_iname = pert_iname_1) %>%
+  dplyr::group_by(ccle_name, culture, pert_plate, pert_iname, pert_dose_2) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::summarise_all(mean) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(-pert_dose_1) %>%
+  dplyr::rename(pert_dose = pert_dose_2) %>%
+  dplyr::filter(n >= 4) %>%
+  dplyr::mutate(added_compound = spread_lfc$pert_iname_2 %>% unique())
+
+# group by dose 1 to calculate AUC and expected for comp 2
+pseudo_auc_2 <- spread_lfc %>%
+  dplyr::select(ccle_name, culture, pert_plate, 
+                pert_iname_2, pert_dose_1, pert_dose_2,
+                FC, B) %>%
+  dplyr::rename(pert_iname = pert_iname_2) %>%
+  dplyr::group_by(ccle_name, culture, pert_plate, pert_iname, pert_dose_1) %>%
+  dplyr::mutate(n = n()) %>%
+  dplyr::summarise_all(mean) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(-pert_dose_2) %>%
+  dplyr::rename(pert_dose = pert_dose_1) %>%
+  dplyr::filter(n >= 4) %>%
+  dplyr::mutate(added_compound = spread_lfc$pert_iname_1 %>% unique())
+
+pseudo_auc <- dplyr::bind_rows(pseudo_auc_1, pseudo_auc_2) %>%
+  dplyr::mutate(cell_id = paste(ccle_name, culture, sep = "_"))
+#comps <- pseudo_auc$pert_iname %>% unique()
+
+pseudo_auc
+
+# renaming constituents to referred name in dataframe rather than folder parameter
+constituents <- stringr::str_split(pert_iname, pattern = fixed("|"))[[1]]
+
+anchor_1_doses <- anchor_doses %>% dplyr::filter(added_compounds == constituents[1]) %>% dplyr::select(added_doses)
+anchor_1_doses <- round(anchor_1_doses$added_doses, 10)
+anchor_2_doses <- anchor_doses %>% dplyr::filter(added_compounds == constituents[2]) %>% dplyr::select(added_doses)
+anchor_2_doses <- round(anchor_2_doses$added_doses, 10)
+
+
+drc_plots_const_1 <- drc_plots_const %>% dplyr::filter(varied_iname == constituents[1])
+drc_plots_const_2 <- drc_plots_const %>% dplyr::filter(varied_iname == constituents[2])
+
+
+
+bliss_data_const_1 <- lfc_const %>% dplyr::filter(pert_iname == constituents[2]) %>% filter(round(pert_dose, 10) %in% anchor_2_doses) %>% dplyr::inner_join(drc_plots_const_1,  by = c("ccle_name", "culture", "pool_id", "pert_plate", "pert_time")) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+
+bliss_data_const_2 <- lfc_const %>% dplyr::filter(pert_iname == constituents[1]) %>% filter(round(pert_dose, 10) %in% anchor_1_doses) %>% dplyr::inner_join(drc_plots_const_2, by =  c("ccle_name", "culture", "pool_id", "pert_plate", "pert_time")) %>% dplyr::mutate(FC_cb = 2^LFC_cb) %>% dplyr::mutate(bliss = FC_cb * y)
+
+
+bliss_data_const <- rbind(bliss_data_const_1, bliss_data_const_2)
+
+```
+
+---
+title: "`r paste(pert_iname, 'compound report')`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+# Overview {.tabset .tabset-pills}
+
+## Curve fitting method
+
+This report displays the dose response curves (DRC) fit for `r params$comp` combination. The next tab shows DRC for single treatment compounds (screened with at least 4 distinct doses), observed combination effects, and inferred total effect under the assumption of no interaction between the compounds (assuming Bliss model of independent effects). The discrepancy between the observed and inferred curves implies synergistic or antagonistic effects.
+
+The second plot shows the AUC of the combination versus the Bliss expected AUC. Each value is calculated by taking the mean fold-change across doses with a given anchor dose as a proxy for AUC. Below this graph is an interactive table, where each row represents a cell line and an anchor pair along with its dose-response parameters for the observed effects and an overall interaction statistic (MSS). Please see below for the details of these parameters/metrics.
+
+
+
+
+
+**How are the dose response curves fitted? What are the parameters for fitting?** <br> 
+We fit a robust four-parameter logistic curve to the response of each cell line to treatment. The four parameters are upper limit($a$), lower limit ($b$), slope ($s$), and EC50. The equation for the curve is defined:
+
+$$f(x) = b + \frac{a-b}{1+e^{s\log{\frac{x}{EC50}}}}$$
+
+The curve fitting procedure minimizes the squared deviation of the observed viabilities at each dose. The fits are constrained such that the upper-limit lies within the range (0.8,1.001) and the lower limit lies within (0,1). Further, we restrict the predicted viability to always decrease with increasing dose by constraining the slope. Since the nonlinear optimization underlying the fitting procedure may return parameters a local optimum, we fit using four different methods implemented in the dr4pl and drc packages and report parameters with the lowest mean squared error. Fit parameters are only reported if the best fit explains at least 5% of the variance of the fold-change data. An IC50 is only reported if the drc fit crosses 0.5 within the dose range of the experiment. 
+
+**What are the three curves in the dose response graph?** <br> 
+Single Treatment - Dose response curve of the compound which is being varied in the combination screen by itself <br> 
+Combination - Dose response curve of the compound being varied with an anchor compound and dose  <br> 
+Bliss - The expected dose response curve assuming independent interaction of the single treatment compound and anchor compound. As such, the model assumes the log fold changes (LFCs) of the single compound and anchor compound for respective fixed doses are additive (i.e. their fold changes (FCs) are multiplicative). 
+
+**How is AUC calculated for combination and expected Bliss?** <br>
+
+<center>
+
+Riemann-Sums $AUC_{combo} \approx \frac{1}{n}\sum_{i=1}^nFC_{c_i}$ <br>
+
+Riemann-Sums $AUC_{bliss} \approx \frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b$
+
+
+</center>
+
+
+where $n$ is the total number of doses and $s_{i}$ is the synergy score for the $i_{th}$ dose.
+
+**What does each column of the table stand for?** <br>
+Compound - Compound code <br> 
+Cell Line - Cancer Cell Line <br> 
+Culture - Either PR300P (suspension and adherent lines) or PR500 (suspension lines) <br> 
+Time - Time of incubation (120 hours - 5 days) <br> 
+a - upper viability limit <br> 
+b - lower viability limit <br> 
+s - slope <br> 
+EC50 - Half maximal effective concentration <br> 
+AUC - Area under dose response curve (range from 0 to 1) <br> 
+Plate - Plate compound was run in <br> 
+IC50 - The concentration at which the curve reaches 0.5 viability <br> 
+MSS - Mean synergy score across doses (higher scores suggest synergy and lower scores suggest antagonism) <br>
+Anchor Dose Viability - Viability of added dose 
+
+
+
+
+
+
+**What is synergy score? How is the MSS calculated?** <br> 
+The first tab (Synergy by Dose) shows synergy score (x-axis) and the significance of that score (y-axis). Synergy score is calculated as $LFC_a + LFC_b - LFC_c$ where $LFC_a$ and $LFC_b$ are the log-fold change in each constituent compound and $LFC_c$ is the log-fold change in the combination. Synergy score calculations follow the BLISS model, where under the null hypothesis (no interaction between perturbations) the viability effects are multiplicative (LFCs are additive). The synergy score is the expected value ($LFC_a + LFC_b$) subtracted by the observed ($LFC_c$) value. Large positive values indicate synergy ($LFC_a + LFC_b$ > $LFC_c$) while large negative values ($LFC_a + LFC_b$ < $LFC_c$) indicate antagonism. 
+
+The mean synergy score (MSS) is an average metric of synergy across doses for a given compound. Because synergy score is calculated in terms of LFC ($LFC_{a} + LFC_{b} - LFC_{c}$), the mean synergy score (MSS) is as follows:
+
+$$MSS = log(\frac{AUC_{bliss}}{AUC_{combo}}) \approx log(\frac{{\frac{1}{n}\sum_{i=1}^nFC_{a_i}FC_b}}{\frac{1}{n}\sum_{i=1}^nFC_{c_i}})  $$ 
+
+
+**What is the color scheme for the AUC graph?**
+
+The color scheme for the AUC scatter plot is by Mean Synergy Score (MSS), where a higher score represents synergestic interactions and a lower score represents antagonistic interactions. 
+
+
+
+
+
+
+## Plots {.tabset .tabset-fade}
+
+```{r dummy plot, include=F}
+plot_ly()
+datatable(tibble(),style="bootstrap")
+datatable(tibble(),style="bootstrap")
+```
+
+```{r correlations, results='asis', include=T, fig.height=4}
+
+pseudo_auc %<>% dplyr::mutate(MSS = log2(B/FC)) %>% rename(varied_iname = pert_iname, added_doses = pert_dose)
+
+# round to the 10th place because R saves added_doses values differently in different dataframes 
+drc_meta %<>% dplyr::mutate(added_doses = round(added_doses, 10))
+pseudo_auc %<>% dplyr::mutate(added_doses = round(added_doses, 10))
+
+drc_meta %<>% dplyr::left_join(pseudo_auc %>% dplyr::select(cell_id, MSS, varied_iname, added_doses) %>% dplyr::distinct(cell_id, MSS, varied_iname, added_doses), by = c("varied_iname", "added_doses", "cell_id"))
+
+# round to the 10th place because R saves added_doses (pert_dose in this case) values differently in different dataframes 
+bliss_data_const %<>% dplyr::mutate(pert_dose = round(pert_dose, 10))
+
+drc_meta %<>% dplyr::left_join(bliss_data_const %>% dplyr::rename(added_doses = pert_dose) %>% dplyr::select(cell_id, FC_cb, varied_iname, added_doses) %>% dplyr::distinct(cell_id, FC_cb, varied_iname, added_doses), by = c("varied_iname", "added_doses", "cell_id"))
+
+# creating titles for legend per trace per anchor dose 
+drc_plots %<>% dplyr::mutate(combination_string = 'Combo ') %>% dplyr::mutate(combo_title = paste0(combination_string, added_doses))
+bliss_data_const %<>% dplyr::mutate(bliss_string = 'BLISS ') %>% dplyr::mutate(bliss_title = paste0(bliss_string, pert_dose))
+bliss_data_const %<>% dplyr::mutate(anchor_string = ' Viability') %>% dplyr::mutate(anchor_title = paste0(pert_dose, anchor_string))
+
+
+for (comp in varied_comps) {
+  cat(sprintf('\n\n### %s \n\n', comp, '\n\n'))
+
+  curves_all <- highlight_key(drc_plots %>%
+                                dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+                                dplyr::mutate(added_doses = factor(added_doses)) %>%
+                                dplyr::arrange(auc),
+                              ~cell_id, group = comp)
+  
+  curves_all_a <- highlight_key(drc_plots_const %>%
+                              dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+                              dplyr::arrange(auc),
+                            ~cell_id, group = comp)
+  
+  curves_bliss <- highlight_key(bliss_data_const %>%
+                              dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+                              dplyr::arrange(auc),
+                            ~cell_id, group = comp)
+  
+  
+  curves_anchor <- highlight_key(bliss_data_const %>% dplyr::filter(is.finite(auc), varied_iname == comp) %>%
+     dplyr::arrange(auc) %>% dplyr::select(ccle_name, pert_id, pert_dose, FC_cb, cell_id, anchor_title) %>% dplyr::distinct(ccle_name, pert_id, pert_dose, FC_cb, cell_id, anchor_title),
+                            ~cell_id, group = comp)
+  
+  
+  group_combo <- list()
+  group_bliss <- list()
+  group_anchor <- list()
+  
+  n_anchor_doses = length(anchor_doses)
+  
+  for(i in 2:(n_anchor_doses+1)) { 
+    group_combo <- append(group_combo, paste0('group', i))
+    group_bliss <- append(group_bliss, paste0('group', i+n_anchor_doses))
+    group_anchor <- append(group_anchor, paste0('group', (i+(n_anchor_doses*2))))
+  }
+  
+  
+  
+  
+  p <- plot_ly() %>%
+    add_trace(data = curves_all_a,
+              x = ~x, y = ~y,
+              type = "scatter", mode = "lines", line = list(shape = "line"),
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.1, name = 'Single Treatment', legendgroup = 'group1') %>%
+    add_trace(data = curves_all,
+              x = ~x, y = ~y, 
+              type = "scatter", mode = "lines", line = list(shape = "line"),
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = ~combo_title, split = ~as.factor(added_doses), legendgroup = group_combo) %>%
+    add_trace(data = curves_bliss,
+              x = ~x, y = ~bliss, 
+              type = "scatter", mode = "lines", line = list(shape = "line"),
+              hoverinfo = "text", text = ~ccle_name, opacity = 0.05, name = ~bliss_title, split = ~as.factor(pert_dose), legendgroup = group_bliss) %>%
+    add_trace(data = curves_anchor,
+              x = ~pert_dose, y = ~FC_cb, 
+              type = "scatter", mode = "markers", opacity = 0.05, name = ~anchor_title, split = ~as.factor(pert_dose), legendgroup = group_anchor) %>%
+    config(doubleClick = "reset") %>%
+    layout(xaxis = list(title = "Dose", type = "log"),
+           yaxis = list(title = "Viability", range = c(0, 1.5)),
+           hovermode = "closest") %>%
+    highlight(on = "plotly_selected", off = "plotly_deselect",
+              dynamic = FALSE, selectize = TRUE, persistent = FALSE,
+              opacityDim = 1, defaultValues = "",
+              selected = attrs_selected(opacity = 1))
+  
+
+
+  cat(htmltools::knit_print.shiny.tag(p))
+
+compounds_all <- highlight_key(drc_meta %>%
+                                   dplyr::filter(varied_iname == comp) %>%
+                                   dplyr::arrange(auc),
+                                 ~cell_id, group = comp)
+  
+  pseudo_auc_comp <- highlight_key(pseudo_auc %>% dplyr::filter(varied_iname == comp), 
+                                    ~cell_id, group=comp)
+  
+  q <- plot_ly() %>%
+    add_trace(data = pseudo_auc_comp,
+            x = ~B, y = ~FC,
+            type = "scatter", mode = "markers", colors = 'RdYlGn' , color=~MSS,
+            hoverinfo = "text", text = ~ccle_name, symbol = ~as.factor(added_doses), 
+            marker=list(colorbar=list(text = 'Mean Syngery Score'))) %>%
+    config(doubleClick = "reset") %>%
+    layout( legend = list(title = list(text = "Anchor Dose")),
+      xaxis = list(title = "Riemann-Sums Bliss expected AUC", range = c(0, 1)),
+            yaxis = list(title = "Riemann-Sums AUC", range = c(0, 1.05)), 
+            hovermode = "closest",
+            shapes = list(type = "line", y0=0, y1= 1, x0=0, x1= 1,
+                           line = list(dash = "dash", layer = "below"))) %>%
+      highlight(on = "plotly_click", off = "plotly_doubleclick",
+              dynamic = FALSE, selectize = TRUE, persistent = FALSE,
+              opacityDim = 0.1, defaultValues = "",
+              selected = attrs_selected(opacity = 1))
+  
+  cat(htmltools::knit_print.shiny.tag(q))
+      
+  export_pseudo_auc <- pseudo_auc %>% rename(rs_AUC = FC, rs_Bliss = B) %>% select(ccle_name, culture, pert_plate, varied_iname, added_compound, added_doses, rs_AUC, rs_Bliss, MSS)
+  
+  # save for portal 
+  plot_files_dir = file.path(params$data_dir, 'reports_files_by_plot')
+  dir.create(plot_files_dir, showWarnings = FALSE)
+  auc_path = file.path(plot_files_dir, 'bliss_mss')
+  dir.create(auc_path, showWarnings = FALSE)
+  write.csv(export_pseudo_auc, file.path(auc_path, 'bliss_mss_table.csv'), row.names=FALSE)
+
+  # save for reports landing page 
+  write.csv(export_pseudo_auc, file.path(params$data_dir, 'bliss_mss_table.csv'), row.names=FALSE)
+  
+  
+  
+  
+  dt <- DT::datatable(compounds_all, style="bootstrap", extensions = 'Buttons', 
+                      options = list(lengthChange = FALSE, width = "100%", paging = TRUE,
+                                     columnDefs = list(list(visible = FALSE, targets = c(11))), 
+                                     dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), lengthMenu = list(c(10,25,50,-1), c(10,25,50,"All"))),
+                      colnames = c("Compound", "Cell Line", "Culture", "Added compounds", "Added doses", "a", "EC50", "s", "b", "AUC", "IC50", "ID", "MSS", "Anchor Dose Viability"),
+                      rownames = FALSE,
+                      selection = "single", filter = "top") %>%
+    DT::formatSignif(columns = c("upper_limit", "lower_limit", "ec50", "slope","auc", "ic50", "MSS", "FC_cb"), digits = 3)
+
+  cat(htmltools::knit_print.shiny.tag(dt))
+  
+
+  
+    
+
+  
+}
+  
+```
+  
+
+
+```{r dummy table, include=F}
+dt
+
+```
+
+
