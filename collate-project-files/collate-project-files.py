@@ -13,7 +13,7 @@ logger = logging.getLogger('collate-project-files')
 # search patterns. will search for any occurrences in file name
 # Some exceptions are made for LEVEL4_LFC and LEVEL5_LFC to avoid COMBAT
 search_patterns = [
-    "LEVEL3_LMFI",
+    "LEVEL3_",
     "LEVEL4_LFC",
     "LEVEL4_LFC_COMBAT",
     "LEVEL5_LFC",
@@ -23,6 +23,8 @@ search_patterns = [
     "RF_table",
     "discrete_associations",
     "continuous_associations"
+    "synergy_table"
+    "bliss_mss_table"
 ]
 
 def build_parser():
