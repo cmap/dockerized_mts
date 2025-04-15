@@ -177,6 +177,8 @@ def catch_table_name_exceptions(table_name):
         return "eps_qc_table"
     elif "QC_TABLE" in table_name:
         return "qc_table"
+    elif "plate_cell_qc_table" in table_name:
+        return "seq_qc_table"
     else:
         return table_name
 
