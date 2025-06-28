@@ -4,7 +4,7 @@
 # History files
 .Rhistory
 .Rapp.history
-
+foo.sh
 # Session Data files
 .RData
 

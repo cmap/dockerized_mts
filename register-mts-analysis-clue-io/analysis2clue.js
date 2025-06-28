@@ -17,14 +17,14 @@ class Analysis2clue {
      * @param roleId - CLUE role to assign access, comma-separated list <string>
      * @param is_review - Is report staged for review?
      */
-    constructor(apiKey, apiURL, buildID, projectName, indexFile, roleId='cmap_core', approved=false) {
+    constructor(apiKey, apiURL, buildID, projectName, indexFile, roleId = 'cmap_core', approved = false) {
         this.apiKey = apiKey;
         this.apiURL = apiURL;
         this.buildID = buildID;
         this.buildName = null;
         this.indexFile = indexFile;
         this.roleId = roleId;
-        this.roles = this.roleId.split(",")
+        this.roles = _.uniq(_.compact(this.roleId.split(",")))
         this.approved = approved;
         this.projectName = projectName.replace(/_/g, " ");
         this.postData = {
@@ -34,29 +34,24 @@ class Analysis2clue {
             "status": "APPROVED",
             "created_by": "MTS"
         }
-        this.projectNameWithBuild = null;
-        ;
-
-        console.log("within Analysis2clue, roleID:", this.roleId)
-        console.log("within Analysis2clue, approved:", this.approved)
-        if (!this.approved){
-            this.projectName =  "REVIEW--" + this.projectName
+        if (!this.approved) {
+            this.projectName = "REVIEW--" + this.projectName
             this.postData.name = this.projectName
             this.postData.status = "NEEDS-REVIEW"
         }
 
-        const whereClause = {where:{"or": [{"name": this.projectName}, {"url": this.indexFile}]}, include: ["role"]};
-        this.resourceExistsURL = this.apiURL + "/api/preliminary-analysis?filter=" + JSON.stringify(whereClause);
         this.postURL = this.apiURL + "/api/data/" + buildID + "/external_analysis";
+        console.log("within Analysis2clue, roleID:", this.roleId)
+        console.log("within Analysis2clue, approved:", this.approved)
     }
 
     /**
      *
      * Check if the resource already exists in clue
-     *
-     * @returns {Promise<any>}
+     * @param projectNameWithBuild
+     * @return {Promise<*|*[]>}
      */
-    async resourceExists() {
+    async resourceExists(projectNameWithBuild) {
         const self = this;
         const options = {
             method: 'GET',
@@ -64,8 +59,14 @@ class Analysis2clue {
                 'user_key': self.apiKey
             }
         };
-        console.log("self.resourceExistsURL", self.resourceExistsURL)
-        const response = await fetch(self.resourceExistsURL, options);
+        const whereClause = {
+            where: {"or": [{"name": projectNameWithBuild}, {"url": self.indexFile}]},
+            include: ["role"]
+        };
+        const resourceExistsURL = this.apiURL + "/api/preliminary-analysis?filter=" + JSON.stringify(whereClause);
+        console.log("resourceExistsURL", resourceExistsURL)
+
+        const response = await fetch(resourceExistsURL, options);
         if (response.status === 404) {
             return []
         }
@@ -98,23 +99,23 @@ class Analysis2clue {
         return await fetch(url, options);
     }
 
-    static arrayEquals (a, b) {
-    return Array.isArray(a) &&
-        Array.isArray(b) &&
-        a.length === b.length &&
-        a.every((val, index) => val === b[index]);
+    static arrayEquals(a, b) {
+        return Array.isArray(a) &&
+            Array.isArray(b) &&
+            a.length === b.length &&
+            a.every((val, index) => val === b[index]);
     }
 
     async getBuildNameFromID() {
         const self = this;
-        const buildURL = self.apiURL + "/api/data/" + self.buildID ;
+        const buildURL = self.apiURL + "/api/data/" + self.buildID;
         const options = {
             method: 'GET',
             headers: {
                 'user_key': self.apiKey
             }
         };
-        const resp =  await fetch(buildURL, options)
+        const resp = await fetch(buildURL, options)
         if (resp.ok && resp.status < 300) {
             const data = await resp.json();
             return data.name
@@ -131,14 +132,20 @@ class Analysis2clue {
     async registerInCLUE() {
         const _ = require("underscore")
         const self = this;
+        self.buildName = await self.getBuildNameFromID()
+        const projectNameWithBuild = self.projectName + " (" + self.buildName + ")"
+        console.log("Project Name with Build: ", projectNameWithBuild)
         //check if resource exists in API before you post using url or name
-        const response = await self.resourceExists();
-
+        const response = await self.resourceExists(projectNameWithBuild);
         const matchingurlsPAs = _.filter(response,
-            function (prelim_analysis){return prelim_analysis.url == self.indexFile})
+            function (prelim_analysis) {
+                return prelim_analysis.url === self.indexFile
+            })
 
         const correctPA = _.filter(matchingurlsPAs,
-            function (prelim_analysis){return prelim_analysis.name == self.projectName})
+            function (prelim_analysis) {
+                return prelim_analysis.name === self.projectName
+            })
 
         if (correctPA.length > 0) {
             // associate PA
@@ -152,11 +159,11 @@ class Analysis2clue {
             }
             return {ignore: false, id: correctPA[0].id}
         }
-        self.buildName = await self.getBuildNameFromID()
-        self.projectNameWithBuild = self.projectName + " (" + self.buildName + ")"
-        console.log("Project Name with Build: ", self.projectNameWithBuild)
+
         const correctPAwithbuildname = _.filter(matchingurlsPAs,
-            function (prelim_analysis){return prelim_analysis.name == self.projectNameWithBuild})
+            function (prelim_analysis) {
+                return prelim_analysis.name === projectNameWithBuild
+            })
 
         if (correctPAwithbuildname.length > 0) {
             // associate PA
@@ -171,7 +178,7 @@ class Analysis2clue {
             return {ignore: false, id: correctPAwithbuildname[0].id}
         }
         // create a PA with a name + build
-        self.postData.name = self.projectNameWithBuild
+        self.postData.name = projectNameWithBuild
         const resp = await self.postMethodAPI(self.postData, self.postURL, "POST");
         const data = await resp.json();
         if (resp.ok && resp.status < 300) {
@@ -190,9 +197,7 @@ class Analysis2clue {
         const promises = [];
 
         // Clear previous roles
-        // const deleteURL = self.apiURL + "/api/preliminary-analysis/" + prelim_analysisID + "/role"
-        // await self.postMethodAPI({}, deleteURL, "DELETE")
-        for (const role of self.roles){
+        for (const role of self.roles) {
             const url = self.apiURL + "/api/preliminary-analysis/" + prelim_analysisID + "/role/rel/" + role;
             console.log("role-assignment url:", url)
             promises.push(self.postMethodAPI({}, url, "PUT"));
@@ -200,7 +205,7 @@ class Analysis2clue {
         try {
             const resp = await Promise.all(promises)
             return {success: "success"};
-        }catch(e){
+        } catch (e) {
             console.log(e)
             return {failure: "failure"};
         }
@@ -209,7 +214,7 @@ class Analysis2clue {
     async confirmBuildAssociation(buildID, prelim_analysisID) {
         // check for relation
         // if relation does not exist
-            // make relation
+        // make relation
         const self = this;
         const buildExtAnalysisURL = this.apiURL + "/api/data/" + buildID + "/external_analysis/";
         console.log("Checking association for build.", buildExtAnalysisURL)
@@ -224,10 +229,12 @@ class Analysis2clue {
 
         if (responses.ok && responses.status === 200) {
             const linkedAnalyses = await responses.json()
-            const matchingPrelim = _.filter(linkedAnalyses, prelim => { return prelim.id === prelim_analysisID})
-            if (matchingPrelim.length > 0){
+            const matchingPrelim = _.filter(linkedAnalyses, prelim => {
+                return prelim.id === prelim_analysisID
+            })
+            if (matchingPrelim.length > 0) {
                 return;
-            }else{
+            } else {
                 const creationURL = this.apiURL + "/api/data/" + buildID + "/external_analysis/rel/" + prelim_analysisID;
                 const resp = await self.postMethodAPI({}, creationURL, "PUT");
                 const data = await resp.json();
@@ -249,8 +256,7 @@ class Analysis2clue {
                 console.log("associating roles")
                 await self.associateAnalysis2Role(resp.id);
             }
-            console.log("after if statement")
-        }catch (e){
+        } catch (e) {
             console.log(e)
         }
         return "done";
@@ -258,7 +264,6 @@ class Analysis2clue {
 
 
 }
-
 
 
 module.exports = Analysis2clue;
