@@ -117,11 +117,11 @@ class Analysis2clue {
             }
         };
         console.log("getBuildNameFromID", buildURL);
+        const resp = await fetch(buildURL, options)
         console.log("resp OK", resp.ok);
-        console.log("resp Status", resp.status);
         if (resp.ok && resp.status < 300) {
             const data = await resp.json();
-            console.log("name",name)
+            console.log("name",data.name)
             return data.name
         }
     }
