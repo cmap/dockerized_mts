@@ -21,7 +21,6 @@ class Analysis2clue {
         this.apiKey = apiKey;
         this.apiURL = apiURL;
         this.buildID = buildID;
-        this.buildName = null;
         this.indexFile = indexFile;
         this.roleId = roleId;
         this.roles = _.uniq(_.compact(this.roleId.split(",")))
@@ -43,6 +42,7 @@ class Analysis2clue {
         this.postURL = this.apiURL + "/api/data/" + buildID + "/external_analysis";
         console.log("within Analysis2clue, roleID:", this.roleId)
         console.log("within Analysis2clue, approved:", this.approved)
+        console.log("Adding to see that this is a new comment")
     }
 
     /**
@@ -115,6 +115,7 @@ class Analysis2clue {
                 'user_key': self.apiKey
             }
         };
+        console.log("getBuildNameFromID", buildURL);
         const resp = await fetch(buildURL, options)
         if (resp.ok && resp.status < 300) {
             const data = await resp.json();
@@ -132,8 +133,10 @@ class Analysis2clue {
     async registerInCLUE() {
         const _ = require("underscore")
         const self = this;
-        self.buildName = await self.getBuildNameFromID()
-        const projectNameWithBuild = self.projectName + " (" + self.buildName + ")"
+        console.log("registerInCLUE")
+        const buildName = await self.getBuildNameFromID()
+        console.log("After registerInCLUE")
+        const projectNameWithBuild = self.projectName + " (" + buildName + ")"
         console.log("Project Name with Build: ", projectNameWithBuild)
         //check if resource exists in API before you post using url or name
         const response = await self.resourceExists(projectNameWithBuild);
