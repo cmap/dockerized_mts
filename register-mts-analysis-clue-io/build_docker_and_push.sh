@@ -2,7 +2,7 @@
 REPO="prismcmap"
 NAME="register-mts-analysis-clue-io"
 
-VERSION="v0.2.0" #change the version number for each new build
+VERSION="production" #change the version number for each new build
 TAG="latest"
 
 #change the version number for each new build
