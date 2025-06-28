@@ -20,6 +20,9 @@ class Analysis2clue {
     constructor(apiKey, apiURL, buildID, projectName, indexFile, roleId = 'cmap_core', approved = false) {
         this.apiKey = apiKey;
         this.apiURL = apiURL;
+        if (!apiURL.includes("/api")) {
+            this.apiURL = this.apiURL + "/api";
+        }
         this.buildID = buildID;
         this.indexFile = indexFile;
         this.roles = _.uniq(_.compact(roleId.split(",")));
@@ -38,10 +41,9 @@ class Analysis2clue {
             this.postData.status = "NEEDS-REVIEW"
         }
 
-        this.postURL = this.apiURL + "/api/data/" + buildID + "/external_analysis";
+        this.postURL = this.apiURL + "/data/" + buildID + "/external_analysis";
         console.log("within Analysis2clue, roleID:", this.roles)
         console.log("within Analysis2clue, approved:", this.approved)
-        console.log("Adding to see that this is a new comment")
     }
 
     /**
@@ -62,7 +64,7 @@ class Analysis2clue {
             where: {"or": [{"name": projectNameWithBuild}, {"url": self.indexFile}]},
             include: ["role"]
         };
-        const resourceExistsURL = this.apiURL + "/api/preliminary-analysis?filter=" + JSON.stringify(whereClause);
+        const resourceExistsURL = self.apiURL + "/preliminary-analysis?filter=" + JSON.stringify(whereClause);
         console.log("resourceExistsURL", resourceExistsURL)
 
         const response = await fetch(resourceExistsURL, options);
@@ -107,7 +109,7 @@ class Analysis2clue {
 
     async getBuildNameFromID() {
         const self = this;
-        const buildURL = self.apiURL + "/api/data/" + self.buildID;
+        const buildURL = self.apiURL + "/data/" + self.buildID;
         const options = {
             method: 'GET',
             headers: {
@@ -115,13 +117,11 @@ class Analysis2clue {
             }
         };
         console.log("getBuildNameFromID", buildURL);
-        const resp = await fetch(buildURL, options)
         console.log("resp OK", resp.ok);
         console.log("resp Status", resp.status);
         if (resp.ok && resp.status < 300) {
             const data = await resp.json();
-            console.log("data",JSON.stringify(data));
-
+            console.log("name",name)
             return data.name
         }
     }
@@ -136,9 +136,7 @@ class Analysis2clue {
     async registerInCLUE() {
         const _ = require("underscore")
         const self = this;
-        console.log("registerInCLUE")
         const buildName = await self.getBuildNameFromID()
-        console.log("After registerInCLUE")
         const projectNameWithBuild = self.projectName + " (" + buildName + ")"
         console.log("Project Name with Build: ", projectNameWithBuild)
         //check if resource exists in API before you post using url or name
@@ -204,7 +202,7 @@ class Analysis2clue {
 
         // Clear previous roles
         for (const role of self.roles) {
-            const url = self.apiURL + "/api/preliminary-analysis/" + prelim_analysisID + "/role/rel/" + role;
+            const url = self.apiURL + "/preliminary-analysis/" + prelim_analysisID + "/role/rel/" + role;
             console.log("role-assignment url:", url)
             promises.push(self.postMethodAPI({}, url, "PUT"));
         }
@@ -222,7 +220,7 @@ class Analysis2clue {
         // if relation does not exist
         // make relation
         const self = this;
-        const buildExtAnalysisURL = this.apiURL + "/api/data/" + buildID + "/external_analysis/";
+        const buildExtAnalysisURL = self.apiURL + "/data/" + buildID + "/external_analysis/";
         console.log("Checking association for build.", buildExtAnalysisURL)
         const options = {
             method: 'GET',
@@ -241,7 +239,7 @@ class Analysis2clue {
             if (matchingPrelim.length > 0) {
                 return;
             } else {
-                const creationURL = this.apiURL + "/api/data/" + buildID + "/external_analysis/rel/" + prelim_analysisID;
+                const creationURL = self.apiURL + "/data/" + buildID + "/external_analysis/rel/" + prelim_analysisID;
                 const resp = await self.postMethodAPI({}, creationURL, "PUT");
                 const data = await resp.json();
             }
