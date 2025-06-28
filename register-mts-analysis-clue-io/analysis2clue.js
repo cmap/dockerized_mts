@@ -22,8 +22,7 @@ class Analysis2clue {
         this.apiURL = apiURL;
         this.buildID = buildID;
         this.indexFile = indexFile;
-        this.roleId =  _.uniq(_.compact(roleId.split(",")));
-        this.roles = _.uniq(_.compact(this.roleId.split(",")))
+        this.roles = _.uniq(_.compact(roleId.split(",")));
         this.approved = approved;
         this.projectName = projectName.replace(/_/g, " ");
         this.postData = {
@@ -40,7 +39,7 @@ class Analysis2clue {
         }
 
         this.postURL = this.apiURL + "/api/data/" + buildID + "/external_analysis";
-        console.log("within Analysis2clue, roleID:", this.roleId)
+        console.log("within Analysis2clue, roleID:", this.roles)
         console.log("within Analysis2clue, approved:", this.approved)
         console.log("Adding to see that this is a new comment")
     }
