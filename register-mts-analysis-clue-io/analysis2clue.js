@@ -22,7 +22,7 @@ class Analysis2clue {
         this.apiURL = apiURL;
         this.buildID = buildID;
         this.indexFile = indexFile;
-        this.roleId = roleId;
+        this.roleId =  _.uniq(_.compact(roleId.split(",")));
         this.roles = _.uniq(_.compact(this.roleId.split(",")))
         this.approved = approved;
         this.projectName = projectName.replace(/_/g, " ");
@@ -117,8 +117,12 @@ class Analysis2clue {
         };
         console.log("getBuildNameFromID", buildURL);
         const resp = await fetch(buildURL, options)
+        console.log("resp OK", resp.ok);
+        console.log("resp Status", resp.status);
         if (resp.ok && resp.status < 300) {
             const data = await resp.json();
+            console.log("data",JSON.stringify(data));
+
             return data.name
         }
     }
