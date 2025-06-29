@@ -104,6 +104,12 @@ class Analysis2clue {
         return await fetch(url, options);
     }
 
+    /**
+     *
+     * @param a
+     * @param b
+     * @return {false|*}
+     */
     static arrayEquals(a, b) {
         return Array.isArray(a) &&
             Array.isArray(b) &&
@@ -111,6 +117,10 @@ class Analysis2clue {
             a.every((val, index) => val === b[index]);
     }
 
+    /**
+     *
+     * @return {Promise<*>}
+     */
     async getBuildNameFromID() {
         const self = this;
         const buildURL = self.apiURL + "/data/" + self.buildID;
@@ -220,6 +230,12 @@ class Analysis2clue {
         }
     }
 
+    /**
+     *
+     * @param buildID
+     * @param prelim_analysisID
+     * @return {Promise<void>}
+     */
     async confirmBuildAssociation(buildID, prelim_analysisID) {
         // check for relation
         // if relation does not exist
@@ -270,9 +286,5 @@ class Analysis2clue {
         }
         return "done";
     }
-
-
 }
-
-
 module.exports = Analysis2clue;
