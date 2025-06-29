@@ -20,9 +20,11 @@ class Analysis2clue {
     constructor(apiKey, apiURL, buildID, projectName, indexFile, roleId = 'cmap_core', approved = false) {
         this.apiKey = apiKey;
         this.apiURL = apiURL;
-        if (!apiURL.includes("/api")) {
+        console.log("Before apiURL",this.apiURL)
+        if (!this.apiURL.endsWith("api")) {
             this.apiURL = this.apiURL + "/api";
         }
+        console.log("After apiURL",this.apiURL)
         this.buildID = buildID;
         this.indexFile = indexFile;
         this.roles = _.uniq(_.compact(roleId.split(",")));
@@ -44,6 +46,7 @@ class Analysis2clue {
         this.postURL = this.apiURL + "/data/" + buildID + "/external_analysis";
         console.log("within Analysis2clue, roleID:", this.roles)
         console.log("within Analysis2clue, approved:", this.approved)
+        console.log("within Analysis2clue, postURL:", this.postURL)
     }
 
     /**
@@ -97,6 +100,7 @@ class Analysis2clue {
                 "user_key": self.apiKey
             }
         };
+        console.log("postMethodAPI", url)
         return await fetch(url, options);
     }
 
@@ -183,6 +187,7 @@ class Analysis2clue {
         }
         // create a PA with a name + build
         self.postData.name = projectNameWithBuild
+        console.log("postURL", self.postURL)
         const resp = await self.postMethodAPI(self.postData, self.postURL, "POST");
         const data = await resp.json();
         if (resp.ok && resp.status < 300) {
@@ -207,7 +212,7 @@ class Analysis2clue {
             promises.push(self.postMethodAPI({}, url, "PUT"));
         }
         try {
-            const resp = await Promise.all(promises)
+            await Promise.all(promises)
             return {success: "success"};
         } catch (e) {
             console.log(e)
